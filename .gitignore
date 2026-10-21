@@ -1,1 +1,8 @@
-﻿CHỦ ĐỀ 1.docx
+.env
+__pycache__/
+*.pyc
+*.sqlite3*
+CHỦ ĐỀ 1.docx
+Lec-*.pdf
+venv/
+.venv/

@@ -21,7 +21,7 @@ predictor_instance: IntentPredictor = None
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global predictor_instance
-    print(f"[intent_service] Checking model artifact at {MODEL_PATH}...")
+    print(f"[intent_service] Checking model artifact: {MODEL_PATH.name}...")
     if not MODEL_PATH.exists():
         print(f"[intent_service] Model not found. Training baseline model now...")
         train_and_persist(MODEL_PATH)
@@ -68,5 +68,5 @@ def predict_intent(request: IntentPredictionRequest):
 
 if __name__ == "__main__":
     import uvicorn
-    port = int(os.getenv("PORT", 8001))
+    port = int(os.getenv("PORT", 8005))
     uvicorn.run("services.intent_service.src.main:app", host="0.0.0.0", port=port, reload=False)

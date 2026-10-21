@@ -89,6 +89,17 @@ async def process_copilot_query(
     draft_text: str = ""
     order_data: Optional[Dict[str, Any]] = None
 
+    # Extract specific order_id if customer mentioned one in query
+    lookup_key = customer_id
+    for token in customer_query.split():
+        clean_tok = token.strip(",.?!:;\"'()[]{}")
+        if clean_tok.upper().startswith("ORD-"):
+            lookup_key = clean_tok
+            break
+
+    if lookup_key:
+        order_data = await clients.lookup_order(lookup_key)
+
     # Step 2: Intent Guardrail Check
     intent_guard = evaluate_intent_guard(intent_resp)
     if not intent_guard.allow_llm:
@@ -103,14 +114,6 @@ async def process_copilot_query(
         financial_guard = evaluate_financial_guard(intent_resp.intent)
         if financial_guard and not financial_guard.allow_llm:
             guardrail_decision = financial_guard
-            # Extract specific order_id if customer mentioned one in query
-            lookup_key = customer_id
-            for token in customer_query.split():
-                clean_tok = token.strip(",.?!:;\"'()[]{}")
-                if clean_tok.upper().startswith("ORD-"):
-                    lookup_key = clean_tok
-                    break
-            order_data = await clients.lookup_order(lookup_key)
             draft_text = FALLBACK_FINANCIAL_MESSAGE
             if order_data:
                 order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
@@ -134,7 +137,12 @@ async def process_copilot_query(
                 # Step 6: LLM Generation
                 guardrail_decision = policy_guard
                 try:
-                    gen_resp = await clients.generate_draft(customer_query, citations)
+                    generation_prompt = customer_query
+                    if order_data:
+                        order_details = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
+                        generation_prompt += f"\n[Thông tin thực tế của đơn hàng từ hệ thống: {order_details}]"
+
+                    gen_resp = await clients.generate_draft(generation_prompt, citations)
                     draft_text = gen_resp.draft_text
                 except Exception as exc:
                     guardrail_decision = GuardrailResult(

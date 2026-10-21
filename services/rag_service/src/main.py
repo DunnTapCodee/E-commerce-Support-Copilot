@@ -32,7 +32,7 @@ generator_instance = LLMGenerator(timeout_seconds=8)
 def init_knowledge_base():
     """Load or build vector store index from policies.json."""
     global indexer_instance, retriever_instance
-    print(f"[rag_service] Loading policies from {POLICIES_PATH}...")
+    print(f"[rag_service] Loading policies from {POLICIES_PATH.name}...")
     docs = load_policy_documents(POLICIES_PATH)
     indexer_instance.fit_and_save(docs, INDEX_PATH)
     retriever_instance = PolicyRetriever(indexer_instance)

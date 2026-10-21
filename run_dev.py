@@ -11,11 +11,23 @@ ROOT_DIR = Path(__file__).resolve().parent
 # Ensure Python knows about the project root
 env = os.environ.copy()
 env["PYTHONPATH"] = str(ROOT_DIR)
+env["PYTHONUTF8"] = "1"
+env["PYTHONIOENCODING"] = "utf-8"
+
+# Read .env if present
+env_file = ROOT_DIR / ".env"
+if env_file.exists():
+    with open(env_file, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                env[k.strip()] = v.strip()
 
 COMMANDS = [
     {
-        "name": "intent_service (8001)",
-        "cmd": [sys.executable, "-m", "uvicorn", "services.intent_service.src.main:app", "--port", "8001", "--host", "127.0.0.1"],
+        "name": "intent_service (8005)",
+        "cmd": [sys.executable, "-m", "uvicorn", "services.intent_service.src.main:app", "--port", "8005", "--host", "127.0.0.1"],
     },
     {
         "name": "rag_service (8002)",
@@ -31,7 +43,7 @@ COMMANDS = [
     },
     {
         "name": "ui_service (8501)",
-        "cmd": [sys.executable, "-m", "streamlit", "run", "services/ui_service/src/app.py", "--server.port=8501", "--server.address=127.0.0.1"],
+        "cmd": [sys.executable, "-m", "streamlit", "run", "services/ui_service/src/app.py", "--server.port=8501", "--server.address=127.0.0.1", "--server.headless=true"],
     },
 ]
 
@@ -84,7 +96,7 @@ def main():
         print("\n" + "=" * 65)
         print("✨ TẤT CẢ DỊCH VỤ ĐÃ SẴN SÀNG:")
         print("  - Gateway API:         http://127.0.0.1:8000/docs")
-        print("  - Intent Service:      http://127.0.0.1:8001/docs")
+        print("  - Intent Service:      http://127.0.0.1:8005/docs")
         print("  - RAG Service:         http://127.0.0.1:8002/docs")
         print("  - Telemetry Service:   http://127.0.0.1:8003/docs")
         print("  - Streamlit UI:        http://127.0.0.1:8501")
