@@ -1,0 +1,16 @@
+{
+  "id": "KUSER/k02-paraphrase-vi",
+  "title": "k02-paraphrase-vi",
+  "code_file": "k02_paraphrase_vi.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "KUSER/ecom-intent-data"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

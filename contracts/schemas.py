@@ -27,6 +27,9 @@ class IntentPredictionResponse(BaseModel):
     intent: str = Field(..., description="Predicted intent name")
     confidence: float = Field(ge=0.0, le=1.0, description="Prediction confidence score")
     is_in_scope: bool = Field(..., description="Whether intent belongs to operational scope")
+    language: Optional[str] = None
+    model_name: Optional[str] = None
+    latency_ms: Optional[float] = Field(default=None, ge=0)
     all_probabilities: Dict[str, float] = Field(
         default_factory=dict,
         description="Probability distribution across candidate classes"

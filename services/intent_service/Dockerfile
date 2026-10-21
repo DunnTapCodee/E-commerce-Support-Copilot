@@ -10,7 +10,9 @@ COPY services/intent_service/ /app/services/intent_service/
 
 ENV PYTHONPATH=/app
 ENV PORT=8005
-ENV MODEL_PATH=/app/artifacts/models/intent_model.pkl
+COPY artifacts/models/intent/ /app/artifacts/models/intent/
+ENV INTENT_MODEL_DIR=/app/artifacts/models/intent
+ENV INTENT_ROUTING_MODE=router
 
 EXPOSE 8005
 

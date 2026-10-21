@@ -1,0 +1,16 @@
+{
+  "id": "KUSER/k01-translate-en2vi",
+  "title": "k01-translate-en2vi",
+  "code_file": "k01_translate_en2vi.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "KUSER/ecom-intent-data"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

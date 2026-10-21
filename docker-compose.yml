@@ -12,12 +12,12 @@ services:
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
-      - ./ML-model:/app/ML-model
     environment:
       - PORT=8005
-      - MODEL_PATH=/app/artifacts/models/intent_model.pkl
+      - INTENT_MODEL_DIR=/app/artifacts/models/intent
+      - INTENT_ROUTING_MODE=${INTENT_ROUTING_MODE:-router}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; import json; r=urllib.request.urlopen('http://localhost:8005/health'); assert json.load(r)['model_loaded']"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -91,6 +91,7 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
+      - INTENT_CONFIDENCE_THRESHOLD=${INTENT_CONFIDENCE_THRESHOLD:-0.60}
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003

@@ -1,72 +1,56 @@
-"""FastAPI Service for Intent Classification on Port 8001."""
+"""Intent API: load explicit artifacts once; degrade clearly if unavailable."""
+import logging
 import os
-import sys
-from pathlib import Path
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException, status
+from pathlib import Path
+import sys
 
-# Ensure root workspace is in sys.path
-ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
+ROOT_DIR = Path(__file__).resolve().parents[3]
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
-
+from fastapi import FastAPI, HTTPException
 from contracts.schemas import IntentPredictionRequest, IntentPredictionResponse
-from services.intent_service.src.pipeline.train import train_and_persist
 from services.intent_service.src.predictor import IntentPredictor
 
-MODEL_PATH = Path(os.getenv("MODEL_PATH", str(ROOT_DIR / "artifacts" / "models" / "intent_model.pkl")))
-predictor_instance: IntentPredictor = None
+logger = logging.getLogger(__name__)
+predictor_instance = None
+load_error = None
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    global predictor_instance
-    print(f"[intent_service] Checking model artifact: {MODEL_PATH.name}...")
-    if not MODEL_PATH.exists():
-        print(f"[intent_service] Model not found. Training baseline model now...")
-        train_and_persist(MODEL_PATH)
-    predictor_instance = IntentPredictor(MODEL_PATH)
-    print(f"[intent_service] Model loaded successfully. Service ready.")
+async def lifespan(app):
+    global predictor_instance, load_error
+    try:
+        predictor_instance = IntentPredictor()
+        load_error = None
+    except Exception as exc:
+        predictor_instance = None
+        load_error = str(exc)
+        logger.exception('NLU artifacts unavailable. Run Module 1 training/deployment commands; automatic training is disabled.')
     yield
+    predictor_instance = None
 
 
-app = FastAPI(
-    title="Intent Classification Service",
-    description="ML Intent Classification serving port 8001",
-    version="1.0.0",
-    lifespan=lifespan,
-)
+app = FastAPI(title='Bilingual Intent Service', version='2.0.0', lifespan=lifespan)
 
 
-@app.get("/health")
+@app.get('/health')
 def health_check():
-    """Health check endpoint confirming model status."""
-    is_healthy = predictor_instance is not None and predictor_instance.is_loaded
-    return {
-        "status": "healthy" if is_healthy else "degraded",
-        "service": "intent_service",
-        "model_loaded": is_healthy,
-        "model_path": str(MODEL_PATH),
-    }
+    healthy = predictor_instance is not None and predictor_instance.is_loaded
+    return {'status': 'healthy' if healthy else 'degraded', 'service': 'intent_service',
+            'model_loaded': healthy, 'routing_mode': os.getenv('INTENT_ROUTING_MODE', 'router'),
+            'models': predictor_instance.models if healthy else {}, 'error': load_error}
 
 
-@app.post("/predict", response_model=IntentPredictionResponse)
+@app.post('/predict', response_model=IntentPredictionResponse)
 def predict_intent(request: IntentPredictionRequest):
-    """Predict customer intent with confidence and probability distribution."""
-    if not predictor_instance or not predictor_instance.is_loaded:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Model is not loaded",
-        )
     if not request.query.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Query string cannot be empty",
-        )
+        raise HTTPException(400, 'Query string cannot be empty')
+    if predictor_instance is None:
+        raise HTTPException(503, 'Intent artifacts unavailable; inspect /health and README_MODULE1.md')
     return predictor_instance.predict(request.query)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     import uvicorn
-    port = int(os.getenv("PORT", 8005))
-    uvicorn.run("services.intent_service.src.main:app", host="0.0.0.0", port=port, reload=False)
+    uvicorn.run('services.intent_service.src.main:app', host='0.0.0.0', port=int(os.getenv('PORT', 8005)))

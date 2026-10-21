@@ -1,22 +1,17 @@
-﻿# AI Customer Support Copilot — Walking Skeleton
+# E-commerce Support Copilot
 
-A local Streamlit workbench that follows the `CHỦ ĐỀ 1.docx` product scope: intent classification, version-aware retrieval, grounded drafts, human review, and audit telemetry. All customers, orders, policies, and services are mocked. No action sends a customer message or approves a transaction.
+Five-service agent workbench: Streamlit UI, FastAPI gateway, bilingual intent
+classification, policy retrieval/drafting, and SQLite audit telemetry.
 
-## Run
+Module 1 NLU implementation and commands: [README_MODULE1.md](services/intent_service/README_MODULE1.md).
+New NLU artifacts must be trained and deployed before the intent API becomes healthy.
+The source-only Module 1 update includes no measured model results.
 
-```powershell
-python -m pip install -r requirements.txt
-streamlit run app.py
-```
+For a complete local installation, install the intent training requirements plus
+requirements from gateway, RAG, telemetry and UI, then run `python run_dev.py`.
+For Docker, populate `artifacts/models/intent/`, configure `.env` from
+`.env.example`, and follow the calibrated deployment commands in the Module 1 guide.
 
-The SQLite database `copilot_telemetry.sqlite3` is created beside the source on first run. Keep it local; it contains customer query text for this demo.
-
-## Modules
-
-- `schemas.py`: Pydantic request, response, guardrail, document, and review contracts.
-- `mock_services.py`: deterministic 12-intent keyword classifier, policy KB, fake order lookup, and grounded mock LLM.
-- `orchestrator.py`: sequential uncertainty, financial-risk, freshness, retrieval, and drafting checks.
-- `db.py`: SQLite interaction and human-action audit records.
-- `app.py`: two-column agent workbench with review controls.
-
-The keyword classifier is an adapter placeholder for the project's separately trained 46-intent ML model. Its low-confidence/out-of-scope output exercises abstention. The mock app is not connected to production systems.
+The UI produces drafts for human review. Approve/Edit actions record an audit
+entry; they do not send a customer message or execute financial transactions.
+Orders and policy data in this repository are demonstration data.
