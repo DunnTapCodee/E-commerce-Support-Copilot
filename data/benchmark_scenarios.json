@@ -3,7 +3,7 @@
     "scenario_id": "SCENARIO-001",
     "order_id": "ORD-1001",
     "customer_id": "demo-customer",
-    "query": "Đơn hàng ORD-1001 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1001 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -12,7 +12,7 @@
     "scenario_id": "SCENARIO-002",
     "order_id": "ORD-1002",
     "customer_id": "cust-1002",
-    "query": "Tôi muốn hủy đơn hàng ORD-1002 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1002 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -21,7 +21,7 @@
     "scenario_id": "SCENARIO-003",
     "order_id": "ORD-1003",
     "customer_id": "cust-1003",
-    "query": "Đơn hàng ORD-1003 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1003 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -39,7 +39,7 @@
     "scenario_id": "SCENARIO-005",
     "order_id": "ORD-1005",
     "customer_id": "demo-customer",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -48,7 +48,7 @@
     "scenario_id": "SCENARIO-006",
     "order_id": "ORD-1006",
     "customer_id": "cust-1006",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -57,7 +57,7 @@
     "scenario_id": "SCENARIO-007",
     "order_id": "ORD-1007",
     "customer_id": "cust-1007",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1007?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1007 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -66,7 +66,7 @@
     "scenario_id": "SCENARIO-008",
     "order_id": "ORD-1008",
     "customer_id": "cust-1008",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -75,7 +75,7 @@
     "scenario_id": "SCENARIO-009",
     "order_id": "ORD-1009",
     "customer_id": "cust-1009",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1009 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1009 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -93,7 +93,7 @@
     "scenario_id": "SCENARIO-011",
     "order_id": "ORD-1011",
     "customer_id": "cust-1011",
-    "query": "Tôi thanh toán đơn ORD-1011 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1011 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -102,7 +102,7 @@
     "scenario_id": "SCENARIO-012",
     "order_id": "ORD-1012",
     "customer_id": "cust-1012",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -111,7 +111,7 @@
     "scenario_id": "SCENARIO-013",
     "order_id": "ORD-1013",
     "customer_id": "cust-1013",
-    "query": "Đơn hàng ORD-1013 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1013 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -120,7 +120,7 @@
     "scenario_id": "SCENARIO-014",
     "order_id": "ORD-1014",
     "customer_id": "cust-1014",
-    "query": "Tôi muốn hủy đơn hàng ORD-1014 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1014 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -129,7 +129,7 @@
     "scenario_id": "SCENARIO-015",
     "order_id": "ORD-1015",
     "customer_id": "demo-customer",
-    "query": "Đơn hàng ORD-1015 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1015 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -147,7 +147,7 @@
     "scenario_id": "SCENARIO-017",
     "order_id": "ORD-1017",
     "customer_id": "cust-1017",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -156,7 +156,7 @@
     "scenario_id": "SCENARIO-018",
     "order_id": "ORD-1018",
     "customer_id": "cust-1018",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -165,7 +165,7 @@
     "scenario_id": "SCENARIO-019",
     "order_id": "ORD-1019",
     "customer_id": "cust-1019",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1019?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1019 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -174,7 +174,7 @@
     "scenario_id": "SCENARIO-020",
     "order_id": "ORD-1020",
     "customer_id": "cust-1020",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -183,7 +183,7 @@
     "scenario_id": "SCENARIO-021",
     "order_id": "ORD-1021",
     "customer_id": "cust-1021",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1021 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1021 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -201,7 +201,7 @@
     "scenario_id": "SCENARIO-023",
     "order_id": "ORD-1023",
     "customer_id": "cust-1023",
-    "query": "Tôi thanh toán đơn ORD-1023 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1023 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -210,7 +210,7 @@
     "scenario_id": "SCENARIO-024",
     "order_id": "ORD-1024",
     "customer_id": "cust-1024",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -219,7 +219,7 @@
     "scenario_id": "SCENARIO-025",
     "order_id": "ORD-1025",
     "customer_id": "cust-1025",
-    "query": "Đơn hàng ORD-1025 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1025 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -228,7 +228,7 @@
     "scenario_id": "SCENARIO-026",
     "order_id": "ORD-1026",
     "customer_id": "demo-customer",
-    "query": "Tôi muốn hủy đơn hàng ORD-1026 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1026 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -237,7 +237,7 @@
     "scenario_id": "SCENARIO-027",
     "order_id": "ORD-1027",
     "customer_id": "cust-1027",
-    "query": "Đơn hàng ORD-1027 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1027 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -255,7 +255,7 @@
     "scenario_id": "SCENARIO-029",
     "order_id": "ORD-1029",
     "customer_id": "cust-1029",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -264,7 +264,7 @@
     "scenario_id": "SCENARIO-030",
     "order_id": "ORD-1030",
     "customer_id": "demo-customer",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -273,7 +273,7 @@
     "scenario_id": "SCENARIO-031",
     "order_id": "ORD-1031",
     "customer_id": "cust-1031",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1031?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1031 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -282,7 +282,7 @@
     "scenario_id": "SCENARIO-032",
     "order_id": "ORD-1032",
     "customer_id": "cust-1032",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -291,7 +291,7 @@
     "scenario_id": "SCENARIO-033",
     "order_id": "ORD-1033",
     "customer_id": "cust-1033",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1033 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1033 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -309,7 +309,7 @@
     "scenario_id": "SCENARIO-035",
     "order_id": "ORD-1035",
     "customer_id": "cust-1035",
-    "query": "Tôi thanh toán đơn ORD-1035 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1035 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -318,7 +318,7 @@
     "scenario_id": "SCENARIO-036",
     "order_id": "ORD-1036",
     "customer_id": "cust-1036",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -327,7 +327,7 @@
     "scenario_id": "SCENARIO-037",
     "order_id": "ORD-1037",
     "customer_id": "cust-1037",
-    "query": "Đơn hàng ORD-1037 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1037 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -336,7 +336,7 @@
     "scenario_id": "SCENARIO-038",
     "order_id": "ORD-1038",
     "customer_id": "cust-1038",
-    "query": "Tôi muốn hủy đơn hàng ORD-1038 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1038 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -345,7 +345,7 @@
     "scenario_id": "SCENARIO-039",
     "order_id": "ORD-1039",
     "customer_id": "cust-1039",
-    "query": "Đơn hàng ORD-1039 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1039 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -363,7 +363,7 @@
     "scenario_id": "SCENARIO-041",
     "order_id": "ORD-1041",
     "customer_id": "cust-1041",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -372,7 +372,7 @@
     "scenario_id": "SCENARIO-042",
     "order_id": "ORD-1042",
     "customer_id": "cust-1042",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -381,7 +381,7 @@
     "scenario_id": "SCENARIO-043",
     "order_id": "ORD-1043",
     "customer_id": "cust-1043",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1043?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1043 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -390,7 +390,7 @@
     "scenario_id": "SCENARIO-044",
     "order_id": "ORD-1044",
     "customer_id": "cust-1044",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -399,7 +399,7 @@
     "scenario_id": "SCENARIO-045",
     "order_id": "ORD-1045",
     "customer_id": "cust-1045",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1045 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1045 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -417,7 +417,7 @@
     "scenario_id": "SCENARIO-047",
     "order_id": "ORD-1047",
     "customer_id": "cust-1047",
-    "query": "Tôi thanh toán đơn ORD-1047 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1047 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -426,7 +426,7 @@
     "scenario_id": "SCENARIO-048",
     "order_id": "ORD-1048",
     "customer_id": "cust-1048",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -435,7 +435,7 @@
     "scenario_id": "SCENARIO-049",
     "order_id": "ORD-1049",
     "customer_id": "cust-1049",
-    "query": "Đơn hàng ORD-1049 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1049 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -444,7 +444,7 @@
     "scenario_id": "SCENARIO-050",
     "order_id": "ORD-1050",
     "customer_id": "cust-1050",
-    "query": "Tôi muốn hủy đơn hàng ORD-1050 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1050 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -453,7 +453,7 @@
     "scenario_id": "SCENARIO-051",
     "order_id": "ORD-1051",
     "customer_id": "demo-customer",
-    "query": "Đơn hàng ORD-1051 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1051 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -471,7 +471,7 @@
     "scenario_id": "SCENARIO-053",
     "order_id": "ORD-1053",
     "customer_id": "cust-1053",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -480,7 +480,7 @@
     "scenario_id": "SCENARIO-054",
     "order_id": "ORD-1054",
     "customer_id": "cust-1054",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -489,7 +489,7 @@
     "scenario_id": "SCENARIO-055",
     "order_id": "ORD-1055",
     "customer_id": "cust-1055",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1055?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1055 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -498,7 +498,7 @@
     "scenario_id": "SCENARIO-056",
     "order_id": "ORD-1056",
     "customer_id": "cust-1056",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -507,7 +507,7 @@
     "scenario_id": "SCENARIO-057",
     "order_id": "ORD-1057",
     "customer_id": "cust-1057",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1057 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1057 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -525,7 +525,7 @@
     "scenario_id": "SCENARIO-059",
     "order_id": "ORD-1059",
     "customer_id": "cust-1059",
-    "query": "Tôi thanh toán đơn ORD-1059 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1059 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -534,7 +534,7 @@
     "scenario_id": "SCENARIO-060",
     "order_id": "ORD-1060",
     "customer_id": "demo-customer",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -543,7 +543,7 @@
     "scenario_id": "SCENARIO-061",
     "order_id": "ORD-1061",
     "customer_id": "cust-1061",
-    "query": "Đơn hàng ORD-1061 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1061 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -552,7 +552,7 @@
     "scenario_id": "SCENARIO-062",
     "order_id": "ORD-1062",
     "customer_id": "cust-1062",
-    "query": "Tôi muốn hủy đơn hàng ORD-1062 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1062 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -561,7 +561,7 @@
     "scenario_id": "SCENARIO-063",
     "order_id": "ORD-1063",
     "customer_id": "cust-1063",
-    "query": "Đơn hàng ORD-1063 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1063 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -579,7 +579,7 @@
     "scenario_id": "SCENARIO-065",
     "order_id": "ORD-1065",
     "customer_id": "cust-1065",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -588,7 +588,7 @@
     "scenario_id": "SCENARIO-066",
     "order_id": "ORD-1066",
     "customer_id": "cust-1066",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -597,7 +597,7 @@
     "scenario_id": "SCENARIO-067",
     "order_id": "ORD-1067",
     "customer_id": "cust-1067",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1067?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1067 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -606,7 +606,7 @@
     "scenario_id": "SCENARIO-068",
     "order_id": "ORD-1068",
     "customer_id": "cust-1068",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -615,7 +615,7 @@
     "scenario_id": "SCENARIO-069",
     "order_id": "ORD-1069",
     "customer_id": "cust-1069",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1069 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1069 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -633,7 +633,7 @@
     "scenario_id": "SCENARIO-071",
     "order_id": "ORD-1071",
     "customer_id": "cust-1071",
-    "query": "Tôi thanh toán đơn ORD-1071 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1071 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -642,7 +642,7 @@
     "scenario_id": "SCENARIO-072",
     "order_id": "ORD-1072",
     "customer_id": "cust-1072",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -651,7 +651,7 @@
     "scenario_id": "SCENARIO-073",
     "order_id": "ORD-1073",
     "customer_id": "cust-1073",
-    "query": "Đơn hàng ORD-1073 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1073 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -660,7 +660,7 @@
     "scenario_id": "SCENARIO-074",
     "order_id": "ORD-1074",
     "customer_id": "cust-1074",
-    "query": "Tôi muốn hủy đơn hàng ORD-1074 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1074 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -669,7 +669,7 @@
     "scenario_id": "SCENARIO-075",
     "order_id": "ORD-1075",
     "customer_id": "cust-1075",
-    "query": "Đơn hàng ORD-1075 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1075 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -687,7 +687,7 @@
     "scenario_id": "SCENARIO-077",
     "order_id": "ORD-1077",
     "customer_id": "cust-1077",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -696,7 +696,7 @@
     "scenario_id": "SCENARIO-078",
     "order_id": "ORD-1078",
     "customer_id": "cust-1078",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -705,7 +705,7 @@
     "scenario_id": "SCENARIO-079",
     "order_id": "ORD-1079",
     "customer_id": "cust-1079",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1079?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1079 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -714,7 +714,7 @@
     "scenario_id": "SCENARIO-080",
     "order_id": "ORD-1080",
     "customer_id": "cust-1080",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -723,7 +723,7 @@
     "scenario_id": "SCENARIO-081",
     "order_id": "ORD-1081",
     "customer_id": "cust-1081",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1081 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1081 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -741,7 +741,7 @@
     "scenario_id": "SCENARIO-083",
     "order_id": "ORD-1083",
     "customer_id": "cust-1083",
-    "query": "Tôi thanh toán đơn ORD-1083 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1083 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -750,7 +750,7 @@
     "scenario_id": "SCENARIO-084",
     "order_id": "ORD-1084",
     "customer_id": "cust-1084",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -759,7 +759,7 @@
     "scenario_id": "SCENARIO-085",
     "order_id": "ORD-1085",
     "customer_id": "demo-customer",
-    "query": "Đơn hàng ORD-1085 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1085 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -768,7 +768,7 @@
     "scenario_id": "SCENARIO-086",
     "order_id": "ORD-1086",
     "customer_id": "cust-1086",
-    "query": "Tôi muốn hủy đơn hàng ORD-1086 vừa đặt có được không?",
+    "query": "Tôi muốn hủy đơn hàng ORD-1086 vừa đặt trên Tiki có được không?",
     "expected_intent": "cancel_order",
     "expected_doc_id": "POL-ORD-002",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -777,7 +777,7 @@
     "scenario_id": "SCENARIO-087",
     "order_id": "ORD-1087",
     "customer_id": "cust-1087",
-    "query": "Đơn hàng ORD-1087 mất bao nhiêu ngày thì nhận được?",
+    "query": "Đơn hàng ORD-1087 giao gói TikiNOW mấy tiếng thì nhận được?",
     "expected_intent": "delivery_time",
     "expected_doc_id": "POL-SHIP-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -795,7 +795,7 @@
     "scenario_id": "SCENARIO-089",
     "order_id": "ORD-1089",
     "customer_id": "cust-1089",
-    "query": "Phí ship cho đơn hàng này tính như thế nào shop?",
+    "query": "Phí ship Tiki cho đơn hàng này tính như thế nào shop?",
     "expected_intent": "shipping_costs",
     "expected_doc_id": "POL-SHIP-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -804,7 +804,7 @@
     "scenario_id": "SCENARIO-090",
     "order_id": "ORD-1090",
     "customer_id": "cust-1090",
-    "query": "Chính sách đổi trả sản phẩm trong mấy ngày vậy shop?",
+    "query": "Chính sách đổi trả hàng Tiki Trading trong mấy ngày vậy shop?",
     "expected_intent": "return_policy",
     "expected_doc_id": "POL-RET-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -813,7 +813,7 @@
     "scenario_id": "SCENARIO-091",
     "order_id": "ORD-1091",
     "customer_id": "demo-customer",
-    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1091?",
+    "query": "Làm sao để tạo yêu cầu trả hàng cho đơn ORD-1091 trên App Tiki?",
     "expected_intent": "return_product",
     "expected_doc_id": "POL-RET-002",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -822,7 +822,7 @@
     "scenario_id": "SCENARIO-092",
     "order_id": "ORD-1092",
     "customer_id": "cust-1092",
-    "query": "Quy định hoàn tiền của sàn khi trả hàng như thế nào?",
+    "query": "Quy định hoàn tiền của Tiki khi trả hàng như thế nào?",
     "expected_intent": "refund_policy",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -831,7 +831,7 @@
     "scenario_id": "SCENARIO-093",
     "order_id": "ORD-1093",
     "customer_id": "cust-1093",
-    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1093 đã hủy",
+    "query": "Tôi muốn hoàn lại tiền cho đơn hàng ORD-1093 đã hủy trên Tiki",
     "expected_intent": "request_refund",
     "expected_doc_id": "POL-REFUND-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -849,7 +849,7 @@
     "scenario_id": "SCENARIO-095",
     "order_id": "ORD-1095",
     "customer_id": "demo-customer",
-    "query": "Tôi thanh toán đơn ORD-1095 bị trừ tiền nhưng chưa thấy đơn",
+    "query": "Tôi thanh toán đơn ORD-1095 bị trừ tiền nhưng chưa thấy đơn Tiki",
     "expected_intent": "payment_issue",
     "expected_doc_id": "POL-PAY-001",
     "expected_guardrail_action": "DIRECT_REFUND_FORM"
@@ -858,7 +858,7 @@
     "scenario_id": "SCENARIO-096",
     "order_id": "ORD-1096",
     "customer_id": "cust-1096",
-    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng trực tiếp",
+    "query": "Cho tôi gặp nhân viên chăm sóc khách hàng Tiki qua tổng đài 1900 6035",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"
@@ -867,7 +867,7 @@
     "scenario_id": "SCENARIO-097",
     "order_id": "ORD-1097",
     "customer_id": "cust-1097",
-    "query": "Đơn hàng ORD-1097 của tôi hiện tại đang ở bưu cục nào rồi?",
+    "query": "Đơn hàng ORD-1097 trên Tiki hiện tại đang ở bưu cục nào rồi?",
     "expected_intent": "track_order",
     "expected_doc_id": "POL-ORD-001",
     "expected_guardrail_action": "PROCEED_TO_LLM"
@@ -894,7 +894,7 @@
     "scenario_id": "SCENARIO-100",
     "order_id": "ORD-1100",
     "customer_id": "demo-customer",
-    "query": "Cho tôi số điện thoại hotline tổng đài gặp nhân viên",
+    "query": "Cho tôi số điện thoại hotline tổng đài gặp nhân viên Tiki",
     "expected_intent": "human_agent",
     "expected_doc_id": "POL-CS-001",
     "expected_guardrail_action": "ESCALATE_HUMAN"

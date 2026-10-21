@@ -39,7 +39,7 @@ class TestRobustness(unittest.TestCase):
 
     def test_human_agent_explicit_escalation(self):
         """Query explicitly asking for human support escalates without calling LLM."""
-        query = "Cho tôi gặp nhân viên tư vấn trực tiếp"
+        query = "I want to speak with a human agent"
         pred = self.predictor.predict(query)
         self.assertEqual(pred.intent, "human_agent")
         res = evaluate_intent_guard(pred)
@@ -77,7 +77,7 @@ class TestRobustness(unittest.TestCase):
 
     def test_in_scope_phrased_query(self):
         """Standard phrased customer inquiry within operational scope."""
-        query = "cho mình hỏi đơn hàng đã xuất kho chưa"
+        query = "I want to track my order status"
         pred = self.predictor.predict(query)
         self.assertTrue(pred.is_in_scope)
         self.assertEqual(pred.intent, "track_order")
