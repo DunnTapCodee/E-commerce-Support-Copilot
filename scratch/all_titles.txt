@@ -1,0 +1,141 @@
+=== Lec-1.pdf ===
+P1: Machine Learning in Production | Machine Learning in Production // Lecture 1: From Models to AI-Enabled Systems // Son Nguyen // VNU 
+P2: Today’s release decision | Today’s release decision // 2
+P3: Meet UniGuide | Meet UniGuide // • Your team has built UniGuide, an AI assistant for UET // • A student can ask: // 
+P4: Evaluation report looks strong | Evaluation report looks strong // • Most benchmark questions receive acceptable answers. // • The as
+P5: New facts are arriving… | New facts are arriving… // 1. // The benchmark was assembled from last year’s frequently asked // qu
+P6: Discussion | Discussion // 6
+P7: ML Model is just a small part… | ML Model is just a small part… // 7
+P8: What exactly are we engineering? | What exactly are we engineering? // 8
+P9: Four boundaries | Four boundaries // 9 // Model // Pipeline // System // Product
+P10: AI/ML Model | AI/ML Model // • For UniGuide, the “model” could refer to a language model that // generates an answ
+P11: Traditional Software | Traditional Software // 11
+P12: AI/ML Model | AI/ML Model // 12 // ML // algorithm // Model
+P13: Inductive | Inductive // Reasoning // Deriving theories // from observations // Strong evidence // suggests a ru
+P14: Conceptual steps of ML | Conceptual steps of ML // 14
+P15: 15 | 15
+P16: AI/ML Pipeline | AI/ML Pipeline // • A traditional ML pipeline may // include: // • collecting and labeling data; // 
+P17: The pipeline answers… | The pipeline answers… // • Can we reproduce this model // or configuration? // • Can we test changes
+P18: ML-powered System | ML-powered System // • The system includes the model and pipeline, plus other // components… // 18 /
+P19: A system-centered question asks | A system-centered question asks // • What happens after the model produces an output? // • Can anoth
+P20: Product | Product // Could the system work as // specified and the product still fail? // 20
+P21: Data scientists’ challenges | Data scientists’ challenges // • Infrastructure: Understand chat bot infrastructure and its // capab
+P22: Stepping Back: What are the product’ goals? | Stepping Back: What are the product’ goals? // 22 // Maybe we need to think about it like an 80/20 r
+P23: Production’ goals for Chatbot | Production’ goals for Chatbot // • Collect user data to sell to lawyers // • Signal technical compet
+P24: Why familiar SE is necessary but | Why familiar SE is necessary but // insufficient // 24
+P25: The specification problem | The specification problem // 25 // /** // * Detects large anomalous dark regions in grayscale X-ray 
+P26: ML Models Make Mistakes | ML Models Make Mistakes // …often in unexpected ways // • Hard to foresee and capture // because no 
+P27: ML Model = Unreliable Function | ML Model = Unreliable Function // • No guarantees, may make mistakes, confidence unreliable // • Mod
+P28: Accuracy | Accuracy // ≠ // Correctness // ≠ // Usefulness // 28
+P29: Interaction with the environment | Interaction with the environment // Our system must be able to tolerate some incorrect predictions, 
+P30: “Change”, yeah, again! | “Change”, yeah, again! // 30
+P31: Complexity | Complexity // 31
+P32: Complexity | Complexity // 32
+P33: The coordination problem | The coordination problem // 33
+P34: 34 | 34 // and Data engineers + Domain specialists + Operators + Business team + Project managers + // De
+P35: Data scientist | Data scientist // Software engineer // ● // Often fixed dataset for training and // evaluation (e.g.
+P36: 36 | 36
+P37: T-Shaped People | T-Shaped People // Broad-range generalist + Deep expertise // 37
+P38: Latest Buzzword: π-Shaped People | Latest Buzzword: π-Shaped People // 38
+P39: Why familiar ML is necessary but | Why familiar ML is necessary but // insufficient // 39
+P40: Mindset change… | Mindset change… // 40 // Can the model perform the task? // Can this system use the model to // achi
+P41: Model-centered question | Model-centered question // AI Engineering question // Which model has the best // aggregate score? /
+P42: Quality Map | Quality Map // 42
+P43: Is UniGuide better? | Is UniGuide better? // Improving answer quality by 2% but doubling latency and cost // 43
+P44: Quality Map | Quality Map // • Model and AI behavior // • task performance; // • robust. & capability behavior; //
+P45: Discussion | Discussion // 45
+P46: Project menu | Project menu // 1. Coding Assistant // 2. Medical-conversation transcription and summary service // 
+P47: Round 1: define the product claim | Round 1: define the product claim // • What changes in the world when the product succeeds? // • Wha
+P48: Round 2: draw the system | Round 2: draw the system // boundary // Draw arrows for information, control, and feedback // 48
+P49: Round 3: inject failures | Round 3: inject failures // 49
+P50: Round 4: choose three controls | Round 4: choose three controls // Add one control before inference, one around the decision/action, 
+P51: Possible control families | Possible control families // • data validation or source authority; // • model test or slice evaluat
+P52: Course content | Course content // 1. From Models to AI-Enabled Systems // 2. Requirements, Value, and Risk // 3. Arc
+P53: How this course proceed… | How this course proceed… // • Students review the previous lecture // • Review slides and do homewor
+P54: Grading policy | Grading policy // • Lab/assignment/midterm: 40% // • Homework, weekly // • Group project/final exam:
+P55: Summary | Summary // • Machine learning components are part of larger systems // • Data scientists and softwar
+
+=== Lec-2.pdf ===
+P1: Machine Learning in Production | Machine Learning in Production // Lecture 2: Requirements, Value, and Risk // Son Nguyen // VNU Univ
+P2: Last class | Last class // • Machine learning components are part of larger systems // • Data scientists and soft
+P3: Meet UniGuide | Meet UniGuide // • Your team has built UniGuide, an AI assistant for UET // • A student can ask: // 
+P4: UniGuide, one month later… | UniGuide, one month later… // • Offline acceptable-answer rate: 84% → 92% // • Routine questions ans
+P5: Your hypothesis for this issue? | Your hypothesis for this issue? // The benchmark improved because ___, while the product outcome // 
+P6: Should UniGuide use ML at all? | Should UniGuide use ML at all? // 6 // A // Generative // assistant // retrieval + tool access
+P7: When ML is attractive | When ML is attractive // 7 // 01 // Language variation // Questions are varied and // language-rich.
+P8: When ML adds risk | When ML adds risk // 8 // Irreversibility // A wrong scholarship deadline can create irreversible lo
+P9: ML must earn its place! | ML must earn its place! // 9
+P10: ML’s place | ML’s place // Use ML when… // • The task is difficult to specify directly // • Scale, variation, or 
+P11: Layers of Success Measures | Layers of Success Measures // • Organizational objectives: Innate/overall goals // of the organizati
+P12: The UniGuide goal chain? | The UniGuide goal chain? // 12
+P13: Layers of Success Measures | Layers of Success Measures // 13 // At every link // ASSUMPTION // What must be true? // EVIDENCE
+P14: Proxy trap | Proxy trap // 14 // Easy to measure // How the outcome may worsen // Session length ↑ // Students re
+P15: Which success should we optimize? | Which success should we optimize? // 15 // A // Adviser // appointments // −25%
+P16: Optimize a portfolio, not one | Optimize a portfolio, not one // number! // 16
+P17: A defensible success portfolio | A defensible success portfolio // 17 // PRIMARY OUTCOME // User or product effect being pursued // G
+P18: World, machine, and the statements | World, machine, and the statements // between them // • Requirements (REQ) are expressed only in ter
+P19: Important to make assumptions explicit | Important to make assumptions explicit // • System Requirement (REQ): What the system must ensure, i
+P20: REQ, ASM, SPEC or Implementation | REQ, ASM, SPEC or Implementation // 20 // 1 // Students retain access to qualified human advice when
+P21: Lane Keeping Assist | Lane Keeping Assist // ●Requirement (REQ): The vehicle must be prevented from veering off // the lan
+P22: Lane Keeping Assist | Lane Keeping Assist // ●Requirement (REQ): The vehicle must be prevented from veering off // the lan
+P23: What could go wrong? | What could go wrong? // Recall: ASM ∧ SPEC => REQ // 1.Wrong, inconsistent or infeasible requirement
+P24: Software Requirements | Software Requirements // Describe what the system should do, in terms of the services that it // pro
+P25: Facing costly problems later... | Facing costly problems later... // If you build the wrong system, it will be really expensive to fix
+P26: Facial Recognition in ATM | Facial Recognition in ATM // 26
+P27: Lufthansa 2904 Runaway Crash | Lufthansa 2904 Runaway Crash // 27
+P28: Lufthansa 2904 Runaway Crash | Lufthansa 2904 Runaway Crash // Reverse thrust: Decelerates plane after landing // REQ: Reverse thru
+P29: Lufthansa 2904 Runaway Crash | Lufthansa 2904 Runaway Crash // 29
+P30: Lufthansa 2904 Runaway Crash | Lufthansa 2904 Runaway Crash // REQ: Reverse thrust is enabled if and only if plane is on the ground
+P31: Weak versus testable requirement | Weak versus testable requirement // 31 // What are still unresolved? // “UniGuide answers should be 
+P32: Weak versus testable requirement | Weak versus testable requirement // “UniGuide answers should be // safe and accurate.” // For deadli
+P33: Understanding requirements is hard | Understanding requirements is hard // Why? // 33
+P34: “Yes…but” problem | “Yes…but” problem // 34
+P35: Is 95% good enough? | Is 95% good enough? // The system answers 95% of evaluation questions acceptably. // 35 // A // YES 
+P36: “Good enough” is a risk decision | “Good enough” is a risk decision // 36 // A threshold becomes defensible only when tied to… // USE +
+P37: Risk as structured anticipation | Risk as structured anticipation // • Risk statement: // • Because [cause or violated assumption], [c
+P38: Failure mode and effects analysis | Failure mode and effects analysis // 38
+P39: Exercise: Requirement and risk | Exercise: Requirement and risk // For UniGuide system (or your selected one), provide: // • one boun
+P40: Uncertainty is not an excuse | Uncertainty is not an excuse // We cannot foresee every failure. We can still: // • make assumptions
+P41: Bounded purpose and system scope | Bounded purpose and system scope // • In scope: // • Retrieve current, approved academic policies. /
+P42: Two measurable requirements | Two measurable requirements // • REQ-01 - Correct, grounded guidance // • For in-scope undergraduate
+P43: Two critical assumptions | Two critical assumptions // • ASM-01 - Policy freshness // • The registrar publishes every approved 
+P44: Three failure modes | Three failure modes // Failure category // Example failure // Potential consequence // Model-behavio
+P45: Owner and unresolved evidence need | Owner and unresolved evidence need // • Accountable owner: // • UniGuide Service Owner: accountable 
+P46: Summary | Summary // 46 // VALUE // Why build? // For whom? // →
+P47: Prepare for Lecture 3 | Prepare for Lecture 3 // • Read: Textbook Ch. 8~10 // • Prepare a one-page architecture sketch showi
+
+=== Lec-3.pdf ===
+P1: From Requirements to Implementations... | From Requirements to Implementations... // We know what to build, but how? How to we meet the qualit
+P2: Architecture Decisions: Examples | Architecture Decisions: Examples // ● // What are the major components in the system? What does each
+P3: Software Architecture | Software Architecture // Architecture represents the set of significant design decisions that // sha
+P4: 4 | 4
+P5: 5 | 5
+P6: Apollo: An open source self-driving car | Apollo: An open source self-driving car // https://github.com/ApolloAuto/apollo // 6
+P7: Apollo’s perception component | Apollo’s perception component // 7
+P8: How much Architecture/Design? | How much Architecture/Design? // Software Engineering Theme: Think before you code // Like requireme
+P9: Why Architecture? | Why Architecture? // Represents earliest design decisions. // Aids in communication with stakeholder
+P10: Quality Requirements Drive Architecture Design | Quality Requirements Drive Architecture Design // Driven by requirements, identify most important qu
+P11: Architecture Design Involves Quality Trade-offs | Architecture Design Involves Quality Trade-offs // Q. What are quality trade-offs between the two? /
+P12: Codifying Design Knowledge | Codifying Design Knowledge // 12
+P13: Common Components in ML-based Systems | Common Components in ML-based Systems // ● // Model inference service: Uses model to make prediction
+P14: Common System-Wide Design Challenges | Common System-Wide Design Challenges // Separating concerns, understanding interdependencies // ● //
+P15: Scoping Relevant Qualities of ML | Scoping Relevant Qualities of ML // Components // From System Quality Requirements to Component Qual
+P16: Design Decision: ML Model Selection | Design Decision: ML Model Selection // How do I decide which ML algorithm to use for my project? // 
+P17: Accuracy is not Everything | Accuracy is not Everything // Beyond prediction accuracy, what qualities may be relevant for an ML /
+P18: Qualities of Interest? | Qualities of Interest? // Scenario: ML component for transcribing audio files // 18
+P19: Qualities of Interest? | Qualities of Interest? // Scenario: Component for detecting lane markings in a vehicle // 19
+P20: Qualities of Interest? | Qualities of Interest? // Scenario: Component for detecting credit card frauds, as a service for // 
+P21: Common ML Qualities to Consider | Common ML Qualities to Consider // ● // Accuracy // ● // Correctness guarantees? Probabilistic guara
+P22: 22 | 22
+P23: Constraints and Tradeoffs | Constraints and Tradeoffs // 23
+P24: Constraints | Constraints // Constraints define the space of attributes for valid design solutions // 24
+P25: Types of Constraints | Types of Constraints // Problem constraints: Minimum required QAs for an acceptable product // Proje
+P26: Constraints: Cancer Prognosis? | Constraints: Cancer Prognosis? // 26
+P27: Constraints: Music Recommendations? | Constraints: Music Recommendations? // 27
+P28: Trade-offs between ML algorithms | Trade-offs between ML algorithms // If there are multiple ML algorithms that satisfy the given const
+P29: Trade-offs: Cost vs Accuracy | Trade-offs: Cost vs Accuracy // "We evaluated some of the new methods // offline but the additional 
+P30: Trade-offs: Accuracy vs Interpretability | Trade-offs: Accuracy vs Interpretability // Q. Examples where one is more important than the other? 
+P31: Network Size | Network Size // ● // 50 Layer ResNet network -- classifying 224x224 images into 1000 categories // ○
+P32: Cost & Energy Consumption | Cost & Energy Consumption // 32
+P33: Cost & Energy Consumption | Cost & Energy Consumption // 33
+

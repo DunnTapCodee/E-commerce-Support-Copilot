@@ -1,0 +1,130 @@
+services:
+  # -------------------------------------------------------------
+  # 1. Intent Classification Service (Port 8001)
+  # -------------------------------------------------------------
+  intent_service:
+    build:
+      context: .
+      dockerfile: services/intent_service/Dockerfile
+    container_name: intent_service
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+    environment:
+      - PORT=8001
+      - MODEL_PATH=/app/artifacts/models/intent_model.pkl
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 2. Knowledge Retrieval & RAG Service (Port 8002)
+  # -------------------------------------------------------------
+  rag_service:
+    build:
+      context: .
+      dockerfile: services/rag_service/Dockerfile
+    container_name: rag_service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./data:/app/data
+      - ./artifacts:/app/artifacts
+    environment:
+      - PORT=8002
+      - POLICIES_PATH=/app/data/knowledge_base/policies.json
+      - INDEX_PATH=/app/artifacts/vector_store/policy_index.pkl
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 3. Telemetry & Order Service (Port 8003)
+  # -------------------------------------------------------------
+  telemetry_service:
+    build:
+      context: .
+      dockerfile: services/telemetry_service/Dockerfile
+    container_name: telemetry_service
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./data:/app/data
+      - ./copilot_telemetry.sqlite3:/app/copilot_telemetry.sqlite3
+    environment:
+      - PORT=8003
+      - DB_PATH=/app/copilot_telemetry.sqlite3
+      - MOCK_ORDERS_PATH=/app/data/mock_orders.json
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 4. API Gateway & Central State Machine (Port 8000)
+  # -------------------------------------------------------------
+  gateway:
+    build:
+      context: .
+      dockerfile: services/gateway/Dockerfile
+    container_name: gateway
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - INTENT_SERVICE_URL=http://intent_service:8001
+      - RAG_SERVICE_URL=http://rag_service:8002
+      - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
+    depends_on:
+      intent_service:
+        condition: service_healthy
+      rag_service:
+        condition: service_healthy
+      telemetry_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 5. CSKH Workbench UI (Port 8501)
+  # -------------------------------------------------------------
+  ui_service:
+    build:
+      context: .
+      dockerfile: services/ui_service/Dockerfile
+    container_name: ui_service
+    ports:
+      - "8501:8501"
+    environment:
+      - PORT=8501
+      - GATEWAY_URL=http://gateway:8000
+    depends_on:
+      - gateway
+    networks:
+      - copilot-net
+
+networks:
+  copilot-net:
+    driver: bridge

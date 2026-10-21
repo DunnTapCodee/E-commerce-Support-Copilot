@@ -1,0 +1,30 @@
+[
+  {
+    "doc_id": "POL-RET-002",
+    "title": "Chính sách đổi trả",
+    "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm còn nguyên trạng trong vòng 30 ngày kể từ khi nhận hàng. Nhân viên kiểm tra điều kiện và hướng dẫn quy trình; ngoại lệ cần được chuyển cấp.",
+    "version": "2.0",
+    "is_active": true
+  },
+  {
+    "doc_id": "POL-SHIP-001",
+    "title": "Chính sách giao hàng",
+    "content": "Đơn hàng được xử lý trong 1–2 ngày làm việc. Thời gian giao dự kiến là 3–5 ngày làm việc tùy khu vực. Phí giao hàng được hiển thị tại bước thanh toán.",
+    "version": "1.0",
+    "is_active": true
+  },
+  {
+    "doc_id": "POL-REFUND-001",
+    "title": "Chính sách hoàn tiền",
+    "content": "Yêu cầu hoàn tiền cần được nhân viên có thẩm quyền đối soát. Thời gian và phương thức hoàn tiền phụ thuộc phương thức thanh toán và kết quả xử lý. Tài liệu này không phải quyết định chấp thuận hoàn tiền.",
+    "version": "1.0",
+    "is_active": true
+  },
+  {
+    "doc_id": "POL-WARRANTY-OLD",
+    "title": "Chính sách bảo hành cũ",
+    "content": "Chính sách bảo hành phiên bản cũ, chỉ dùng để phát hiện tài liệu hết hiệu lực và không được làm căn cứ tư vấn.",
+    "version": "0.1",
+    "is_active": false
+  }
+]

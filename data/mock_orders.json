@@ -1,0 +1,13 @@
+[
+  {
+    "order_id": "ORD-DEMO-1042",
+    "customer_id": "demo-customer",
+    "order_status": "Delivered",
+    "payment_status": "Captured",
+    "refund_status": "Not submitted",
+    "items": [
+      {"product_id": "PROD-001", "name": "Wireless Headphones", "price": 120.0, "quantity": 1}
+    ],
+    "order_date": "2026-10-15T10:00:00Z"
+  }
+]
