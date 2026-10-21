@@ -103,10 +103,17 @@ async def process_copilot_query(
         financial_guard = evaluate_financial_guard(intent_resp.intent)
         if financial_guard and not financial_guard.allow_llm:
             guardrail_decision = financial_guard
-            order_data = await clients.lookup_order(customer_id)
+            # Extract specific order_id if customer mentioned one in query
+            lookup_key = customer_id
+            for token in customer_query.split():
+                clean_tok = token.strip(",.?!:;\"'()[]{}")
+                if clean_tok.upper().startswith("ORD-"):
+                    lookup_key = clean_tok
+                    break
+            order_data = await clients.lookup_order(lookup_key)
             draft_text = FALLBACK_FINANCIAL_MESSAGE
             if order_data:
-                order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k != "items")
+                order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
                 draft_text += f"\n\n[Dữ liệu đơn đối soát]: {order_summary}"
 
         else:

@@ -38,12 +38,23 @@ class PolicyRetriever:
 
         # Fallback to intent-based mapping if query vector match is too low
         if not candidates and intent:
-            if intent in {"track_order", "cancel_order", "delivery_time", "delivery_issue", "shipping_costs"}:
-                candidates = [doc for doc in self.indexer.documents if doc.doc_id == "POL-SHIP-001"]
-            elif intent in {"return_policy", "return_product"}:
-                candidates = [doc for doc in self.indexer.documents if doc.doc_id == "POL-RET-002"]
-            elif intent in {"refund_policy", "refund_status", "request_refund", "payment_issue"}:
-                candidates = [doc for doc in self.indexer.documents if doc.doc_id == "POL-REFUND-001"]
+            intent_doc_map = {
+                "track_order": "POL-ORD-001",
+                "cancel_order": "POL-ORD-002",
+                "delivery_time": "POL-SHIP-001",
+                "shipping_costs": "POL-SHIP-002",
+                "delivery_issue": "POL-SHIP-004",
+                "return_policy": "POL-RET-001",
+                "return_product": "POL-RET-002",
+                "refund_policy": "POL-REFUND-001",
+                "refund_status": "POL-REFUND-002",
+                "request_refund": "POL-REFUND-001",
+                "payment_issue": "POL-PAY-001",
+                "human_agent": "POL-CS-001",
+            }
+            target_id = intent_doc_map.get(intent)
+            if target_id:
+                candidates = [doc for doc in self.indexer.documents if doc.doc_id == target_id]
 
         if filter_active_only:
             candidates = [doc for doc in candidates if doc.is_active]

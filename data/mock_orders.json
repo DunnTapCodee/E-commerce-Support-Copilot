@@ -1,13 +1,2507 @@
 [
   {
-    "order_id": "ORD-DEMO-1042",
+    "order_id": "ORD-1001",
     "customer_id": "demo-customer",
-    "order_status": "Delivered",
+    "customer_name": "Bùi Thị An",
+    "phone": "0938.242.854",
+    "order_status": "Shipping",
+    "payment_method": "COD",
     "payment_status": "Captured",
-    "refund_status": "Not submitted",
+    "total_amount": 1405000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "tracking_code": "GIA83197857",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
     "items": [
-      {"product_id": "PROD-001", "name": "Wireless Headphones", "price": 120.0, "quantity": 1}
+      {
+        "product_id": "PROD-1",
+        "name": "Bộ drap ga giường cotton lụa",
+        "price": 690000,
+        "quantity": 2
+      }
     ],
-    "order_date": "2026-10-15T10:00:00Z"
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1002",
+    "customer_id": "cust-1002",
+    "customer_name": "Trần Thanh Sơn",
+    "phone": "0937.338.617",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Pending_COD",
+    "total_amount": 275000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX85329037",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-2",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1003",
+    "customer_id": "cust-1003",
+    "customer_name": "Phạm Quốc Yến",
+    "phone": "0985.384.928",
+    "order_status": "Shipping",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Pending_COD",
+    "total_amount": 805000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T31429110",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-3",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1004",
+    "customer_id": "cust-1004",
+    "customer_name": "Đỗ Ngọc Nam",
+    "phone": "0953.204.194",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Pending_COD",
+    "total_amount": 1475000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "tracking_code": "GIA58181396",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-4",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1005",
+    "customer_id": "demo-customer",
+    "customer_name": "Ngô Thu Linh",
+    "phone": "0978.227.487",
+    "order_status": "Delivery_Delayed",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 505000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T49349722",
+    "estimated_delivery": "Chậm 1-2 ngày do thời tiết",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-5",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1006",
+    "customer_id": "cust-1006",
+    "customer_name": "Ngô Mai Phong",
+    "phone": "0915.777.333",
+    "order_status": "Shipping",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 545000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX20709497",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-6",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1007",
+    "customer_id": "cust-1007",
+    "customer_name": "Ngô Đức Dũng",
+    "phone": "0991.954.473",
+    "order_status": "Shipping",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 1585000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T57683626",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-7",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1008",
+    "customer_id": "cust-1008",
+    "customer_name": "Phạm Mai Linh",
+    "phone": "0991.275.646",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 715000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "tracking_code": "TIK31931511",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-8",
+        "name": "Bộ drap ga giường cotton lụa",
+        "price": 690000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1009",
+    "customer_id": "cust-1009",
+    "customer_name": "Vũ Ngọc Linh",
+    "phone": "0917.334.941",
+    "order_status": "Shipping",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 335000,
+    "carrier": "Viettel Post",
+    "tracking_code": "VIE52339391",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-9",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1010",
+    "customer_id": "demo-customer",
+    "customer_name": "Phan Minh Cường",
+    "phone": "0993.611.505",
+    "order_status": "Delivery_Delayed",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 665000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "tracking_code": "GIA29175900",
+    "estimated_delivery": "Chậm 1-2 ngày do thời tiết",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-10",
+        "name": "Bình giữ nhiệt inox 304 800ml",
+        "price": 320000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1011",
+    "customer_id": "cust-1011",
+    "customer_name": "Hoàng Hữu Khánh",
+    "phone": "0964.697.508",
+    "order_status": "Shipping",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Captured",
+    "total_amount": 1405000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "tracking_code": "TIK28566572",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-11",
+        "name": "Bộ drap ga giường cotton lụa",
+        "price": 690000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1012",
+    "customer_id": "cust-1012",
+    "customer_name": "Võ Tuấn Cường",
+    "phone": "0929.742.263",
+    "order_status": "Shipping",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 505000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX66661351",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-12",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1013",
+    "customer_id": "cust-1013",
+    "customer_name": "Đặng Thị Quân",
+    "phone": "0942.666.981",
+    "order_status": "Shipping",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 1585000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "tracking_code": "TIK25374874",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-13",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1014",
+    "customer_id": "cust-1014",
+    "customer_name": "Bùi Thành Linh",
+    "phone": "0947.545.261",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Pending_COD",
+    "total_amount": 985000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX45351479",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-14",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1015",
+    "customer_id": "demo-customer",
+    "customer_name": "Võ Hữu Vy",
+    "phone": "0991.619.723",
+    "order_status": "Delivery_Delayed",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 335000,
+    "carrier": "Viettel Post",
+    "tracking_code": "VIE60185867",
+    "estimated_delivery": "Chậm 1-2 ngày do thời tiết",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-15",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1016",
+    "customer_id": "cust-1016",
+    "customer_name": "Hồ Hữu Yến",
+    "phone": "0951.600.119",
+    "order_status": "Shipping",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 505000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "tracking_code": "TIK51273847",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-16",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1017",
+    "customer_id": "cust-1017",
+    "customer_name": "Phạm Văn Khánh",
+    "phone": "0972.935.170",
+    "order_status": "Shipping",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 335000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX26879290",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-17",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1018",
+    "customer_id": "cust-1018",
+    "customer_name": "Lê Mai Vinh",
+    "phone": "0977.993.721",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Captured",
+    "total_amount": 415000,
+    "carrier": "Viettel Post",
+    "tracking_code": "VIE82383095",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-18",
+        "name": "Sạc dự phòng sạc nhanh 20000mAh",
+        "price": 390000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1019",
+    "customer_id": "cust-1019",
+    "customer_name": "Hồ Quốc Hải",
+    "phone": "0995.765.482",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Captured",
+    "total_amount": 1405000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T70597444",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-19",
+        "name": "Bộ drap ga giường cotton lụa",
+        "price": 690000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1020",
+    "customer_id": "cust-1020",
+    "customer_name": "Trần Đức Khánh",
+    "phone": "0985.667.335",
+    "order_status": "Delivery_Delayed",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 1805000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX10965138",
+    "estimated_delivery": "Chậm 1-2 ngày do thời tiết",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-20",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1021",
+    "customer_id": "cust-1021",
+    "customer_name": "Trần Quốc Bình",
+    "phone": "0952.172.626",
+    "order_status": "Shipping",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 345000,
+    "carrier": "SPX Express",
+    "tracking_code": "SPX99788677",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-21",
+        "name": "Bình giữ nhiệt inox 304 800ml",
+        "price": 320000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1022",
+    "customer_id": "cust-1022",
+    "customer_name": "Vũ Đức Yến",
+    "phone": "0970.926.516",
+    "order_status": "Shipping",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Pending_COD",
+    "total_amount": 1325000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "tracking_code": "GIA23009833",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-22",
+        "name": "Tai nghe bluetooth chống ồn chủ động",
+        "price": 650000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1023",
+    "customer_id": "cust-1023",
+    "customer_name": "Bùi Ngọc Phong",
+    "phone": "0916.789.769",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Pending_COD",
+    "total_amount": 1585000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T18135295",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-23",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 2
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1024",
+    "customer_id": "cust-1024",
+    "customer_name": "Phan Quốc Nam",
+    "phone": "0934.294.649",
+    "order_status": "Shipping",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Captured",
+    "total_amount": 505000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "tracking_code": "GIA66623995",
+    "estimated_delivery": "Hôm nay, trước 18:00",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-24",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1025",
+    "customer_id": "cust-1025",
+    "customer_name": "Lê Minh Tùng",
+    "phone": "0980.200.151",
+    "order_status": "Delivery_Delayed",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 345000,
+    "carrier": "J&T Express",
+    "tracking_code": "J&T11980765",
+    "estimated_delivery": "Chậm 1-2 ngày do thời tiết",
+    "can_cancel": false,
+    "items": [
+      {
+        "product_id": "PROD-25",
+        "name": "Bình giữ nhiệt inox 304 800ml",
+        "price": 320000,
+        "quantity": 1
+      }
+    ],
+    "shipping_timeline": [
+      {
+        "time": "2026-10-19 14:00",
+        "status": "Kiện hàng đã rời trung tâm phân loại"
+      },
+      {
+        "time": "2026-10-20 09:30",
+        "status": "Đã nhập bưu cục phát quận trung tâm"
+      },
+      {
+        "time": "2026-10-21 08:15",
+        "status": "Bưu tá đang phát hàng đến địa chỉ nhận"
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1026",
+    "customer_id": "demo-customer",
+    "customer_name": "Trần Đức Giang",
+    "phone": "0972.592.318",
+    "order_status": "Processing",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "carrier": "J&T Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-26",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1027",
+    "customer_id": "cust-1027",
+    "customer_name": "Dương Văn Giang",
+    "phone": "0910.499.371",
+    "order_status": "Processing",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "carrier": "J&T Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-27",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1028",
+    "customer_id": "cust-1028",
+    "customer_name": "Hoàng Ngọc Yến",
+    "phone": "0972.258.294",
+    "order_status": "Processing",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Captured",
+    "total_amount": 210000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-28",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1029",
+    "customer_id": "cust-1029",
+    "customer_name": "Nguyễn Thanh Yến",
+    "phone": "0950.158.151",
+    "order_status": "Processing",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 250000,
+    "carrier": "J&T Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-29",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1030",
+    "customer_id": "demo-customer",
+    "customer_name": "Võ Thành Giang",
+    "phone": "0975.182.971",
+    "order_status": "Processing",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 250000,
+    "carrier": "SPX Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-30",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1031",
+    "customer_id": "cust-1031",
+    "customer_name": "Đặng Thị Khánh",
+    "phone": "0925.683.352",
+    "order_status": "Processing",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-31",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1032",
+    "customer_id": "cust-1032",
+    "customer_name": "Nguyễn Thanh Cường",
+    "phone": "0994.697.678",
+    "order_status": "Processing",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "carrier": "Viettel Post",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-32",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1033",
+    "customer_id": "cust-1033",
+    "customer_name": "Dương Minh Hải",
+    "phone": "0950.344.371",
+    "order_status": "Processing",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Captured",
+    "total_amount": 210000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-33",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1034",
+    "customer_id": "cust-1034",
+    "customer_name": "Bùi Mai Minh",
+    "phone": "0950.869.174",
+    "order_status": "Processing",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 450000,
+    "carrier": "J&T Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-34",
+        "name": "Chuột công thái học gaming",
+        "price": 450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1035",
+    "customer_id": "cust-1035",
+    "customer_name": "Đặng Thanh Dũng",
+    "phone": "0978.318.618",
+    "order_status": "Processing",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Captured",
+    "total_amount": 890000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-35",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1036",
+    "customer_id": "cust-1036",
+    "customer_name": "Dương Thu Cường",
+    "phone": "0941.478.391",
+    "order_status": "Processing",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 310000,
+    "carrier": "J&T Express",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-36",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1037",
+    "customer_id": "cust-1037",
+    "customer_name": "Ngô Thành Minh",
+    "phone": "0993.641.108",
+    "order_status": "Processing",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 520000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-37",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1038",
+    "customer_id": "cust-1038",
+    "customer_name": "Hoàng Mai Dũng",
+    "phone": "0927.370.218",
+    "order_status": "Processing",
+    "payment_method": "COD",
+    "payment_status": "Captured",
+    "total_amount": 310000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "can_cancel": true,
+    "cancel_note": "Có thể bấm hủy trực tiếp trên App",
+    "items": [
+      {
+        "product_id": "PROD-38",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1039",
+    "customer_id": "cust-1039",
+    "customer_name": "Lê Minh Minh",
+    "phone": "0936.834.451",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 520000,
+    "carrier": "Viettel Post",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-39",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1040",
+    "customer_id": "demo-customer",
+    "customer_name": "Võ Tuấn Linh",
+    "phone": "0916.194.749",
+    "order_status": "In_Transit",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Captured",
+    "total_amount": 310000,
+    "carrier": "Viettel Post",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-40",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1041",
+    "customer_id": "cust-1041",
+    "customer_name": "Nguyễn Văn Nam",
+    "phone": "0926.752.368",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 480000,
+    "carrier": "J&T Express",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-41",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1042",
+    "customer_id": "cust-1042",
+    "customer_name": "Võ Quốc Sơn",
+    "phone": "0911.214.177",
+    "order_status": "In_Transit",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 390000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-42",
+        "name": "Sạc dự phòng sạc nhanh 20000mAh",
+        "price": 390000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1043",
+    "customer_id": "cust-1043",
+    "customer_name": "Võ Văn Phong",
+    "phone": "0980.251.540",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 520000,
+    "carrier": "SPX Express",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-43",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1044",
+    "customer_id": "cust-1044",
+    "customer_name": "Hoàng Thu Bình",
+    "phone": "0955.315.798",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 310000,
+    "carrier": "SPX Express",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-44",
+        "name": "Thùng sữa hạt dinh dưỡng 24 hộp",
+        "price": 310000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1045",
+    "customer_id": "cust-1045",
+    "customer_name": "Huỳnh Thành Sơn",
+    "phone": "0929.342.985",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 520000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-45",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1046",
+    "customer_id": "cust-1046",
+    "customer_name": "Dương Ngọc An",
+    "phone": "0952.901.521",
+    "order_status": "In_Transit",
+    "payment_method": "SPayLater Trả Sau",
+    "payment_status": "Captured",
+    "total_amount": 650000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-46",
+        "name": "Tai nghe bluetooth chống ồn chủ động",
+        "price": 650000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1047",
+    "customer_id": "cust-1047",
+    "customer_name": "Hoàng Hữu Dũng",
+    "phone": "0914.979.581",
+    "order_status": "In_Transit",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-47",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1048",
+    "customer_id": "cust-1048",
+    "customer_name": "Ngô Tuấn Phong",
+    "phone": "0939.328.124",
+    "order_status": "In_Transit",
+    "payment_method": "Thẻ tín dụng Mastercard (*1244)",
+    "payment_status": "Captured",
+    "total_amount": 1450000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-48",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1049",
+    "customer_id": "cust-1049",
+    "customer_name": "Phan Thu Linh",
+    "phone": "0918.891.385",
+    "order_status": "In_Transit",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Captured",
+    "total_amount": 4890000,
+    "carrier": "TikiNOW Hỏa Tốc",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-49",
+        "name": "Robot hút bụi lau nhà thông minh",
+        "price": 4890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1050",
+    "customer_id": "cust-1050",
+    "customer_name": "Phan Mai Yến",
+    "phone": "0913.218.998",
+    "order_status": "In_Transit",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Captured",
+    "total_amount": 1290000,
+    "carrier": "Giao Hàng Nhanh (GHN)",
+    "can_cancel": false,
+    "cancel_note": "Đơn đã giao vận chuyển, vui lòng từ chối nhận hàng khi shipper gọi.",
+    "items": [
+      {
+        "product_id": "PROD-50",
+        "name": "Đồng hồ thông minh đo nhịp tim",
+        "price": 1290000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1051",
+    "customer_id": "demo-customer",
+    "customer_name": "Đặng Minh Bình",
+    "phone": "0954.846.905",
+    "order_status": "Returned",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 890000,
+    "refund_amount": 890000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-51",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1052",
+    "customer_id": "cust-1052",
+    "customer_name": "Huỳnh Ngọc Vy",
+    "phone": "0983.294.360",
+    "order_status": "Cancelled",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 890000,
+    "refund_amount": 890000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-52",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1053",
+    "customer_id": "cust-1053",
+    "customer_name": "Nguyễn Quốc Sơn",
+    "phone": "0956.541.171",
+    "order_status": "Returned",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 250000,
+    "refund_amount": 250000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-53",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1054",
+    "customer_id": "cust-1054",
+    "customer_name": "Bùi Thu Nam",
+    "phone": "0948.619.416",
+    "order_status": "Cancelled",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Refund_Processing",
+    "total_amount": 210000,
+    "refund_amount": 210000,
+    "refund_destination": "Ví MoMo",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-54",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1055",
+    "customer_id": "cust-1055",
+    "customer_name": "Bùi Ngọc Nam",
+    "phone": "0980.230.296",
+    "order_status": "Returned",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Refund_Processing",
+    "total_amount": 780000,
+    "refund_amount": 780000,
+    "refund_destination": "Thẻ ATM Napas",
+    "refund_status": "Processing",
+    "expected_refund_time": "3 đến 5 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-55",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1056",
+    "customer_id": "cust-1056",
+    "customer_name": "Phan Mai Quân",
+    "phone": "0988.682.408",
+    "order_status": "Cancelled",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 210000,
+    "refund_amount": 210000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-56",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1057",
+    "customer_id": "cust-1057",
+    "customer_name": "Phan Thành An",
+    "phone": "0936.540.904",
+    "order_status": "Returned",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Refund_Processing",
+    "total_amount": 1450000,
+    "refund_amount": 1450000,
+    "refund_destination": "Thẻ ATM Napas",
+    "refund_status": "Processing",
+    "expected_refund_time": "3 đến 5 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-57",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1058",
+    "customer_id": "cust-1058",
+    "customer_name": "Đặng Thanh Nam",
+    "phone": "0966.791.318",
+    "order_status": "Cancelled",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 450000,
+    "refund_amount": 450000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-58",
+        "name": "Chuột công thái học gaming",
+        "price": 450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1059",
+    "customer_id": "cust-1059",
+    "customer_name": "Võ Tuấn Giang",
+    "phone": "0946.627.779",
+    "order_status": "Returned",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Refund_Processing",
+    "total_amount": 210000,
+    "refund_amount": 210000,
+    "refund_destination": "Ví MoMo",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-59",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1060",
+    "customer_id": "demo-customer",
+    "customer_name": "Bùi Thanh Nam",
+    "phone": "0996.417.330",
+    "order_status": "Cancelled",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 890000,
+    "refund_amount": 890000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-60",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1061",
+    "customer_id": "cust-1061",
+    "customer_name": "Hồ Đức Em",
+    "phone": "0941.586.725",
+    "order_status": "Returned",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Refund_Processing",
+    "total_amount": 250000,
+    "refund_amount": 250000,
+    "refund_destination": "Ví MoMo",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-61",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1062",
+    "customer_id": "cust-1062",
+    "customer_name": "Ngô Thị Tùng",
+    "phone": "0999.493.606",
+    "order_status": "Cancelled",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 780000,
+    "refund_amount": 780000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-62",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1063",
+    "customer_id": "cust-1063",
+    "customer_name": "Phan Đức Em",
+    "phone": "0923.897.535",
+    "order_status": "Returned",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Refund_Processing",
+    "total_amount": 210000,
+    "refund_amount": 210000,
+    "refund_destination": "Ví MoMo",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-63",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1064",
+    "customer_id": "cust-1064",
+    "customer_name": "Phạm Hữu Vy",
+    "phone": "0981.355.968",
+    "order_status": "Cancelled",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Refund_Processing",
+    "total_amount": 450000,
+    "refund_amount": 450000,
+    "refund_destination": "Ví MoMo",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-64",
+        "name": "Chuột công thái học gaming",
+        "price": 450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1065",
+    "customer_id": "cust-1065",
+    "customer_name": "Trần Tuấn Em",
+    "phone": "0995.643.672",
+    "order_status": "Returned",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 480000,
+    "refund_amount": 480000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-65",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1066",
+    "customer_id": "cust-1066",
+    "customer_name": "Đặng Thu Tùng",
+    "phone": "0980.556.262",
+    "order_status": "Cancelled",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 520000,
+    "refund_amount": 520000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-66",
+        "name": "Balo chống gù lưng chống nước",
+        "price": 520000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1067",
+    "customer_id": "cust-1067",
+    "customer_name": "Đỗ Tuấn Tùng",
+    "phone": "0991.383.884",
+    "order_status": "Returned",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 1450000,
+    "refund_amount": 1450000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-67",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1068",
+    "customer_id": "cust-1068",
+    "customer_name": "Hồ Thành Vinh",
+    "phone": "0945.550.179",
+    "order_status": "Cancelled",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 210000,
+    "refund_amount": 210000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-68",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1069",
+    "customer_id": "cust-1069",
+    "customer_name": "Đỗ Minh Khánh",
+    "phone": "0950.653.182",
+    "order_status": "Returned",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Refund_Processing",
+    "total_amount": 1450000,
+    "refund_amount": 1450000,
+    "refund_destination": "Thẻ ATM Napas",
+    "refund_status": "Processing",
+    "expected_refund_time": "3 đến 5 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-69",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1070",
+    "customer_id": "demo-customer",
+    "customer_name": "Lê Hữu Khánh",
+    "phone": "0937.165.524",
+    "order_status": "Cancelled",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 780000,
+    "refund_amount": 780000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-70",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1071",
+    "customer_id": "cust-1071",
+    "customer_name": "Phan Thu Yến",
+    "phone": "0917.311.952",
+    "order_status": "Returned",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 450000,
+    "refund_amount": 450000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-71",
+        "name": "Chuột công thái học gaming",
+        "price": 450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1072",
+    "customer_id": "cust-1072",
+    "customer_name": "Phan Ngọc An",
+    "phone": "0971.106.460",
+    "order_status": "Cancelled",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 4890000,
+    "refund_amount": 4890000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-72",
+        "name": "Robot hút bụi lau nhà thông minh",
+        "price": 4890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1073",
+    "customer_id": "cust-1073",
+    "customer_name": "Hoàng Ngọc Sơn",
+    "phone": "0972.324.379",
+    "order_status": "Returned",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Refund_Processing",
+    "total_amount": 390000,
+    "refund_amount": 390000,
+    "refund_destination": "Ví ZaloPay",
+    "refund_status": "Processing",
+    "expected_refund_time": "Trong vòng 24 giờ làm việc",
+    "items": [
+      {
+        "product_id": "PROD-73",
+        "name": "Sạc dự phòng sạc nhanh 20000mAh",
+        "price": 390000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1074",
+    "customer_id": "cust-1074",
+    "customer_name": "Phan Tuấn An",
+    "phone": "0995.795.917",
+    "order_status": "Cancelled",
+    "payment_method": "Thẻ ATM Napas",
+    "payment_status": "Refund_Processing",
+    "total_amount": 780000,
+    "refund_amount": 780000,
+    "refund_destination": "Thẻ ATM Napas",
+    "refund_status": "Processing",
+    "expected_refund_time": "3 đến 5 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-74",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1075",
+    "customer_id": "cust-1075",
+    "customer_name": "Phan Quốc Giang",
+    "phone": "0926.737.646",
+    "order_status": "Returned",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Refund_Processing",
+    "total_amount": 4890000,
+    "refund_amount": 4890000,
+    "refund_destination": "Thẻ tín dụng Visa (*8892)",
+    "refund_status": "Processing",
+    "expected_refund_time": "7 đến 15 ngày làm việc",
+    "items": [
+      {
+        "product_id": "PROD-75",
+        "name": "Robot hút bụi lau nhà thông minh",
+        "price": 4890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1076",
+    "customer_id": "demo-customer",
+    "customer_name": "Nguyễn Ngọc An",
+    "phone": "0927.987.572",
+    "order_status": "Payment_Failed",
+    "payment_method": "Thẻ Visa quốc tế",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 890000,
+    "transaction_id": "TXN-4048907",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-76",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1077",
+    "customer_id": "cust-1077",
+    "customer_name": "Nguyễn Minh Quân",
+    "phone": "0968.434.445",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 1290000,
+    "transaction_id": "TXN-7360682",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-77",
+        "name": "Đồng hồ thông minh đo nhịp tim",
+        "price": 1290000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1078",
+    "customer_id": "cust-1078",
+    "customer_name": "Hoàng Ngọc Linh",
+    "phone": "0970.119.867",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 4890000,
+    "transaction_id": "TXN-1873851",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-78",
+        "name": "Robot hút bụi lau nhà thông minh",
+        "price": 4890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1079",
+    "customer_id": "cust-1079",
+    "customer_name": "Huỳnh Đức Cường",
+    "phone": "0913.353.304",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 480000,
+    "transaction_id": "TXN-1341919",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-79",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1080",
+    "customer_id": "cust-1080",
+    "customer_name": "Đặng Hữu Khánh",
+    "phone": "0995.217.677",
+    "order_status": "Payment_Failed",
+    "payment_method": "Thẻ Visa quốc tế",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 650000,
+    "transaction_id": "TXN-4656838",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-80",
+        "name": "Tai nghe bluetooth chống ồn chủ động",
+        "price": 650000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1081",
+    "customer_id": "cust-1081",
+    "customer_name": "Vũ Quốc Linh",
+    "phone": "0931.720.721",
+    "order_status": "Payment_Failed",
+    "payment_method": "Cổng VNPay-QR",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 480000,
+    "transaction_id": "TXN-2921542",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-81",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1082",
+    "customer_id": "cust-1082",
+    "customer_name": "Hồ Hữu Minh",
+    "phone": "0949.689.793",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 890000,
+    "transaction_id": "TXN-7296605",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-82",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1083",
+    "customer_id": "cust-1083",
+    "customer_name": "Phan Quốc Hải",
+    "phone": "0923.813.891",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 890000,
+    "transaction_id": "TXN-6059717",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-83",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1084",
+    "customer_id": "cust-1084",
+    "customer_name": "Ngô Mai Dũng",
+    "phone": "0954.645.538",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 480000,
+    "transaction_id": "TXN-7217147",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-84",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1085",
+    "customer_id": "demo-customer",
+    "customer_name": "Trần Thành Nam",
+    "phone": "0972.208.543",
+    "order_status": "Payment_Failed",
+    "payment_method": "Thẻ Visa quốc tế",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 250000,
+    "transaction_id": "TXN-7076506",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-85",
+        "name": "Áo thun polo nam cao cấp",
+        "price": 250000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1086",
+    "customer_id": "cust-1086",
+    "customer_name": "Bùi Tuấn Em",
+    "phone": "0976.766.376",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 780000,
+    "transaction_id": "TXN-9111742",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-86",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1087",
+    "customer_id": "cust-1087",
+    "customer_name": "Vũ Ngọc Linh",
+    "phone": "0921.385.561",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví MoMo",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 1290000,
+    "transaction_id": "TXN-5091349",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-87",
+        "name": "Đồng hồ thông minh đo nhịp tim",
+        "price": 1290000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1088",
+    "customer_id": "cust-1088",
+    "customer_name": "Hồ Tuấn Quân",
+    "phone": "0973.971.432",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 1290000,
+    "transaction_id": "TXN-4050766",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-88",
+        "name": "Đồng hồ thông minh đo nhịp tim",
+        "price": 1290000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1089",
+    "customer_id": "cust-1089",
+    "customer_name": "Vũ Đức Phong",
+    "phone": "0953.386.710",
+    "order_status": "Payment_Failed",
+    "payment_method": "Cổng VNPay-QR",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 480000,
+    "transaction_id": "TXN-5635017",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-89",
+        "name": "Máy sấy tóc ion âm tốc độ cao",
+        "price": 480000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1090",
+    "customer_id": "cust-1090",
+    "customer_name": "Võ Văn Vy",
+    "phone": "0940.837.516",
+    "order_status": "Payment_Failed",
+    "payment_method": "Ví ZaloPay",
+    "payment_status": "Failed_Reconciling",
+    "total_amount": 320000,
+    "transaction_id": "TXN-9196976",
+    "reconciliation_status": "Hệ thống đang tự động đối soát trong 24-72h. Nếu đơn không thành công, tiền sẽ hoàn lại tài khoản nguồn.",
+    "items": [
+      {
+        "product_id": "PROD-90",
+        "name": "Bình giữ nhiệt inox 304 800ml",
+        "price": 320000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1091",
+    "customer_id": "demo-customer",
+    "customer_name": "Võ Đức Vinh",
+    "phone": "0972.558.911",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 210000,
+    "delivery_date": "2026-10-10",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-91",
+        "name": "Quạt tích điện để bàn mini",
+        "price": 210000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1092",
+    "customer_id": "cust-1092",
+    "customer_name": "Trần Minh Khánh",
+    "phone": "0998.349.413",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 780000,
+    "delivery_date": "2026-10-15",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-92",
+        "name": "Bàn phím cơ không dây RGB",
+        "price": 780000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1093",
+    "customer_id": "cust-1093",
+    "customer_name": "Vũ Thành Vy",
+    "phone": "0964.863.663",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 1290000,
+    "delivery_date": "2026-10-15",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-93",
+        "name": "Đồng hồ thông minh đo nhịp tim",
+        "price": 1290000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1094",
+    "customer_id": "cust-1094",
+    "customer_name": "Huỳnh Quốc Tùng",
+    "phone": "0949.357.336",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 1450000,
+    "delivery_date": "2026-10-11",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-94",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1095",
+    "customer_id": "demo-customer",
+    "customer_name": "Đỗ Đức Nam",
+    "phone": "0978.880.806",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 890000,
+    "delivery_date": "2026-10-12",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-95",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1096",
+    "customer_id": "cust-1096",
+    "customer_name": "Phạm Đức Vinh",
+    "phone": "0985.878.637",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 1450000,
+    "delivery_date": "2026-10-14",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-96",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1097",
+    "customer_id": "cust-1097",
+    "customer_name": "Trần Đức Minh",
+    "phone": "0956.283.409",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 320000,
+    "delivery_date": "2026-10-10",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-97",
+        "name": "Bình giữ nhiệt inox 304 800ml",
+        "price": 320000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1098",
+    "customer_id": "cust-1098",
+    "customer_name": "Đỗ Thành Em",
+    "phone": "0915.155.666",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 1450000,
+    "delivery_date": "2026-10-14",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-98",
+        "name": "Nồi chiên không dầu điện tử 6.5L",
+        "price": 1450000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1099",
+    "customer_id": "cust-1099",
+    "customer_name": "Đỗ Hữu Vinh",
+    "phone": "0911.687.391",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 890000,
+    "delivery_date": "2026-10-17",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-99",
+        "name": "Giày thể thao chạy bộ thoáng khí",
+        "price": 890000,
+        "quantity": 1
+      }
+    ]
+  },
+  {
+    "order_id": "ORD-1100",
+    "customer_id": "demo-customer",
+    "customer_name": "Vũ Tuấn Nam",
+    "phone": "0916.358.982",
+    "order_status": "Delivered",
+    "payment_method": "Thẻ tín dụng Visa (*8892)",
+    "payment_status": "Captured",
+    "total_amount": 650000,
+    "delivery_date": "2026-10-17",
+    "eligible_for_return": true,
+    "return_deadline": "Còn 15 ngày (hạn đến 2026-11-15)",
+    "warranty_active": true,
+    "warranty_expiry": "2027-10-15",
+    "items": [
+      {
+        "product_id": "PROD-100",
+        "name": "Tai nghe bluetooth chống ồn chủ động",
+        "price": 650000,
+        "quantity": 1
+      }
+    ]
   }
 ]

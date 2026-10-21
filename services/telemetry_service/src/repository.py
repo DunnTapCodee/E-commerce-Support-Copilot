@@ -94,15 +94,21 @@ class TelemetryRepository:
         }
 
     def get_order(self, customer_id: str) -> Optional[Dict[str, Any]]:
-        """Look up order from mock_orders.json for customer_id."""
+        """Look up order from mock_orders.json by customer_id or order_id."""
         if not self.mock_orders_path.exists():
             return None
 
         with open(self.mock_orders_path, "r", encoding="utf-8") as f:
             orders = json.load(f)
 
+        # Check exact order_id match
         for o in orders:
-            if o.get("customer_id") == customer_id:
+            if o.get("order_id", "").lower() == customer_id.lower():
+                return o
+
+        # Check customer_id match
+        for o in orders:
+            if o.get("customer_id", "").lower() == customer_id.lower():
                 return o
 
         # Default fallback sample if customer not found directly
