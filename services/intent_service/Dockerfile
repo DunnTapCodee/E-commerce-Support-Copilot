@@ -9,9 +9,9 @@ COPY contracts/ /app/contracts/
 COPY services/intent_service/ /app/services/intent_service/
 
 ENV PYTHONPATH=/app
-ENV PORT=8001
+ENV PORT=8005
 ENV MODEL_PATH=/app/artifacts/models/intent_model.pkl
 
-EXPOSE 8001
+EXPOSE 8005
 
-CMD ["uvicorn", "services.intent_service.src.main:app", "--host", "0.0.0.0", "--port", "8001"]
+CMD ["uvicorn", "services.intent_service.src.main:app", "--host", "0.0.0.0", "--port", "8005"]

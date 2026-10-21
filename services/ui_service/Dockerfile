@@ -13,4 +13,4 @@ ENV GATEWAY_URL=http://gateway:8000
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "services/ui_service/src/app.py", "--server.port=8501", "--server.address=0.0.0.0"]
+CMD ["streamlit", "run", "services/ui_service/src/app.py", "--server.port=8501", "--server.address=0.0.0.0", "--server.headless=true"]

@@ -1,6 +1,6 @@
 services:
   # -------------------------------------------------------------
-  # 1. Intent Classification Service (Port 8001)
+  # 1. Intent Classification Service (Port 8005)
   # -------------------------------------------------------------
   intent_service:
     build:
@@ -8,15 +8,16 @@ services:
       dockerfile: services/intent_service/Dockerfile
     container_name: intent_service
     ports:
-      - "8001:8001"
+      - "8005:8005"
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
+      - ./ML-model:/app/ML-model
     environment:
-      - PORT=8001
+      - PORT=8005
       - MODEL_PATH=/app/artifacts/models/intent_model.pkl
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -41,6 +42,8 @@ services:
       - PORT=8002
       - POLICIES_PATH=/app/data/knowledge_base/policies.json
       - INDEX_PATH=/app/artifacts/vector_store/policy_index.pkl
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
       interval: 10s
@@ -88,7 +91,7 @@ services:
       - "8000:8000"
     environment:
       - PORT=8000
-      - INTENT_SERVICE_URL=http://intent_service:8001
+      - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
     depends_on:
