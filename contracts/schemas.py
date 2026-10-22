@@ -1,6 +1,6 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -61,10 +61,11 @@ class RAGGenerateRequest(BaseModel):
 
 
 class RAGGenerateResponse(BaseModel):
-    """LLM generation response."""
-    draft_text: str = Field(..., description="Grounded response text with [doc_id] citations")
-    citations: List[RetrievedDocument] = Field(default_factory=list, description="Citations used in draft")
-    latency_ms: int = Field(ge=0, description="Inference latency in milliseconds")
+    draft_text: str
+    citations: List[RetrievedDocument] = Field(default_factory=list)
+    latency_ms: int = Field(ge=0)
+    generation_mode: str = "unknown"
+    fallback_reason: Optional[str] = None
 
 
 # -------------------------------------------------------------------
@@ -95,7 +96,7 @@ class AuditLogCreate(BaseModel):
 class HumanActionUpdate(BaseModel):
     """CS Support agent action recorded on a draft."""
     interaction_id: str = Field(..., description="Target interaction ID")
-    action: str = Field(..., description="Action: APPROVE, EDIT, REJECT, ESCALATE")
+    action: Literal["APPROVE", "EDIT", "REJECT", "ESCALATE"]
     final_text: Optional[str] = Field(default=None, description="Final sent text after agent edit")
     agent_notes: Optional[str] = Field(default=None, description="Agent notes")
     handling_time_ms: int = Field(default=0, ge=0, description="Time spent by agent in milliseconds")
@@ -112,3 +113,4 @@ class GatewayResponse(BaseModel):
     citations: List[RetrievedDocument] = Field(default_factory=list, description="Policy citations")
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
+    generation_mode: str = "not_generated"

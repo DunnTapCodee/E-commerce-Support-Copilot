@@ -74,42 +74,75 @@ async def process_copilot_query(
     interaction_id = str(uuid.uuid4())
     customer_query = request.query.strip()
     customer_id = request.customer_id or "demo-customer"
-
-    # Step 1: Predict Intent
-    try:
-        intent_resp: IntentPredictionResponse = await clients.predict_intent(customer_query)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Intent service unavailable: {str(exc)}",
-        )
-
-    guardrail_decision: GuardrailResult
+    generation_mode = "not_generated"
     citations: list[RetrievedDocument] = []
-    draft_text: str = ""
+    draft_text = ""
     order_data: Optional[Dict[str, Any]] = None
 
-    # Extract specific order_id if customer mentioned one in query
-    lookup_key = customer_id
-    for token in customer_query.split():
-        clean_tok = token.strip(",.?!:;\"'()[]{}")
-        if clean_tok.upper().startswith("ORD-"):
-            lookup_key = clean_tok
-            break
+    # Step 1: Predict Intent
+    intent_service_error = None
 
-    if lookup_key:
-        order_data = await clients.lookup_order(lookup_key)
+    try:
+        intent_resp: IntentPredictionResponse = (
+            await clients.predict_intent(customer_query)
+        )
+    except Exception as exc:
+        intent_service_error = str(exc)
+        print(f"[Gateway] Intent service unavailable: {exc}")
+
+        # Fail closed: không có dự đoán tin cậy thì không gọi LLM.
+        intent_resp = IntentPredictionResponse(
+            intent="unknown_query",
+            confidence=0.0,
+            is_in_scope=False,
+            all_probabilities={},
+        )
 
     # Step 2: Intent Guardrail Check
     intent_guard = evaluate_intent_guard(intent_resp)
+    if intent_service_error:
+        intent_guard = GuardrailResult(
+            allow_llm=False,
+            action_type="ESCALATE_HUMAN",
+            reason=(
+                "Intent Service không khả dụng. "
+                "Không thể xác định ý định an toàn; "
+                "cần nhân viên xử lý. "
+                f"Chi tiết lỗi: {intent_service_error}"
+            ),
+        )
     if not intent_guard.allow_llm:
         guardrail_decision = intent_guard
-        if intent_resp.intent == "human_agent":
+
+        if intent_service_error:
+            draft_text = (
+                "[CẦN NHÂN VIÊN XỬ LÝ: Không thể xác định ý định "
+                "do dịch vụ phân loại đang gặp sự cố.]"
+            )
+        elif intent_resp.intent == "human_agent":
             draft_text = FALLBACK_HUMAN_MESSAGE
         else:
             draft_text = FALLBACK_UNCERTAIN_MESSAGE
 
     else:
+        # Chỉ tra cứu đơn hàng khi intent đã vượt qua guardrail.
+        # Ưu tiên mã đơn hàng có dạng ORD-... trong câu hỏi.
+        import re
+
+        order_match = re.search(
+            r"\bORD-[A-Za-z0-9-]+\b",
+            customer_query,
+            re.IGNORECASE,
+        )
+
+        lookup_key = order_match.group(0) if order_match else customer_id
+
+        try:
+            order_data = await clients.lookup_order(lookup_key)
+        except Exception as exc:
+            print(f"[Gateway] Order lookup failed: {exc}")
+            order_data = None
+
         # Step 3: Financial Guardrail Check
         financial_guard = evaluate_financial_guard(intent_resp.intent)
         if financial_guard and not financial_guard.allow_llm:
@@ -142,9 +175,17 @@ async def process_copilot_query(
                         order_details = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
                         generation_prompt += f"\n[Thông tin thực tế của đơn hàng từ hệ thống: {order_details}]"
 
-                    gen_resp = await clients.generate_draft(generation_prompt, citations)
+                    gen_resp = await clients.generate_draft(generation_prompt, citations,)
                     draft_text = gen_resp.draft_text
+                    generation_mode = gen_resp.generation_mode
+
+                    if generation_mode == "template_fallback":
+                        print(
+                        "[Gateway] RAG dùng bản nháp dự phòng. "
+                        f"Lý do: {gen_resp.fallback_reason}"
+                        )
                 except Exception as exc:
+                    generation_mode = "not_generated"
                     guardrail_decision = GuardrailResult(
                         allow_llm=False,
                         action_type="ESCALATE_HUMAN",
@@ -174,6 +215,7 @@ async def process_copilot_query(
         citations=citations,
         draft_text=draft_text,
         order_data=order_data,
+        generation_mode=generation_mode,
     )
 
 

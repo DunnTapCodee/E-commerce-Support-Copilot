@@ -46,21 +46,35 @@ class TelemetryRepository:
             conn.commit()
 
     def update_human_action(self, update: HumanActionUpdate) -> bool:
-        """Update CS agent decision on a specific interaction."""
+        """Record the support agent's review decision."""
+        action = update.action
+
+        # APPROVE và EDIT cần có nội dung cuối cùng để lưu.
+        if action in {"APPROVE", "EDIT"}:
+            if not update.final_text or not update.final_text.strip():
+                raise ValueError(
+                    f"final_text không được để trống với action={action}"
+                )
+
+        # Không coi bản nháp là tin nhắn đã thực sự gửi cho khách.
+        # final_sent_text ở đây lưu nội dung cuối cùng nhân viên xác nhận.
+        final_text = (
+            update.final_text.strip()
+            if update.final_text and update.final_text.strip()
+            else None
+        )
+
         with get_db_connection(self.db_path) as conn:
             cursor = conn.execute(
                 """
                 UPDATE telemetry_logs
-                SET human_action=?, final_sent_text=?, agent_notes=?, latency_ms=?
-                WHERE interaction_id=?;
+                SET human_action = ?,
+                    final_sent_text = ?,
+                    agent_notes = ?,
+                    latency_ms = latency_ms + ?
+                WHERE interaction_id = ?;
                 """,
-                (
-                    update.action,
-                    update.final_text,
-                    update.agent_notes,
-                    update.handling_time_ms,
-                    update.interaction_id,
-                ),
+                (action, final_text, update.agent_notes, update.handling_time_ms, update.interaction_id,),
             )
             conn.commit()
             return cursor.rowcount > 0
@@ -110,11 +124,5 @@ class TelemetryRepository:
         for o in orders:
             if o.get("customer_id", "").lower() == customer_id.lower():
                 return o
-
-        # Default fallback sample if customer not found directly
-        if orders:
-            sample = orders[0].copy()
-            sample["customer_id"] = customer_id
-            return sample
 
         return None
