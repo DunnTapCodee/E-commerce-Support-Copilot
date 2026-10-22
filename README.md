@@ -3,7 +3,7 @@
 Five-service agent workbench: Streamlit UI, FastAPI gateway, bilingual intent
 classification, policy retrieval/drafting, and SQLite audit telemetry.
 
-Module 1 NLU implementation and commands: [README_MODULE1.md](services/intent_service/README_MODULE1.md).
+Module 1 NLU implementation and commands: [README_MODULE1.md](services/intent_service/README_MODULE1.md). The one-run Kaggle notebook is `kaggle/kernels/k00-end-to-end-nlu/k00_end_to_end_nlu.ipynb`.
 New NLU artifacts must be trained and deployed before the intent API becomes healthy.
 The source-only Module 1 update includes no measured model results.
 

@@ -33,6 +33,18 @@ def generate(username):
         (directory/filename).write_text(json.dumps(notebook,ensure_ascii=False,indent=1))
         (directory/'kernel-metadata.json').write_text(json.dumps({'id':f'{username}/{name}','title':name,'code_file':filename,'language':'python','kernel_type':'notebook','is_private':True,'enable_gpu':True,'enable_tpu':False,'enable_internet':True,'dataset_sources':[f'{username}/ecom-intent-data'],'kernel_sources':[],'competition_sources':[]},indent=2))
 
+    # One-click notebook clones the current branch and executes its complete pipeline.
+    name='k00-end-to-end-nlu';directory=ROOT/'kernels'/name;directory.mkdir(parents=True,exist_ok=True)
+    filename='k00_end_to_end_nlu.ipynb'
+    cells=[
+        {'cell_type':'markdown','metadata':{},'source':['# End-to-end bilingual NLU\n','Clones branch `hung`; translates Bitext before splitting; trains and evaluates Vietnamese/English models. Outputs are saved under `/kaggle/working/module1-output`.\n']},
+        {'cell_type':'code','execution_count':None,'outputs':[],'metadata':{},'source':['import subprocess, sys, pathlib\n','print(subprocess.run(["nvidia-smi"],capture_output=True,text=True).stdout)\n','repo = pathlib.Path("/kaggle/working/E-commerce-Support-Copilot")\n','if not repo.exists():\n','    subprocess.run(["git", "clone", "--depth", "1", "--branch", "hung", "https://github.com/DunnTapCodee/E-commerce-Support-Copilot.git", str(repo)], check=True)\n','subprocess.run([sys.executable, "-m", "pip", "install", "--quiet", "-r", str(repo / "kaggle/requirements-end-to-end.txt")], check=True)\n','print("Repository:", repo)\n']},
+        {'cell_type':'code','execution_count':None,'outputs':[],'metadata':{},'source':['import runpy, sys\n','repo = "/kaggle/working/E-commerce-Support-Copilot"\n','sys.path.insert(0, repo)\n','runpy.run_path(repo + "/kaggle/jobs/end_to_end.py", run_name="__main__")\n']},
+    ]
+    notebook={'nbformat':4,'nbformat_minor':5,'metadata':{'kernelspec':{'name':'python3','display_name':'Python 3','language':'python'},'language_info':{'name':'python'}},'cells':cells}
+    (directory/filename).write_text(json.dumps(notebook,ensure_ascii=False,indent=1))
+    (directory/'kernel-metadata.json').write_text(json.dumps({'id':f'{username}/{name}','title':name,'code_file':filename,'language':'python','kernel_type':'notebook','is_private':True,'enable_gpu':True,'enable_tpu':False,'enable_internet':True,'dataset_sources':[],'kernel_sources':[],'competition_sources':[]},indent=2))
+
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--username',required=True)

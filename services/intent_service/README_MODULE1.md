@@ -181,3 +181,33 @@ docker compose --env-file .env --env-file artifacts/models/intent/deployment.env
 it. `/health` exposes routing mode, loaded models and an explicit load error.
 Artifacts, datasets, credentials and generated metrics are ignored by Git.
 There are no test commands in this delivery workflow, per the code-only request.
+
+
+## One notebook: translate, train and measure in Kaggle
+
+For a single Kaggle run instead of the staged kernels above, generate the notebook
+metadata with your Kaggle username:
+
+```bash
+python kaggle/configure.py --username YOUR_KAGGLE_USERNAME
+```
+
+Open `kaggle/kernels/k00-end-to-end-nlu/k00_end_to_end_nlu.ipynb` in Kaggle (or
+push that kernel with your configured Kaggle CLI). Turn **GPU** and **Internet** on,
+then run all cells. The notebook clones public branch `hung`, downloads actual
+Bitext and CLINC OOS data, translates every unique customer input first, checks
+placeholder loss, then group-splits and trains/evaluates VI and EN B1 models. It
+also fits/evaluates the language router and packages inference artifacts. It does
+not require the private `ecom-intent-data` dataset used by the staged notebooks.
+
+Download `/kaggle/working/module1-output/` from the Kaggle notebook output. Start
+with `RESULTS.md`, `translation_samples.csv`, `metrics.json`, `translation_metrics.json`,
+`grid_vi.csv`, and `grid_en.csv`. The `artifacts/models/intent/` directory is included
+as `intent_bundle.zip`. The reported p95 is measured on the Kaggle CPU (one thread,
+batch size one, intent model inference); it describes that Kaggle runtime and is not
+a local-machine latency result. Translation checkpoints are saved in the active
+Kaggle session every ~1,000 unique inputs.
+
+The notebook keeps only real Bitext, CLINC and repository benchmark rows in its
+reported scores. It does not fabricate an accuracy result when a run fails. A
+translation placeholder-loss rate at or above 5% stops before training.
