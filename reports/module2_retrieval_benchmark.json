@@ -1,0 +1,124 @@
+{
+  "corpus": {
+    "policy_file": "data\\knowledge_base\\policies.json",
+    "total_active_documents": 47,
+    "total_evaluation_queries": 55,
+    "active_policy_ids_covered": 47,
+    "query_text_fields": "title + content",
+    "inactive_documents_filtered_before_ranking": true
+  },
+  "settings": {
+    "top_k": 3,
+    "latency_repeats": 3,
+    "dense_model": "keepitreal/vietnamese-sbert",
+    "reranker_model": "BAAI/bge-reranker-base",
+    "device": "cpu",
+    "rrf_constant": 60,
+    "hybrid_candidate_k": 10,
+    "reranker_candidate_k": 10,
+    "latency_includes_query_encoding_and_reranking": true,
+    "include_tags": false
+  },
+  "environment": {
+    "python": "3.11.9",
+    "platform": "Windows-10-10.0.26200-SP0",
+    "numpy": "2.4.4"
+  },
+  "results": [
+    {
+      "method": "tfidf",
+      "model": null,
+      "dense_backend": null,
+      "build_ms": 7.967,
+      "answerable_queries": 52,
+      "unanswerable_queries": 3,
+      "hit_rate_at_3": 1.0,
+      "recall_at_3": 0.9904,
+      "mrr_at_3": 0.9808,
+      "query_latency_ms": {
+        "median": 1.134,
+        "p95": 2.389,
+        "threshold_ms": 15.0,
+        "p95_under_15ms": true
+      },
+      "unanswerable_queries_with_any_result": 3,
+      "inactive_documents_returned": 0
+    },
+    {
+      "method": "bm25",
+      "model": null,
+      "dense_backend": null,
+      "build_ms": 8.034,
+      "answerable_queries": 52,
+      "unanswerable_queries": 3,
+      "hit_rate_at_3": 1.0,
+      "recall_at_3": 0.9904,
+      "mrr_at_3": 0.9808,
+      "query_latency_ms": {
+        "median": 0.304,
+        "p95": 0.664,
+        "threshold_ms": 15.0,
+        "p95_under_15ms": true
+      },
+      "unanswerable_queries_with_any_result": 3,
+      "inactive_documents_returned": 0
+    },
+    {
+      "method": "dense",
+      "model": "keepitreal/vietnamese-sbert",
+      "dense_backend": "numpy-exact",
+      "build_ms": 72829.788,
+      "answerable_queries": 52,
+      "unanswerable_queries": 3,
+      "hit_rate_at_3": 0.8654,
+      "recall_at_3": 0.8558,
+      "mrr_at_3": 0.8462,
+      "query_latency_ms": {
+        "median": 83.29,
+        "p95": 127.915,
+        "threshold_ms": 15.0,
+        "p95_under_15ms": false
+      },
+      "unanswerable_queries_with_any_result": 3,
+      "inactive_documents_returned": 0
+    },
+    {
+      "method": "hybrid_rrf",
+      "model": null,
+      "dense_backend": "numpy-exact",
+      "build_ms": 72837.821,
+      "answerable_queries": 52,
+      "unanswerable_queries": 3,
+      "hit_rate_at_3": 0.9615,
+      "recall_at_3": 0.9519,
+      "mrr_at_3": 0.9423,
+      "query_latency_ms": {
+        "median": 85.864,
+        "p95": 114.706,
+        "threshold_ms": 15.0,
+        "p95_under_15ms": false
+      },
+      "unanswerable_queries_with_any_result": 3,
+      "inactive_documents_returned": 0
+    },
+    {
+      "method": "hybrid_rrf_reranked",
+      "model": "BAAI/bge-reranker-base",
+      "dense_backend": "numpy-exact",
+      "build_ms": 159083.891,
+      "answerable_queries": 52,
+      "unanswerable_queries": 3,
+      "hit_rate_at_3": 0.9808,
+      "recall_at_3": 0.9808,
+      "mrr_at_3": 0.9679,
+      "query_latency_ms": {
+        "median": 2675.825,
+        "p95": 3773.631,
+        "threshold_ms": 15.0,
+        "p95_under_15ms": false
+      },
+      "unanswerable_queries_with_any_result": 3,
+      "inactive_documents_returned": 0
+    }
+  ]
+}

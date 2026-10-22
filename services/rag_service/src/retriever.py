@@ -10,8 +10,72 @@ from services.rag_service.src.indexer import PolicyVectorIndexer
 class PolicyRetriever:
     """Knowledge retriever with cosine similarity search and expired document filtering."""
 
-    def __init__(self, indexer: PolicyVectorIndexer):
+    METHODS = {"tfidf", "bm25", "dense", "hybrid", "reranked"}
+
+    def __init__(
+        self,
+        indexer: PolicyVectorIndexer,
+        method: str = "tfidf",
+        dense_model: str = "keepitreal/vietnamese-sbert",
+        reranker_model: str = "BAAI/bge-reranker-base",
+        device: str = "cpu",
+    ):
         self.indexer = indexer
+        self.method = method.strip().lower()
+        if self.method not in self.METHODS:
+            raise ValueError(
+                f"Unknown RETRIEVAL_METHOD '{method}'. Choose one of: {', '.join(sorted(self.METHODS))}."
+            )
+        self.searcher = None
+        if self.method != "tfidf":
+            from services.rag_service.src.search_experiments import (
+                BM25Searcher,
+                DenseSearcher,
+                HybridSearcher,
+                PolicyDocument,
+                RerankedHybridSearcher,
+            )
+
+            active_documents = [
+                PolicyDocument(
+                    doc_id=doc.doc_id,
+                    category=getattr(doc, "category", ""),
+                    title=doc.title,
+                    content=doc.content,
+                    version=doc.version,
+                    is_active=doc.is_active,
+                    tags=tuple(getattr(doc, "tags", ()) or ()),
+                )
+                for doc in indexer.documents
+                if doc.is_active
+            ]
+            if self.method == "bm25":
+                self.searcher = BM25Searcher(active_documents)
+            elif self.method == "dense":
+                self.searcher = DenseSearcher(active_documents, model_name=dense_model, device=device)
+            else:
+                hybrid = HybridSearcher(
+                    BM25Searcher(active_documents),
+                    DenseSearcher(active_documents, model_name=dense_model, device=device),
+                )
+                self.searcher = (
+                    RerankedHybridSearcher(hybrid, model_name=reranker_model, device=device)
+                    if self.method == "reranked"
+                    else hybrid
+                )
+
+    def _search(self, query: str, top_k: int) -> List[RetrievedDocument]:
+        if self.method == "tfidf":
+            scored_docs = self.indexer.search(query, top_k=top_k)
+            return [doc.model_copy(update={"score": round(score, 4)}) for doc, score in scored_docs]
+
+        hits = self.searcher.search(query, top_k=top_k)
+        documents_by_id = {doc.doc_id: doc for doc in self.indexer.documents}
+        return [
+            documents_by_id[hit.document.doc_id].model_copy(update={"score": round(hit.score, 6)})
+            for hit in hits
+            if hit.document.doc_id in documents_by_id
+        ]
 
     def retrieve(
         self,
@@ -53,12 +117,19 @@ class PolicyRetriever:
         clean_query = re.sub(r"ORD-[\w-]+", "", query, flags=re.IGNORECASE).strip()
         search_query = clean_query if len(clean_query) > 3 else query
 
-        # Direct search with vector indexer
-        scored_docs = self.indexer.search(search_query, top_k=top_k)
-        candidates = [
-            doc for doc, score in scored_docs
-            if score > 0.05 and (doc.is_active or is_asking_expired)
-        ]
+        # Historical-policy requests use the legacy full corpus so the existing
+        # expired-policy safety path remains available. Normal requests use the
+        # configured retrieval method over active policies.
+        if is_asking_expired:
+            scored_docs = self.indexer.search(search_query, top_k=top_k)
+            candidates = [
+                doc for doc, score in scored_docs
+                if score > 0.05 and not doc.is_active
+            ]
+        else:
+            candidates = self._search(search_query, top_k)
+            if self.method == "tfidf":
+                candidates = [doc for doc in candidates if (doc.score or 0.0) > 0.05]
 
         # Intent-based fallback mapping if query text vector match is low
         intent_doc_map = {
