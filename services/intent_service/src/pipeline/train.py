@@ -1,7 +1,13 @@
-"""Training pipeline for Intent Classification: TF-IDF + Logistic Regression."""
 from pathlib import Path
+import sys
 from typing import Any, Dict
 import joblib
+
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+except Exception:
+    pass
+
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline

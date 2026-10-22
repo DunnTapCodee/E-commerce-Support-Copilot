@@ -43,6 +43,8 @@ class RetrievedDocument(BaseModel):
     content: str = Field(..., description="Policy body / chunk content")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status of this document")
+    effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
 
@@ -76,6 +78,9 @@ class GuardrailResult(BaseModel):
     allow_llm: bool = Field(..., description="Whether generation with LLM is permitted")
     action_type: str = Field(..., description="Action: PROCEED_TO_LLM, DIRECT_REFUND_FORM, ESCALATE_HUMAN")
     reason: str = Field(..., description="Audit rationale explaining the decision")
+    faithfulness_score: Optional[float] = Field(default=None, description="Response faithfulness / NLI entailment score (0.0 to 1.0)")
+    hallucination_detected: Optional[bool] = Field(default=None, description="Whether hallucination was detected in response")
+    temporal_status: Optional[str] = Field(default=None, description="Temporal status: ACTIVE, EXPIRED, NOT_YET_EFFECTIVE")
 
 
 # -------------------------------------------------------------------

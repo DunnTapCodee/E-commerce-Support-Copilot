@@ -21,3 +21,12 @@ FALLBACK_FINANCIAL_MESSAGE = (
 FALLBACK_NO_ACTIVE_POLICY_MESSAGE = (
     "[Cần nhân viên xử lý: Không tìm thấy tài liệu phù hợp hoặc tài liệu đã hết hiệu lực. Không tự động khẳng định.]"
 )
+FALLBACK_EXPIRED_POLICY_MESSAGE = (
+    "[Cần nhân viên xử lý: Chính sách đã hết hiệu lực theo mốc thời gian (Temporal Policy Guard). Không được tự động tư vấn.]"
+)
+
+FAITHFULNESS_THRESHOLD = float(os.getenv("FAITHFULNESS_THRESHOLD", "0.70"))
+FALLBACK_HALLUCINATION_MESSAGE = (
+    "[CẦN NHÂN VIÊN XỬ LÝ: Bản nháp bị chặn do phát hiện nguy cơ ảo giác (Hallucination) hoặc không được chứng minh bởi tài liệu chính sách.]"
+)
+

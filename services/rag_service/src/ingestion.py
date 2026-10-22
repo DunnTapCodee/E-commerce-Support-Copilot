@@ -23,6 +23,8 @@ def load_policy_documents(policy_file_path: Path) -> List[RetrievedDocument]:
                 content=item["content"],
                 version=str(item.get("version", "1.0")),
                 is_active=bool(item.get("is_active", True)),
+                effective_date=item.get("effective_date"),
+                expiration_date=item.get("expiration_date"),
                 score=1.0,
             )
         )

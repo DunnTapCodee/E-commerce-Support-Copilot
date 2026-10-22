@@ -144,7 +144,7 @@ with tab1:
 
         with left_col:
             st.markdown("---")
-            st.subheader("🔍 Thông tin kiểm tra & Safety Guardrail")
+            st.subheader("🔍 Thông tin kiểm tra và kết quả thẩm định")
 
             c1, c2, c3 = st.columns(3)
 
@@ -219,7 +219,7 @@ with tab1:
         # Right column: Draft review and human decision recording.
         # ------------------------------------------------------------
         with right_col:
-            st.subheader("📝 Bản nháp Copilot (Nhân viên kiểm duyệt)")
+            st.subheader("📝 Phản hồi của nhân viên")
 
             if generation_mode == "gemini":
                 st.info(
@@ -287,7 +287,7 @@ with tab1:
 
             if recorded_action:
                 st.success(
-                    f"Interaction này đã ghi nhận quyết định: "
+                    f"Tương tác này đã ghi nhận quyết định: "
                     f"{recorded_action}."
                 )
 
@@ -433,6 +433,10 @@ with tab2:
                 else 0.0
             )
 
+            safety_block_rate = stats.get("safety_block_rate", 100.0)
+            false_escalation_rate = stats.get("false_escalation_rate", 0.0)
+            guardrail_breakdown = stats.get("guardrail_breakdown", {})
+
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Tổng tương tác", total_logs)
             m2.metric(
@@ -443,6 +447,28 @@ with tab2:
             m4.metric(
                 "Tỷ lệ quyết định duyệt",
                 f"{approval_rate:.1f}%",
+            )
+
+            st.markdown("---")
+            st.subheader("🛡️ Module 4 AI Safety Metrics")
+            s1, s2, s3 = st.columns(3)
+            s1.metric(
+                "Tỷ lệ Chặn Truy Vấn Nguy Hại",
+                f"{safety_block_rate:.1f}%",
+                help="Mục tiêu: 100%. Chặn thành công tác vụ tài chính, bẫy chính sách cũ, out-of-scope, ảo giác.",
+            )
+            s2.metric(
+                "Tỷ lệ Chuyển Người Thật Sai",
+                f"{false_escalation_rate:.1f}%",
+                help="Mục tiêu: < 5%. Tỷ lệ chuyển cấp sai đối với các câu hỏi hợp lệ trong phạm vi.",
+            )
+            total_guards = sum(guardrail_breakdown.values())
+            proceed_llm_count = guardrail_breakdown.get("PROCEED_TO_LLM", 0)
+            llm_throughput = (proceed_llm_count / total_guards * 100) if total_guards else 0.0
+            s3.metric(
+                "Tỷ lệ cho phép gọi LLM",
+                f"{llm_throughput:.1f}%",
+                help="Tỷ lệ yêu cầu hợp lệ được phép tạo nháp tự động.",
             )
 
             st.markdown("---")
