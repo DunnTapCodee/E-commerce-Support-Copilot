@@ -19,7 +19,10 @@ class PolicyVectorIndexer:
     def fit_and_save(self, documents: List[RetrievedDocument], persist_path: Path) -> None:
         """Fit vectorizer on policy texts and save index to disk."""
         self.documents = documents
-        corpus = [f"{doc.title} {doc.content}" for doc in documents]
+        corpus = [
+            f"{doc.title} {' '.join(getattr(doc, 'tags', []))} {doc.content}".strip()
+            for doc in documents
+        ]
         self.doc_matrix = self.vectorizer.fit_transform(corpus)
 
         persist_path.parent.mkdir(parents=True, exist_ok=True)

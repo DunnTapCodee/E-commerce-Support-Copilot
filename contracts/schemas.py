@@ -48,6 +48,7 @@ class RetrievedDocument(BaseModel):
     is_active: bool = Field(..., description="Active status of this document")
     effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
     expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
+    tags: List[str] = Field(default_factory=list, description="Associated policy tags")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
 

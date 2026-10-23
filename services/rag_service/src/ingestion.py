@@ -25,6 +25,7 @@ def load_policy_documents(policy_file_path: Path) -> List[RetrievedDocument]:
                 is_active=bool(item.get("is_active", True)),
                 effective_date=item.get("effective_date"),
                 expiration_date=item.get("expiration_date"),
+                tags=list(item.get("tags", [])),
                 score=1.0,
             )
         )

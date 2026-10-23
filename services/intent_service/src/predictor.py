@@ -209,7 +209,18 @@ class IntentPredictor:
                     scores = self.legacy_model.decision_function(X)[0]
                     best = int(np.argmax(scores))
                     top_score = float(scores[best])
-                    conf = 0.10 if is_oov else float(1.0 / (1.0 + np.exp(-1.5 * top_score)))
+                    
+                    sorted_scores = np.sort(scores)[::-1]
+                    runner_up = float(sorted_scores[1]) if len(sorted_scores) > 1 else -1.0
+                    margin_gap = max(0.0, top_score - runner_up)
+
+                    if is_oov or top_score <= 0:
+                        conf = 0.10 if is_oov else float(1.0 / (1.0 + np.exp(-1.5 * top_score)))
+                        conf = min(conf, 0.45)
+                    else:
+                        effective_score = top_score + 0.35 * margin_gap
+                        conf = float(1.0 / (1.0 + np.exp(-2.0 * effective_score)))
+
                     probs = softmax(scores)
                     top_probs = {self.legacy_classes[i]: round(float(probs[i]), 4) for i in np.argsort(probs)[::-1][:5]}
                 else:
