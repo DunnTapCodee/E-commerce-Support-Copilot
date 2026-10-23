@@ -6,6 +6,13 @@ import sys
 import time
 from pathlib import Path
 
+# Fix Vietnamese/emoji output on Windows consoles with cp1252 encoding
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 ROOT_DIR = Path(__file__).resolve().parent
 
 # Ensure Python knows about the project root

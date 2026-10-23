@@ -1,6 +1,6 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -43,6 +43,8 @@ class RetrievedDocument(BaseModel):
     content: str = Field(..., description="Policy body / chunk content")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status of this document")
+    effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
 
@@ -61,10 +63,11 @@ class RAGGenerateRequest(BaseModel):
 
 
 class RAGGenerateResponse(BaseModel):
-    """LLM generation response."""
-    draft_text: str = Field(..., description="Grounded response text with [doc_id] citations")
-    citations: List[RetrievedDocument] = Field(default_factory=list, description="Citations used in draft")
-    latency_ms: int = Field(ge=0, description="Inference latency in milliseconds")
+    draft_text: str
+    citations: List[RetrievedDocument] = Field(default_factory=list)
+    latency_ms: int = Field(ge=0)
+    generation_mode: str = "unknown"
+    fallback_reason: Optional[str] = None
 
 
 # -------------------------------------------------------------------
@@ -75,6 +78,9 @@ class GuardrailResult(BaseModel):
     allow_llm: bool = Field(..., description="Whether generation with LLM is permitted")
     action_type: str = Field(..., description="Action: PROCEED_TO_LLM, DIRECT_REFUND_FORM, ESCALATE_HUMAN")
     reason: str = Field(..., description="Audit rationale explaining the decision")
+    faithfulness_score: Optional[float] = Field(default=None, description="Response faithfulness / NLI entailment score (0.0 to 1.0)")
+    hallucination_detected: Optional[bool] = Field(default=None, description="Whether hallucination was detected in response")
+    temporal_status: Optional[str] = Field(default=None, description="Temporal status: ACTIVE, EXPIRED, NOT_YET_EFFECTIVE")
 
 
 # -------------------------------------------------------------------
@@ -95,7 +101,7 @@ class AuditLogCreate(BaseModel):
 class HumanActionUpdate(BaseModel):
     """CS Support agent action recorded on a draft."""
     interaction_id: str = Field(..., description="Target interaction ID")
-    action: str = Field(..., description="Action: APPROVE, EDIT, REJECT, ESCALATE")
+    action: Literal["APPROVE", "EDIT", "REJECT", "ESCALATE"]
     final_text: Optional[str] = Field(default=None, description="Final sent text after agent edit")
     agent_notes: Optional[str] = Field(default=None, description="Agent notes")
     handling_time_ms: int = Field(default=0, ge=0, description="Time spent by agent in milliseconds")
@@ -112,3 +118,4 @@ class GatewayResponse(BaseModel):
     citations: List[RetrievedDocument] = Field(default_factory=list, description="Policy citations")
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
+    generation_mode: str = "not_generated"

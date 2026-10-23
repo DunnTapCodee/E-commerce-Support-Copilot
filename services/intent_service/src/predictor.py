@@ -22,7 +22,13 @@ class IntentPredictor:
     """Production runtime inference engine for intent classification."""
 
     def __init__(self, model_source: Optional[Union[str, Path]] = None):
-        # Auto-detect model directory or file
+        # Auto-detect model directory or file, defaulting to production artifact
+        if not model_source:
+            root = Path(__file__).resolve().parent.parent.parent.parent
+            default_path = root / "artifacts" / "models" / "intent_model.pkl"
+            if default_path.exists():
+                model_source = default_path
+
         self.model_source = Path(model_source) if model_source else None
         self.is_multi_component = False
         self.model = None
@@ -55,22 +61,22 @@ class IntentPredictor:
         return None
 
     def load_model(self) -> None:
-        """Load either the 3-component LinearSVC or a single pipeline .pkl."""
+        """Load either the single pipeline .pkl or 3-component LinearSVC."""
+        # 1. Prioritize explicit model file if provided
+        if self.model_source and self.model_source.is_file() and self.model_source.exists():
+            self.model = joblib.load(self.model_source)
+            self.classes = [str(c) for c in getattr(self.model, "classes_", [])]
+            self.is_multi_component = False
+            return
+
+        # 2. Check for multi-component directory (ML-model/)
         multi_dir = self._find_multi_component_dir()
         if multi_dir:
-            # 1. Load multi-component LinearSVC
             self.model = joblib.load(multi_dir / "model_intent_full.pkl")
             self.vectorizer = joblib.load(multi_dir / "tfidf_vectorizer_full.pkl")
             self.label_encoder = joblib.load(multi_dir / "label_encoder_full.pkl")
             self.classes = [str(c) for c in self.label_encoder.classes_]
             self.is_multi_component = True
-            return
-
-        # 2. Fallback to single pipeline .pkl
-        if self.model_source and self.model_source.is_file() and self.model_source.exists():
-            self.model = joblib.load(self.model_source)
-            self.classes = [str(c) for c in getattr(self.model, "classes_", [])]
-            self.is_multi_component = False
             return
 
         raise FileNotFoundError("No valid intent model artifact found in ML-model/ or artifacts/models/")
@@ -138,6 +144,16 @@ class IntentPredictor:
             max_idx = int(np.argmax(probs))
             predicted_intent = str(self.classes[max_idx])
             confidence = float(probs[max_idx])
+            prob_dict = {
+                str(c): float(round(p, 4)) for c, p in zip(self.classes, probs)
+            }
+        elif hasattr(self.model, "decision_function"):
+            scores = self.model.decision_function([query])[0]
+            max_idx = int(np.argmax(scores))
+            top_score = float(scores[max_idx])
+            confidence = float(1.0 / (1.0 + np.exp(-top_score)))
+            probs = softmax(scores)
+            predicted_intent = str(self.classes[max_idx])
             prob_dict = {
                 str(c): float(round(p, 4)) for c, p in zip(self.classes, probs)
             }

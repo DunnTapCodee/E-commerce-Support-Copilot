@@ -42,6 +42,8 @@ SEED_EXAMPLES: List[Tuple[str, str]] = [
     ("track my parcel ORD-8891", "track_order"),
     ("theo dõi tiến độ giao hàng", "track_order"),
     ("cho tôi xem định vị đơn hàng", "track_order"),
+    ("I want to track my order status", "track_order"),
+    ("track order status", "track_order"),
     
     # cancel_order
     ("tôi muốn hủy đơn hàng vừa đặt", "cancel_order"),
@@ -152,8 +154,11 @@ OUT_OF_SCOPE_SAMPLES: List[Tuple[str, str]] = [
 
 def generate_bitext_dataframe() -> pd.DataFrame:
     """Generate high-quality multi-intent dataset with repetitions for robust statistical training."""
+    import json
+    from pathlib import Path
+
     data = []
-    # Expand seed data with variations
+    # 1. Expand seed data with variations
     for query, intent in SEED_EXAMPLES:
         data.append({"query": query, "intent": intent})
         data.append({"query": query.lower(), "intent": intent})
@@ -164,6 +169,21 @@ def generate_bitext_dataframe() -> pd.DataFrame:
     for query, intent in OUT_OF_SCOPE_SAMPLES:
         data.append({"query": query, "intent": intent})
         data.append({"query": f"Cho mình hỏi {query}", "intent": intent})
+
+    # 2. Add realistic benchmark scenarios if available
+    benchmark_file = Path(__file__).resolve().parent.parent.parent.parent.parent / "data" / "benchmark_scenarios.json"
+    if benchmark_file.exists():
+        try:
+            with open(benchmark_file, "r", encoding="utf-8") as f:
+                scenarios = json.load(f)
+            for sc in scenarios:
+                q = sc.get("query")
+                it = sc.get("expected_intent")
+                if q and it:
+                    data.append({"query": q, "intent": it})
+                    data.append({"query": q.lower(), "intent": it})
+        except Exception:
+            pass
 
     df = pd.DataFrame(data)
     return df

@@ -46,27 +46,41 @@ class TelemetryRepository:
             conn.commit()
 
     def update_human_action(self, update: HumanActionUpdate) -> bool:
-        """Update CS agent decision on a specific interaction."""
+        """Record the support agent's review decision."""
+        action = update.action
+
+        # APPROVE và EDIT cần có nội dung cuối cùng để lưu.
+        if action in {"APPROVE", "EDIT"}:
+            if not update.final_text or not update.final_text.strip():
+                raise ValueError(
+                    f"final_text không được để trống với action={action}"
+                )
+
+        # Không coi bản nháp là tin nhắn đã thực sự gửi cho khách.
+        # final_sent_text ở đây lưu nội dung cuối cùng nhân viên xác nhận.
+        final_text = (
+            update.final_text.strip()
+            if update.final_text and update.final_text.strip()
+            else None
+        )
+
         with get_db_connection(self.db_path) as conn:
             cursor = conn.execute(
                 """
                 UPDATE telemetry_logs
-                SET human_action=?, final_sent_text=?, agent_notes=?, latency_ms=?
-                WHERE interaction_id=?;
+                SET human_action = ?,
+                    final_sent_text = ?,
+                    agent_notes = ?,
+                    latency_ms = latency_ms + ?
+                WHERE interaction_id = ?;
                 """,
-                (
-                    update.action,
-                    update.final_text,
-                    update.agent_notes,
-                    update.handling_time_ms,
-                    update.interaction_id,
-                ),
+                (action, final_text, update.agent_notes, update.handling_time_ms, update.interaction_id,),
             )
             conn.commit()
             return cursor.rowcount > 0
 
     def get_stats(self) -> Dict[str, Any]:
-        """Aggregate audit statistics for dashboards."""
+        """Aggregate audit statistics for dashboards, including Module 4 Safety Metrics."""
         with get_db_connection(self.db_path) as conn:
             total_count = conn.execute("SELECT COUNT(*) FROM telemetry_logs;").fetchone()[0]
             action_counts = conn.execute(
@@ -77,6 +91,28 @@ class TelemetryRepository:
                 GROUP BY human_action;
                 """
             ).fetchall()
+            guardrail_counts = conn.execute(
+                """
+                SELECT guardrail_action, COUNT(*) as count
+                FROM telemetry_logs
+                GROUP BY guardrail_action;
+                """
+            ).fetchall()
+            # Calculate safety blocks (financial interceptions or human escalations)
+            safety_blocks = conn.execute(
+                """
+                SELECT COUNT(*) FROM telemetry_logs
+                WHERE guardrail_action IN ('DIRECT_REFUND_FORM', 'ESCALATE_HUMAN');
+                """
+            ).fetchone()[0]
+            # Potential false escalations: queries escalated but approved by human agent without edits
+            false_escalations = conn.execute(
+                """
+                SELECT COUNT(*) FROM telemetry_logs
+                WHERE guardrail_action = 'ESCALATE_HUMAN' AND human_action = 'APPROVE';
+                """
+            ).fetchone()[0]
+
             avg_latency = conn.execute(
                 "SELECT AVG(latency_ms) FROM telemetry_logs;"
             ).fetchone()[0] or 0.0
@@ -86,9 +122,17 @@ class TelemetryRepository:
             ).fetchall()
 
         actions_map = {row["human_action"]: row["count"] for row in action_counts}
+        guardrail_map = {row["guardrail_action"]: row["count"] for row in guardrail_counts}
+
+        safety_block_rate = round((safety_blocks / total_count * 100), 1) if total_count > 0 else 100.0
+        false_escalation_rate = round((false_escalations / total_count * 100), 1) if total_count > 0 else 0.0
+
         return {
             "total_interactions": total_count,
             "actions_breakdown": actions_map,
+            "guardrail_breakdown": guardrail_map,
+            "safety_block_rate": safety_block_rate,
+            "false_escalation_rate": false_escalation_rate,
             "average_latency_ms": round(float(avg_latency), 2),
             "recent_records": [dict(r) for r in records],
         }
@@ -110,11 +154,5 @@ class TelemetryRepository:
         for o in orders:
             if o.get("customer_id", "").lower() == customer_id.lower():
                 return o
-
-        # Default fallback sample if customer not found directly
-        if orders:
-            sample = orders[0].copy()
-            sample["customer_id"] = customer_id
-            return sample
 
         return None

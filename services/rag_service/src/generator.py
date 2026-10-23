@@ -17,46 +17,68 @@ class LLMGenerator:
 
     def __init__(self, timeout_seconds: int = 8):
         self.timeout_seconds = timeout_seconds
-
     async def generate_draft(
         self, query: str, citations: List[RetrievedDocument]
-    ) -> RAGGenerateResponse:
-        """Generate response with [doc_id] citations wrapped in timeout."""
+        ) -> RAGGenerateResponse:
+        """Generate a draft and explicitly report whether fallback was used."""
         start_time = time.perf_counter()
 
-        # Run with asyncio timeout protection
+        if not citations or any(
+            not doc.is_active or not doc.content.strip()
+            for doc in citations
+        ):
+            raise ValueError(
+                "Không thể tạo bản nháp khi tài liệu rỗng, "
+                "thiếu nội dung hoặc đã hết hiệu lực."
+            )
+
         try:
             return await asyncio.wait_for(
                 self._perform_generation(query, citations, start_time),
                 timeout=float(self.timeout_seconds),
             )
         except asyncio.TimeoutError:
-            # Fallback to local grounded template if Gemini times out
-            return self._build_template_draft(query, citations, start_time)
-
+            return self._build_template_draft(
+                query,
+                citations,
+                start_time,
+                fallback_reason="gemini_timeout",
+            )
+    
     async def _perform_generation(
-        self, query: str, citations: List[RetrievedDocument], start_time: float
+        self,
+        query: str,
+        citations: List[RetrievedDocument],
+        start_time: float,
     ) -> RAGGenerateResponse:
-        """Call Gemini 2.5 Flash API with grounded policy context."""
-        if not citations:
-            raise ValueError("Không thể tạo bản nháp khi không có tài liệu làm căn cứ.")
-
-        # Try Gemini API if key is available
+        """Generate with Gemini, falling back transparently on failure."""
         if GEMINI_API_KEY:
             try:
                 draft_text = await self._call_gemini(query, citations)
+
                 if draft_text:
-                    latency_ms = int((time.perf_counter() - start_time) * 1000)
-                    return RAGGenerateResponse(
+                        return RAGGenerateResponse(
                         draft_text=draft_text,
                         citations=citations,
-                        latency_ms=latency_ms,
+                        latency_ms=int(
+                        (time.perf_counter() - start_time) * 1000
+                        ),
+                        generation_mode="gemini",
+                        fallback_reason=None,
                     )
-            except Exception as e:
-                print(f"[LLMGenerator] Gemini call failed, falling back to local template: {e}")
 
-        # Fallback to deterministic template generator
-        return self._build_template_draft(query, citations, start_time)
+                reason = "gemini_empty_response"
+            except Exception as exc:
+                print(f"[LLMGenerator] Gemini failed: {exc}")
+                reason = "gemini_api_error"
+        else:
+            reason = "api_key_not_configured"
+        return self._build_template_draft(
+            query,
+            citations,
+            start_time,
+            fallback_reason=reason,
+        )
 
     async def _call_gemini(self, query: str, citations: List[RetrievedDocument]) -> str:
         """Send grounded prompt to Gemini 2.5 Flash."""
@@ -109,21 +131,43 @@ YÊU CẦU BẮT BUỘC:
         return ""
 
     def _build_template_draft(
-        self, query: str, citations: List[RetrievedDocument], start_time: float
+        self,
+        query: str,
+        citations: List[RetrievedDocument],
+        start_time: float,
+        fallback_reason: str = "fallback",
     ) -> RAGGenerateResponse:
-        """Deterministic grounded template fallback."""
-        citation_tags = " ".join(f"[{doc.doc_id}]" for doc in citations)
-        policy_summaries = " ".join(f"{doc.content}" for doc in citations)
+        """Build a clearly labelled fallback draft from active policy documents."""
+        if not citations or any(
+            not doc.is_active or not doc.content.strip()
+            for doc in citations
+        ):
+            raise ValueError(
+                "Fallback bị từ chối vì tài liệu không hợp lệ."
+            )
+
+        citation_tags = " ".join(
+            f"[{doc.doc_id}]" for doc in citations
+        )
+        policy_summaries = "\n\n".join(
+            doc.content for doc in citations
+        )
 
         draft_text = (
-            f"Chào bạn, về yêu cầu: '{query}'. "
-            f"{policy_summaries} "
-            f"Nhân viên CSKH sẽ kiểm tra thêm nếu cần hỗ trợ đặc biệt. {citation_tags}"
+            "[BẢN NHÁP DỰ PHÒNG — NHÂN VIÊN PHẢI KIỂM TRA]\n"
+            f"Chào bạn, về yêu cầu: '{query}'.\n\n"
+            f"Thông tin từ tài liệu chính sách:\n{policy_summaries}\n\n"
+            "Vui lòng kiểm tra nội dung và xác nhận thông tin phù hợp "
+            "trước khi phản hồi khách hàng.\n"
+            f"Nguồn tham khảo: {citation_tags}"
         )
-        latency_ms = int((time.perf_counter() - start_time) * 1000)
+
         return RAGGenerateResponse(
             draft_text=draft_text,
             citations=citations,
-            latency_ms=latency_ms,
+            latency_ms=int(
+                (time.perf_counter() - start_time) * 1000
+            ),
+            generation_mode="template_fallback",
+            fallback_reason=fallback_reason,
         )
-
