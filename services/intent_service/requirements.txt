@@ -1,7 +1,12 @@
 fastapi>=0.115.0
 uvicorn>=0.30.0
-pydantic>=2.0.0
-scikit-learn>=1.5.0
+pydantic>=2.0,<3
+# Pin this to the exact version recorded by local training before deployment.
+scikit-learn==1.6.1
 joblib>=1.4.0
 numpy>=1.26.0
-pandas>=2.2.0
+# ONNX backends (remove these only when deploying sklearn alone).
+onnxruntime>=1.20.0
+transformers>=4.46,<5
+sentencepiece>=0.2
+pyvi>=0.1.1

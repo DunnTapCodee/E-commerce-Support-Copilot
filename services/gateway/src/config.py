@@ -5,7 +5,10 @@ INTENT_SERVICE_URL = os.getenv("INTENT_SERVICE_URL", "http://127.0.0.1:8005")
 RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://127.0.0.1:8002")
 TELEMETRY_SERVICE_URL = os.getenv("TELEMETRY_SERVICE_URL", "http://127.0.0.1:8003")
 
-INTENT_CONFIDENCE_THRESHOLD = 0.60
+# Legacy fallback only; deployment.env is generated from validation-selected thresholds.
+INTENT_CONFIDENCE_THRESHOLD = float(os.getenv("INTENT_CONFIDENCE_THRESHOLD", "0.60"))
+if not 0 <= INTENT_CONFIDENCE_THRESHOLD <= 1:
+    raise ValueError("INTENT_CONFIDENCE_THRESHOLD must be in [0, 1]")
 
 FINANCIAL_INTENTS = {"request_refund", "payment_issue"}
 

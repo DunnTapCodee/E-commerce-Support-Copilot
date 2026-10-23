@@ -21,7 +21,7 @@ from services.rag_service.src.retriever import PolicyRetriever
 class TestRobustness(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        model_path = ROOT_DIR / "artifacts" / "models" / "intent_model.pkl"
+        model_path = ROOT_DIR / "artifacts" / "models" / "intent"
         cls.predictor = IntentPredictor(model_path)
 
         index_path = ROOT_DIR / "artifacts" / "vector_store" / "policy_index.pkl"

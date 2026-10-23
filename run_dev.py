@@ -31,6 +31,15 @@ if env_file.exists():
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip()
 
+# Deployment-generated calibrated threshold takes precedence over demo defaults.
+deployment_env = ROOT_DIR / "artifacts/models/intent/deployment.env"
+if deployment_env.exists():
+    for line in deployment_env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            env[key.strip()] = value.strip()
+
 COMMANDS = [
     {
         "name": "intent_service (8005)",

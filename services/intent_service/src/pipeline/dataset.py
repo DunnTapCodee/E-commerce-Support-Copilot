@@ -1,7 +1,5 @@
-"""Dataset generation and preprocessing for 46 Bitext intents and target mapping."""
+"""Canonical intent vocabulary and legacy smoke examples (never used by main training)."""
 from typing import Dict, List, Tuple
-import pandas as pd
-from sklearn.model_selection import train_test_split
 
 TARGET_INTENTS: List[str] = [
     "track_order",
@@ -18,21 +16,12 @@ TARGET_INTENTS: List[str] = [
     "human_agent",
 ]
 
-# Standard Bitext 46 intents
-ALL_BITEXT_INTENTS: List[str] = [
-    "track_order", "cancel_order", "delivery_time", "delivery_issue", "shipping_costs",
-    "return_policy", "return_product", "refund_policy", "request_refund", "refund_status",
-    "payment_issue", "human_agent", "change_shipping_address", "check_invoice", "check_payment_methods",
-    "contact_customer_service", "create_account", "delete_account", "edit_account", "feedback",
-    "get_discounts", "get_invoice", "newsletter_subscription", "place_order", "recover_password",
-    "registration_problems", "review", "set_up_shipping_address", "switch_account", "track_refund",
-    "view_account_details", "view_order_history", "view_product_reviews", "view_recommendations",
-    "view_wishlist", "warranty", "change_order", "payment_failed", "damaged_product",
-    "wrong_item_received", "missing_item", "coupon_code_error", "credit_card_issue",
-    "gift_card", "order_delay", "exchange_product"
-]
+OOS_LABEL = "out_of_scope"
 
-# Comprehensive synthetic benchmark corpus representing Bitext e-commerce utterances (Vietnamese & English)
+# Canonical Bitext labels. Seed examples below are smoke data only.
+ALL_BITEXT_INTENTS: List[str] = ['add_product', 'availability', 'availability_in_store', 'availability_online', 'cancel_order', 'change_account', 'change_order', 'close_account', 'customer_service', 'damaged_delivery', 'delivery_issue', 'delivery_time', 'exchange_product', 'exchange_product_in_store', 'human_agent', 'missing_item', 'open_account', 'order_history', 'pay', 'payment_issue', 'payment_methods', 'product_information', 'product_issue', 'recover_password', 'refund_policy', 'refund_status', 'remove_product', 'request_invoice', 'request_refund', 'request_right_to_rectification', 'return_policy', 'return_product', 'return_product_in_store', 'return_product_online', 'sales_period', 'shipping_costs', 'store_location', 'store_opening_hours', 'submit_feedback', 'submit_product_feedback', 'submit_product_idea', 'technical_issue', 'track_delivery', 'track_order', 'use_app', 'wrong_item']
+
+# Legacy smoke examples only; train/validation/test are built by pipeline.data.
 SEED_EXAMPLES: List[Tuple[str, str]] = [
     # track_order
     ("đơn hàng của tôi đang ở đâu", "track_order"),
@@ -152,11 +141,11 @@ OUT_OF_SCOPE_SAMPLES: List[Tuple[str, str]] = [
 ]
 
 
-def generate_bitext_dataframe() -> pd.DataFrame:
-    """Generate high-quality multi-intent dataset with repetitions for robust statistical training."""
+def generate_bitext_dataframe():
+    """Generate multi-intent dataset with repetitions for statistical training and smoke tests."""
     import json
     from pathlib import Path
-
+    import pandas as pd
     data = []
     # 1. Expand seed data with variations
     for query, intent in SEED_EXAMPLES:
@@ -189,8 +178,9 @@ def generate_bitext_dataframe() -> pd.DataFrame:
     return df
 
 
-def get_train_test_splits(test_size: float = 0.2, random_state: int = 42) -> Tuple[pd.Series, pd.Series, pd.Series, pd.Series]:
-    """Return train and test splits for model training."""
+def get_train_test_splits(test_size: float = 0.2, random_state: int = 42):
+    """Legacy smoke split retained for external callers; not used by Module 1."""
+    from sklearn.model_selection import train_test_split
     df = generate_bitext_dataframe()
     X = df["query"]
     y = df["intent"]

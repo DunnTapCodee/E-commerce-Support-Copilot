@@ -9,7 +9,7 @@ try:
 except Exception:
     pass
 
-model_dir = Path("ML-modeel")
+model_dir = Path("artifacts/models/legacy_linearsvc_en")
 le = joblib.load(model_dir / "label_encoder_full.pkl")
 vec = joblib.load(model_dir / "tfidf_vectorizer_full.pkl")
 model = joblib.load(model_dir / "model_intent_full.pkl")
