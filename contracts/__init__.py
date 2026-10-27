@@ -6,11 +6,14 @@ from contracts.schemas import (
     HumanActionUpdate,
     IntentPredictionRequest,
     IntentPredictionResponse,
+    OrderCancelRequest,
+    OrderCancelResponse,
     QueryRequest,
     RAGGenerateRequest,
     RAGGenerateResponse,
     RAGRetrieveRequest,
     RetrievedDocument,
+    ToolCallRecord,
 )
 
 __all__ = [
@@ -25,4 +28,7 @@ __all__ = [
     "AuditLogCreate",
     "HumanActionUpdate",
     "GatewayResponse",
+    "OrderCancelRequest",
+    "OrderCancelResponse",
+    "ToolCallRecord",
 ]

@@ -112,3 +112,29 @@ class GatewayResponse(BaseModel):
     citations: List[RetrievedDocument] = Field(default_factory=list, description="Policy citations")
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
+    tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tools invoked during processing")
+
+
+# -------------------------------------------------------------------
+# 7. Order & Tool Calling Contracts (Module 3)
+# -------------------------------------------------------------------
+class OrderCancelRequest(BaseModel):
+    """Request payload to cancel an order."""
+    reason: str = Field(default="Khách hàng yêu cầu hủy đơn", description="Reason for cancellation")
+
+
+class OrderCancelResponse(BaseModel):
+    """Response payload for order cancellation."""
+    success: bool = Field(..., description="Whether cancellation succeeded")
+    order_id: str = Field(..., description="Target order ID")
+    message: str = Field(..., description="Status message explaining cancellation result")
+    updated_status: Optional[str] = Field(default=None, description="New order status")
+
+
+class ToolCallRecord(BaseModel):
+    """Audit record for a tool called by the Agent/LLM."""
+    tool_name: str = Field(..., description="Name of the executed tool")
+    arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments passed to tool")
+    result: Any = Field(default=None, description="Output returned by tool")
+    latency_ms: float = Field(default=0.0, description="Execution latency in milliseconds")
+

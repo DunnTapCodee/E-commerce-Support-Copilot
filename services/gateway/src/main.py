@@ -1,10 +1,10 @@
-"""API Gateway & Central State Machine Orchestrator on Port 8000."""
+"""API Gateway & Central State Machine Orchestrator with Module 3 Tool Calling on Port 8000."""
 import os
 import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -20,7 +20,9 @@ from contracts.schemas import (
     IntentPredictionResponse,
     QueryRequest,
     RetrievedDocument,
+    ToolCallRecord,
 )
+from services.gateway.src.agent import OrderReActAgent
 from services.gateway.src.clients import MicroserviceClients
 from services.gateway.src.config import (
     FALLBACK_FINANCIAL_MESSAGE,
@@ -33,11 +35,12 @@ from services.gateway.src.guardrails import (
     evaluate_intent_guard,
     evaluate_policy_guard,
 )
+from services.gateway.src.tools import ToolExecutor
 
 app = FastAPI(
     title="API Gateway Orchestrator",
-    description="Central Gateway coordinating distributed ML, RAG, Safety and Telemetry services",
-    version="1.0.0",
+    description="Central Gateway coordinating distributed ML, RAG, Safety, Telemetry, and Dynamic Tool Calling",
+    version="1.2.0",
 )
 
 app.add_middleware(
@@ -46,9 +49,11 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-)
+    )
 
 clients = MicroserviceClients()
+tool_executor = ToolExecutor(clients)
+order_agent = OrderReActAgent(tool_executor)
 
 
 @app.get("/health")
@@ -58,24 +63,14 @@ def health_check():
 
 
 @app.post("/api/v1/copilot/query", response_model=GatewayResponse)
-async def process_copilot_query(
-    request: QueryRequest, background_tasks: BackgroundTasks
-):
-    """Central Orchestrator endpoint executing state machine:
-    1. Call intent_service:8001/predict.
-    2. Guardrail 1: Confidence (< 0.60) / scope check -> ESCALATE_HUMAN.
-    3. Guardrail 2: Refund / payment check -> DIRECT_REFUND_FORM + fetch mock order.
-    4. Call rag_service:8002/retrieve.
-    5. Guardrail 3: Policy validity / active version check -> ESCALATE_HUMAN if expired.
-    6. Call rag_service:8002/generate.
-    7. Async telemetry audit log via telemetry_service:8003.
-    """
+async def handle_query(request: QueryRequest, background_tasks: BackgroundTasks):
+    """Central state machine handling Intent -> Tool Calling -> Guardrails -> RAG -> Generation -> Audit."""
     start_time = time.perf_counter()
     interaction_id = str(uuid.uuid4())
     customer_query = request.query.strip()
-    customer_id = request.customer_id or "demo-customer"
+    customer_id = request.customer_id.strip() if request.customer_id else None
 
-    # Step 1: Predict Intent
+    # Step 1: Distributed Intent Classification
     try:
         intent_resp: IntentPredictionResponse = await clients.predict_intent(customer_query)
     except Exception as exc:
@@ -89,18 +84,23 @@ async def process_copilot_query(
     draft_text: str = ""
     order_data: Optional[Dict[str, Any]] = None
 
-    # Extract specific order_id if customer mentioned one in query
-    lookup_key = customer_id
-    for token in customer_query.split():
-        clean_tok = token.strip(",.?!:;\"'()[]{}")
-        if clean_tok.upper().startswith("ORD-"):
-            lookup_key = clean_tok
-            break
+    # Step 2: Dynamic Entity Extraction & Tool Calling (Module 3)
+    tool_records: List[ToolCallRecord] = []
+    tool_context: str = ""
+    try:
+        tool_records, resolved_order, tool_context = await order_agent.run(
+            customer_query, customer_id
+        )
+        if resolved_order:
+            order_data = resolved_order
+    except Exception as tool_err:
+        print(f"[Gateway] Warning: Tool agent encountered error: {tool_err}")
 
-    if lookup_key:
-        order_data = await clients.lookup_order(lookup_key)
+    # Fallback to direct customer_id lookup if no tool found an order
+    if not order_data and customer_id:
+        order_data = await clients.lookup_order(customer_id)
 
-    # Step 2: Intent Guardrail Check
+    # Step 3: Intent Guardrail Check
     intent_guard = evaluate_intent_guard(intent_resp)
     if not intent_guard.allow_llm:
         guardrail_decision = intent_guard
@@ -109,36 +109,44 @@ async def process_copilot_query(
         else:
             draft_text = FALLBACK_UNCERTAIN_MESSAGE
 
+        # If a tool ran successfully (e.g. status check or cancel), append it to help CS agent!
+        if tool_context:
+            draft_text += f"\n\n[Thông tin thực tế tra cứu tự động]:\n{tool_context}"
+
     else:
-        # Step 3: Financial Guardrail Check
+        # Step 4: Financial Guardrail Check
         financial_guard = evaluate_financial_guard(intent_resp.intent)
         if financial_guard and not financial_guard.allow_llm:
             guardrail_decision = financial_guard
             draft_text = FALLBACK_FINANCIAL_MESSAGE
-            if order_data:
+            if tool_context:
+                draft_text += f"\n\n[Kết quả thao tác từ hệ thống]:\n{tool_context}"
+            elif order_data:
                 order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
                 draft_text += f"\n\n[Dữ liệu đơn đối soát]: {order_summary}"
 
         else:
-            # Step 4: Knowledge Retrieval
+            # Step 5: Knowledge Retrieval
             try:
                 citations = await clients.retrieve_policies(
                     query=customer_query, intent=intent_resp.intent, top_k=3
                 )
-            except Exception as exc:
+            except Exception:
                 citations = []
 
-            # Step 5: Policy Guardrail Check
+            # Step 6: Policy Guardrail Check
             policy_guard = evaluate_policy_guard(citations)
             if not policy_guard.allow_llm:
                 guardrail_decision = policy_guard
                 draft_text = FALLBACK_NO_ACTIVE_POLICY_MESSAGE
             else:
-                # Step 6: LLM Generation
+                # Step 7: LLM Generation
                 guardrail_decision = policy_guard
                 try:
                     generation_prompt = customer_query
-                    if order_data:
+                    if tool_context:
+                        generation_prompt += f"\n[Kết quả tra cứu/thực thi thời gian thực từ cơ sở dữ liệu Tiki]:\n{tool_context}"
+                    elif order_data:
                         order_details = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
                         generation_prompt += f"\n[Thông tin thực tế của đơn hàng từ hệ thống: {order_details}]"
 
@@ -154,7 +162,7 @@ async def process_copilot_query(
 
     total_latency_ms = int((time.perf_counter() - start_time) * 1000)
 
-    # Step 7: Asynchronous Telemetry Audit Log
+    # Step 8: Asynchronous Telemetry Audit Log
     log_record = AuditLogCreate(
         interaction_id=interaction_id,
         customer_query=customer_query,
@@ -174,22 +182,36 @@ async def process_copilot_query(
         citations=citations,
         draft_text=draft_text,
         order_data=order_data,
+        tool_calls=[r.model_dump() for r in tool_records],
     )
 
 
 @app.post("/api/v1/copilot/action")
-async def record_human_action(action_payload: HumanActionUpdate):
-    """Forward CS Support agent action review to telemetry service."""
-    return await clients.record_human_action(action_payload)
+async def record_human_action(payload: HumanActionUpdate):
+    """Save human review decision to telemetry service."""
+    try:
+        return await clients.record_human_action(payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record human action: {str(exc)}",
+        )
 
 
 @app.get("/api/v1/copilot/stats")
 async def get_dashboard_stats():
-    """Proxy audit statistics from telemetry service for the UI dashboard."""
-    return await clients.get_audit_stats()
+    """Retrieve aggregate telemetry and operational stats."""
+    try:
+        return await clients.get_audit_stats()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Telemetry service unavailable: {str(exc)}",
+        )
 
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))
-    uvicorn.run("services.gateway.src.main:app", host="0.0.0.0", port=port, reload=False)
+@app.post("/api/v1/copilot/tools/execute")
+async def execute_tool_direct(tool_name: str, arguments: Dict[str, Any]):
+    """Direct execution endpoint for tools."""
+    record = await tool_executor.execute(tool_name, arguments)
+    return record.model_dump()

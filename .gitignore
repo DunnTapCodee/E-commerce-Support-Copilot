@@ -6,3 +6,7 @@ CHỦ ĐỀ 1.docx
 Lec-*.pdf
 venv/
 .venv/
+
+~$*.docx
+scratch/
+package-lock.json

@@ -21,7 +21,7 @@ st.set_page_config(
 )
 
 st.title("🛍️ AI Customer Support Copilot Workbench")
-st.caption("Distributed Microservices Architecture · Single Gateway Point (Port 8000)")
+st.caption("Distributed Microservices Architecture · Module 3 Dynamic Orders & Tool Calling Active")
 
 # Initialize session state
 if "session_id" not in st.session_state:
@@ -44,7 +44,7 @@ with tab1:
         with st.form("cskh_inquiry_form"):
             user_query = st.text_area(
                 "Nội dung tin nhắn khách hàng",
-                placeholder="Ví dụ: Tôi muốn hỏi về thời gian giao hàng hoặc chính sách đổi trả...",
+                placeholder="Ví dụ: Kiểm tra trạng thái đơn ORD-1001, hoặc Hủy đơn ORD-1026 giúp tôi...",
                 height=140,
             )
             customer_account = st.text_input("Mã định danh khách hàng (Customer ID)", value="demo-customer")
@@ -61,7 +61,7 @@ with tab1:
                     "customer_id": customer_account.strip() or None,
                 }
                 try:
-                    with st.spinner("Gateway đang điều phối phân tích..."):
+                    with st.spinner("Gateway đang điều phối phân tích & gọi tool..."):
                         res = requests.post(
                             f"{GATEWAY_URL}/api/v1/copilot/query",
                             json=payload,
@@ -95,6 +95,19 @@ with tab1:
             st.write(f"**Lý do quyết định:** {guard_info.get('reason', '')}")
             st.write(f"**Cho phép gọi LLM:** {'✅ Có' if guard_info.get('allow_llm') else '🚫 Không'}")
 
+            # Module 3: Tool Calling Invocations
+            tool_calls = resp.get("tool_calls", [])
+            if tool_calls:
+                st.subheader("🛠️ Thao tác Tool Calling thời gian thực (Module 3)")
+                for tc in tool_calls:
+                    t_name = tc.get("tool_name")
+                    t_args = tc.get("arguments", {})
+                    t_lat = tc.get("latency_ms", 0.0)
+                    t_res = tc.get("result", {})
+                    with st.expander(f"⚙️ Tool: `{t_name}` (Độ trễ: {t_lat} ms)", expanded=True):
+                        st.write(f"**Tham số truyền vào:** `{t_args}`")
+                        st.json(t_res)
+
             # Top candidate intents
             probs = intent_info.get("all_probabilities", {})
             if probs:
@@ -125,8 +138,16 @@ with tab1:
             order_data = resp.get("order_data")
 
             if order_data:
-                st.warning("⚠️ Đơn hàng cần đối soát thông tin tài chính trước khi phản hồi:")
-                st.json(order_data)
+                if "orders" in order_data and isinstance(order_data["orders"], list) and len(order_data["orders"]) > 1:
+                    total_cnt = len(order_data["orders"])
+                    c_name = order_data.get("customer_name") or "Khách hàng"
+                    st.warning(f"📦 Tìm thấy {total_cnt} đơn hàng thuộc về {c_name} (SĐT: {order_data.get('phone', 'N/A')}):")
+                    for sub_ord in order_data["orders"]:
+                        with st.expander(f"🛒 Đơn hàng: `{sub_ord.get('order_id')}` - Trạng thái: {sub_ord.get('order_status')} ({sub_ord.get('total_amount', 0):,}đ)", expanded=True):
+                            st.json(sub_ord)
+                else:
+                    st.warning("📦 Dữ liệu đơn hàng thời gian thực (SQLite Indexed + LRU Cache):")
+                    st.json(order_data)
 
             edited_text = st.text_area(
                 "Xem lại và chỉnh sửa nội dung trước khi gửi cho khách hàng:",
@@ -190,6 +211,7 @@ with tab2:
             avg_lat = stats.get("average_latency_ms", 0.0)
             actions_breakdown = stats.get("actions_breakdown", {})
             recent_logs = stats.get("recent_records", [])
+            cache_info = stats.get("cache_stats", {})
 
             m1, m2, m3, m4 = st.columns(4)
             m1.metric("Tổng tương tác", total_logs)
@@ -199,6 +221,16 @@ with tab2:
                 (actions_breakdown.get("APPROVE", 0) / max(1, sum(actions_breakdown.values()))) * 100
             )
             m4.metric("Tỷ lệ chấp thuận", f"{approval_rate:.1f}%")
+
+            # Module 3 Cache Metrics
+            if cache_info:
+                st.markdown("---")
+                st.subheader("⚡ Hiệu năng Bộ nhớ đệm (Order LRU Cache - Module 3)")
+                k1, k2, k3, k4 = st.columns(4)
+                k1.metric("Cache Hit Ratio", f"{cache_info.get('hit_ratio_percent', 0.0):.1f}%")
+                k2.metric("Cache Hits", cache_info.get("hits", 0))
+                k3.metric("Cache Misses", cache_info.get("misses", 0))
+                k4.metric("Quy mô Cache hiện tại", f"{cache_info.get('size', 0)} / {cache_info.get('max_size', 256)}")
 
             st.markdown("---")
             c_chart, c_table = st.columns([1, 2])
