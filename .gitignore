@@ -23,3 +23,11 @@ artifacts/models/legacy_linearsvc_en/*.pkl
 
 kaggle/datasets/ecom-intent-data/*
 !kaggle/datasets/ecom-intent-data/dataset-metadata.json
+
+# Runtime telemetry database
+/copilot_telemetry.sqlite3
+/copilot_telemetry.sqlite3-shm
+/copilot_telemetry.sqlite3-wal
+
+# Generated RAG vector index
+/artifacts/vector_store/policy_index.pkl

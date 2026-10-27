@@ -4,13 +4,15 @@ from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
+import uuid
+
 # -------------------------------------------------------------------
 # 1. Gateway & Client Inquiries
 # -------------------------------------------------------------------
 class QueryRequest(BaseModel):
     """Client request sent to the API Gateway."""
     query: str = Field(..., description="Customer message or inquiry text")
-    session_id: str = Field(..., description="Unique conversation session ID")
+    session_id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique conversation session ID")
     customer_id: Optional[str] = Field(default=None, description="Optional customer account ID")
 
 
@@ -40,14 +42,27 @@ class IntentPredictionResponse(BaseModel):
 # 3. Knowledge Base & RAG Contracts
 # -------------------------------------------------------------------
 class RetrievedDocument(BaseModel):
-    """Policy or knowledge base document item."""
+    """Policy or knowledge base document item.
+
+    policy_type distinguishes two categories:
+      - "permanent"  : Standard operational policies with no fixed end date.
+                       expiration_date is null; only is_active=False blocks it.
+      - "temporary"  : Time-bound campaigns or promotions.  Both effective_date
+                       and expiration_date MUST be set and are checked strictly.
+      - "superseded" : Old version of a permanent policy, replaced by a newer
+                       version.  Always treated as inactive regardless of dates.
+    """
     doc_id: str = Field(..., description="Unique document / policy ID")
     title: str = Field(..., description="Document title")
     content: str = Field(..., description="Policy body / chunk content")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status of this document")
+    policy_type: str = Field(
+        default="permanent",
+        description="Policy type: 'permanent' | 'temporary' | 'superseded'",
+    )
     effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
-    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD). Null for permanent policies.")
     tags: List[str] = Field(default_factory=list, description="Associated policy tags")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 

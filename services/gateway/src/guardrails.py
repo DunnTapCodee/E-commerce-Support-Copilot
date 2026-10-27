@@ -57,6 +57,16 @@ def evaluate_intent_guard(
             "Confidence không hợp lệ; cần nhân viên kiểm tra."
         )
 
+    if not intent_resp.intent or not intent_resp.intent.strip():
+        return _escalate(
+            "Không xác định được ý định của khách hàng."
+        )
+
+    if intent_resp.intent == "human_agent":
+        return _escalate(
+            "Khách hàng yêu cầu hỗ trợ trực tiếp từ nhân viên."
+        )
+
     if not intent_resp.is_in_scope:
         return _escalate(
             "Yêu cầu nằm ngoài phạm vi hỗ trợ; cần nhân viên xử lý."
@@ -66,16 +76,6 @@ def evaluate_intent_guard(
         return _escalate(
             f"Độ tin cậy thấp ({confidence:.0%}); "
             "cần nhân viên xác nhận ý định."
-        )
-
-    if not intent_resp.intent or not intent_resp.intent.strip():
-        return _escalate(
-            "Không xác định được ý định của khách hàng."
-        )
-
-    if intent_resp.intent == "human_agent":
-        return _escalate(
-            "Khách hàng yêu cầu hỗ trợ trực tiếp từ nhân viên."
         )
 
     return GuardrailResult(
@@ -123,53 +123,111 @@ def check_temporal_validity(
     doc: RetrievedDocument,
     reference_date: Optional[date] = None,
 ) -> Tuple[bool, str, str]:
-    """Evaluate temporal boundaries of a policy document.
+    """Evaluate temporal validity of a policy document based on its policy_type.
+
+    Logic per policy_type:
+    ────────────────────────────────────────────────────────────────────
+    permanent  : Standard operational policy; no fixed end date.
+                 BLOCK only if is_active=False. expiration_date is ignored.
+    temporary  : Time-bound campaign / promotion.
+                 BLOCK if is_active=False OR date outside [effective_date, expiration_date].
+                 Both date fields MUST be present; missing either is treated as EXPIRED.
+    superseded : Replaced version of a former permanent policy.
+                 Always BLOCKED regardless of is_active or dates.
+    ────────────────────────────────────────────────────────────────────
+
     Returns:
         (is_valid, status, detail_message)
-        where status is 'ACTIVE', 'EXPIRED', or 'NOT_YET_EFFECTIVE'.
+        where status in {'ACTIVE', 'EXPIRED', 'NOT_YET_EFFECTIVE', 'SUPERSEDED'}
     """
     ref_date = reference_date or date.today()
+    policy_type = getattr(doc, "policy_type", "permanent") or "permanent"
 
-    # Priority 1: Check explicit static boolean flag
+    # --- superseded: always blocked ---
+    if policy_type == "superseded":
+        return (
+            False,
+            "SUPERSEDED",
+            f"Chính sách [{doc.doc_id}] đã bị thay thế bởi phiên bản mới hơn "
+            f"và không còn hiệu lực pháp lý (policy_type=superseded).",
+        )
+
+    # --- Primary kill-switch: is_active=False blocks all types ---
     if not doc.is_active:
-        return False, "EXPIRED", f"Chính sách [{doc.doc_id}] đã bị vô hiệu hóa (is_active=False)."
-
-    # Priority 2: Check expiration_date
-    exp_date = _parse_iso_date(doc.expiration_date)
-    if exp_date and ref_date > exp_date:
         return (
             False,
             "EXPIRED",
-            f"Chính sách [{doc.doc_id}] đã hết hạn vào ngày {exp_date.strftime('%d/%m/%Y')} (hiện tại: {ref_date.strftime('%d/%m/%Y')}).",
+            f"Chính sách [{doc.doc_id}] đã bị vô hiệu hóa (is_active=False).",
         )
 
-    # Priority 3: Check effective_date
-    eff_date = _parse_iso_date(doc.effective_date)
-    if eff_date and ref_date < eff_date:
+    # --- permanent: skip date checks entirely ---
+    if policy_type == "permanent":
+        return True, "ACTIVE", "Chính sách cố định đang có hiệu lực."
+
+    # --- temporary: strict date-range enforcement ---
+    if policy_type == "temporary":
+        exp_date = _parse_iso_date(doc.expiration_date)
+        eff_date = _parse_iso_date(doc.effective_date)
+
+        if not eff_date or not exp_date:
+            return (
+                False,
+                "EXPIRED",
+                f"Chính sách tạm thời [{doc.doc_id}] thiếu ngày hiệu lực hoặc ngày hết hạn "
+                f"(effective_date={doc.effective_date}, expiration_date={doc.expiration_date}). "
+                f"Tài liệu không đủ điều kiện sử dụng.",
+            )
+
+        if ref_date < eff_date:
+            return (
+                False,
+                "NOT_YET_EFFECTIVE",
+                f"Chính sách tạm thời [{doc.doc_id}] chưa đến ngày áp dụng "
+                f"(ngày bắt đầu: {eff_date.strftime('%d/%m/%Y')}, "
+                f"hiện tại: {ref_date.strftime('%d/%m/%Y')}).",
+            )
+
+        if ref_date > exp_date:
+            return (
+                False,
+                "EXPIRED",
+                f"Chính sách tạm thời [{doc.doc_id}] đã hết hạn vào ngày "
+                f"{exp_date.strftime('%d/%m/%Y')} "
+                f"(hiện tại: {ref_date.strftime('%d/%m/%Y')}).",
+            )
+
         return (
-            False,
-            "NOT_YET_EFFECTIVE",
-            f"Chính sách [{doc.doc_id}] chưa có hiệu lực (ngày bắt đầu: {eff_date.strftime('%d/%m/%Y')}).",
+            True,
+            "ACTIVE",
+            f"Chính sách tạm thời [{doc.doc_id}] đang trong thời gian áp dụng "
+            f"({eff_date.strftime('%d/%m/%Y')} → {exp_date.strftime('%d/%m/%Y')}).",
         )
 
-    return True, "ACTIVE", "Chính sách đang trong thời gian hiệu lực."
+    # --- fallback: unknown policy_type → treat as permanent ---
+    return True, "ACTIVE", f"Chính sách [{doc.doc_id}] đang có hiệu lực (loại không xác định)."
 
 
 def evaluate_policy_guard(
     citations: List[RetrievedDocument],
     reference_date: Optional[date] = None,
 ) -> GuardrailResult:
-    """Require usable, active, and temporally valid policy documents before LLM generation."""
+    """Require usable, active, and temporally valid policy documents before LLM generation.
+
+    Applies differentiated validation rules by policy_type:
+    - permanent : blocked only if is_active=False
+    - temporary : blocked if outside [effective_date, expiration_date] or is_active=False
+    - superseded: always blocked
+    """
 
     if not citations:
         return _escalate(
             "Không tìm thấy tài liệu chính sách làm căn cứ trả lời."
         )
 
-    # Validate document completeness and temporal validity
     empty_docs = []
     expired_docs = []
     future_docs = []
+    superseded_docs = []
 
     for doc in citations:
         if not doc.doc_id or not doc.content or not doc.content.strip():
@@ -178,7 +236,9 @@ def evaluate_policy_guard(
 
         is_valid, status, detail = check_temporal_validity(doc, reference_date)
         if not is_valid:
-            if status == "EXPIRED":
+            if status == "SUPERSEDED":
+                superseded_docs.append(f"{doc.doc_id} ({detail})")
+            elif status == "EXPIRED":
                 expired_docs.append(f"{doc.doc_id} ({detail})")
             elif status == "NOT_YET_EFFECTIVE":
                 future_docs.append(f"{doc.doc_id} ({detail})")
@@ -186,6 +246,16 @@ def evaluate_policy_guard(
     if empty_docs:
         return _escalate(
             f"Tài liệu rỗng hoặc thiếu nội dung: {', '.join(empty_docs)}."
+        )
+
+    if superseded_docs:
+        return _escalate(
+            reason=(
+                "Phát hiện tài liệu đã bị thay thế (Superseded Policy Guard): "
+                f"{'; '.join(superseded_docs)}. "
+                "Hệ thống từ chối sử dụng tài liệu lỗi thời làm căn cứ tư vấn."
+            ),
+            temporal_status="SUPERSEDED",
         )
 
     if expired_docs:
@@ -250,10 +320,12 @@ def evaluate_response_faithfulness(
     draft_text: str,
     citations: List[RetrievedDocument],
     threshold: float = FAITHFULNESS_THRESHOLD,
+    customer_query: Optional[str] = None,
+    order_data: Optional[dict] = None,
 ) -> GuardrailResult:
     """NLI Entailment & Hallucination Check:
     Verify whether every claim in the LLM draft is faithfully supported by the retrieved context.
-    - Premise: Concatenated text of all cited documents.
+    - Premise: Concatenated text of all cited documents + customer query + system order data.
     - Hypothesis: Individual claims made by the draft response.
     - Hallucination detection: Flags fabricated facts, made-up timeframes, or contradictory claims.
     """
@@ -264,6 +336,16 @@ def evaluate_response_faithfulness(
             hallucination_detected=True,
         )
 
+    # Template fallback draft is generated directly from system template and active citations
+    if draft_text.startswith("[BẢN NHÁP DỰ PHÒNG"):
+        return GuardrailResult(
+            allow_llm=True,
+            action_type="PROCEED_TO_LLM",
+            faithfulness_score=1.0,
+            hallucination_detected=False,
+            reason="Bản nháp dự phòng được tổng hợp an toàn từ tài liệu chính sách đã kiểm duyệt.",
+        )
+
     if not citations:
         return _escalate(
             "Không có tài liệu trích dẫn tham chiếu để kiểm tra độ trung thực.",
@@ -271,8 +353,13 @@ def evaluate_response_faithfulness(
             hallucination_detected=True,
         )
 
-    # 1. Build Ground Truth Premise from citations
-    premise_text = " ".join(f"{doc.title} {doc.content}" for doc in citations).lower()
+    # 1. Build Ground Truth Premise from citations, customer query, and system order data
+    premise_parts = [f"{doc.title} {doc.content}" for doc in citations]
+    if customer_query:
+        premise_parts.append(customer_query)
+    if order_data:
+        premise_parts.append(" ".join(str(v) for v in order_data.values() if v is not None))
+    premise_text = " ".join(premise_parts).lower()
     premise_numbers = set(_extract_numeric_entities(premise_text))
 
     # 2. Extract atomic claims from LLM draft

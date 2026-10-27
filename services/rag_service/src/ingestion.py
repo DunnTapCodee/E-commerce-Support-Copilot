@@ -8,6 +8,7 @@ from contracts.schemas import RetrievedDocument
 
 def load_policy_documents(policy_file_path: Path) -> List[RetrievedDocument]:
     """Load policy documents from policies.json file."""
+    policy_file_path = Path(policy_file_path)
     if not policy_file_path.exists():
         raise FileNotFoundError(f"Policies file not found at: {policy_file_path}")
 
@@ -23,6 +24,7 @@ def load_policy_documents(policy_file_path: Path) -> List[RetrievedDocument]:
                 content=item["content"],
                 version=str(item.get("version", "1.0")),
                 is_active=bool(item.get("is_active", True)),
+                policy_type=str(item.get("policy_type", "permanent")),
                 effective_date=item.get("effective_date"),
                 expiration_date=item.get("expiration_date"),
                 tags=list(item.get("tags", [])),

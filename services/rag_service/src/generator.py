@@ -7,19 +7,27 @@ import httpx
 
 from contracts.schemas import RAGGenerateResponse, RetrievedDocument
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+def get_gemini_api_key() -> str:
+    key = os.getenv("GEMINI_API_KEY", "").strip()
+    if key and not key.startswith("your_") and len(key) > 10:
+        return key
+    return ""
+
+
+def get_gemini_api_url() -> str:
+    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+    return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
 class LLMGenerator:
-    """Production response generator with Gemini 2.5 Flash, citation requirements, and timeout."""
+    """Production response generator with Gemini models, citation requirements, and resilient timeout."""
 
-    def __init__(self, timeout_seconds: int = 8):
+    def __init__(self, timeout_seconds: int = 15):
         self.timeout_seconds = timeout_seconds
+
     async def generate_draft(
         self, query: str, citations: List[RetrievedDocument]
-        ) -> RAGGenerateResponse:
+    ) -> RAGGenerateResponse:
         """Generate a draft and explicitly report whether fallback was used."""
         start_time = time.perf_counter()
 
@@ -38,13 +46,14 @@ class LLMGenerator:
                 timeout=float(self.timeout_seconds),
             )
         except asyncio.TimeoutError:
+            print("[LLMGenerator] Generation timed out, falling back to template.")
             return self._build_template_draft(
                 query,
                 citations,
                 start_time,
                 fallback_reason="gemini_timeout",
             )
-    
+
     async def _perform_generation(
         self,
         query: str,
@@ -52,27 +61,27 @@ class LLMGenerator:
         start_time: float,
     ) -> RAGGenerateResponse:
         """Generate with Gemini, falling back transparently on failure."""
-        if GEMINI_API_KEY:
+        api_key = get_gemini_api_key()
+        if api_key:
             try:
-                draft_text = await self._call_gemini(query, citations)
-
+                draft_text = await self._call_gemini(query, citations, api_key)
                 if draft_text:
-                        return RAGGenerateResponse(
+                    return RAGGenerateResponse(
                         draft_text=draft_text,
                         citations=citations,
                         latency_ms=int(
-                        (time.perf_counter() - start_time) * 1000
+                            (time.perf_counter() - start_time) * 1000
                         ),
                         generation_mode="gemini",
                         fallback_reason=None,
                     )
-
                 reason = "gemini_empty_response"
             except Exception as exc:
-                print(f"[LLMGenerator] Gemini failed: {exc}")
+                print(f"[LLMGenerator] Gemini call failed: {exc}")
                 reason = "gemini_api_error"
         else:
             reason = "api_key_not_configured"
+
         return self._build_template_draft(
             query,
             citations,
@@ -80,8 +89,10 @@ class LLMGenerator:
             fallback_reason=reason,
         )
 
-    async def _call_gemini(self, query: str, citations: List[RetrievedDocument]) -> str:
-        """Send grounded prompt to Gemini 2.5 Flash."""
+    async def _call_gemini(
+        self, query: str, citations: List[RetrievedDocument], api_key: str
+    ) -> str:
+        """Send grounded prompt to Gemini API."""
         docs_context = "\n\n".join(
             f"--- Tài liệu [{doc.doc_id}] ({doc.title}) ---\n{doc.content}"
             for doc in citations
@@ -115,9 +126,10 @@ YÊU CẦU BẮT BUỘC:
             }
         }
 
-        async with httpx.AsyncClient(timeout=float(self.timeout_seconds - 1)) as client:
+        api_url = get_gemini_api_url()
+        async with httpx.AsyncClient(timeout=float(max(self.timeout_seconds - 2, 5))) as client:
             resp = await client.post(
-                f"{GEMINI_API_URL}?key={GEMINI_API_KEY}",
+                f"{api_url}?key={api_key}",
                 json=payload,
             )
             if resp.status_code == 200:
@@ -127,6 +139,8 @@ YÊU CẦU BẮT BUỘC:
                     parts = candidates[0].get("content", {}).get("parts", [])
                     if parts:
                         return parts[0].get("text", "").strip()
+            else:
+                print(f"[LLMGenerator] Gemini returned status {resp.status_code}: {resp.text[:150]}")
 
         return ""
 

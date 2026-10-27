@@ -18,6 +18,7 @@ class PolicyVectorIndexer:
 
     def fit_and_save(self, documents: List[RetrievedDocument], persist_path: Path) -> None:
         """Fit vectorizer on policy texts and save index to disk."""
+        persist_path = Path(persist_path)
         self.documents = documents
         corpus = [
             f"{doc.title} {' '.join(getattr(doc, 'tags', []))} {doc.content}".strip()
@@ -37,6 +38,7 @@ class PolicyVectorIndexer:
 
     def load(self, persist_path: Path) -> None:
         """Load index artifact from disk."""
+        persist_path = Path(persist_path)
         if not persist_path.exists():
             raise FileNotFoundError(f"Vector index artifact not found at {persist_path}")
         data = joblib.load(persist_path)

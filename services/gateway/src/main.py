@@ -193,7 +193,12 @@ async def process_copilot_query(
                         )
 
                     # Step 6.5: Response Faithfulness & Hallucination Guardrail Check (NLI Entailment)
-                    faithfulness_guard = evaluate_response_faithfulness(draft_text, citations)
+                    faithfulness_guard = evaluate_response_faithfulness(
+                        draft_text,
+                        citations,
+                        customer_query=customer_query,
+                        order_data=order_data,
+                    )
                     if not faithfulness_guard.allow_llm:
                         guardrail_decision = faithfulness_guard
                         generation_mode = "blocked_hallucination"

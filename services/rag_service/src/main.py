@@ -30,7 +30,7 @@ RETRIEVAL_DEVICE = os.getenv("RETRIEVAL_DEVICE", "cpu")
 
 indexer_instance = PolicyVectorIndexer()
 retriever_instance: PolicyRetriever = None
-generator_instance = LLMGenerator(timeout_seconds=8)
+generator_instance = LLMGenerator(timeout_seconds=15)
 
 
 def init_knowledge_base():

@@ -14,6 +14,10 @@ TARGET_INTENTS: List[str] = [
     "refund_status",
     "payment_issue",
     "human_agent",
+    "warranty",
+    "get_discounts",
+    "create_account",
+    "recover_password",
 ]
 
 OOS_LABEL = "out_of_scope"
