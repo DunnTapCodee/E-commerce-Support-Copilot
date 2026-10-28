@@ -51,7 +51,7 @@ services:
       - RETRIEVAL_DEVICE=${RETRIEVAL_DEVICE:-cpu}
       - HF_HOME=/models/huggingface
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
       interval: 10s

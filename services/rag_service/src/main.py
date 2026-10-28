@@ -1,6 +1,7 @@
 """FastAPI Service for Knowledge Retrieval & LLM Generation on Port 8002."""
 import os
 import sys
+import json
 from pathlib import Path
 from typing import List
 from contextlib import asynccontextmanager
@@ -15,11 +16,15 @@ from contracts.schemas import (
     RAGGenerateResponse,
     RAGRetrieveRequest,
     RetrievedDocument,
+    RawPolicyFilterRequest,
+    PolicyFilterResult,
+    PolicyCreateRequest,
 )
 from services.rag_service.src.generator import LLMGenerator
 from services.rag_service.src.indexer import PolicyVectorIndexer
 from services.rag_service.src.ingestion import load_policy_documents
 from services.rag_service.src.retriever import PolicyRetriever
+from services.rag_service.src import policy_filter
 
 POLICIES_PATH = Path(os.getenv("POLICIES_PATH", str(ROOT_DIR / "data" / "knowledge_base" / "policies.json")))
 INDEX_PATH = Path(os.getenv("INDEX_PATH", str(ROOT_DIR / "artifacts" / "vector_store" / "policy_index.pkl")))
@@ -123,6 +128,83 @@ async def generate_draft(request: RAGGenerateRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Generation failed: {str(exc)}",
         )
+
+
+@app.post("/policy/filter", response_model=PolicyFilterResult)
+def filter_policy(request: RawPolicyFilterRequest):
+    """Extract structured policy from raw text using LLM (Gemini) with heuristic fallback."""
+    try:
+        result = policy_filter.auto_extract_policy(request)
+        return result
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Policy extraction failed: {str(exc)}",
+        )
+
+
+@app.post("/policy/create", response_model=dict)
+def create_policy(request: PolicyCreateRequest):
+    """Persist a new policy document, reload KB and re-index vector store."""
+    policies_path = POLICIES_PATH
+    try:
+        with open(policies_path, "r", encoding="utf-8") as f:
+            policies = json.load(f)
+    except Exception:
+        policies = []
+
+    new_policy = request.policy.model_dump()
+    policies.append(new_policy)
+
+    tmp_path = policies_path.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(policies, f, ensure_ascii=False, indent=2)
+    tmp_path.replace(policies_path)
+
+    init_knowledge_base()
+    return {"status": "success", "message": "Policy added and KB refreshed"}
+
+
+@app.get("/policies", response_model=List[RetrievedDocument])
+def list_policies():
+    """Return all policy documents currently in the Knowledge Base."""
+    try:
+        docs = load_policy_documents(POLICIES_PATH)
+        return [d.model_dump() for d in docs]
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to load policies: {str(exc)}",
+        )
+
+
+@app.patch("/policies/{doc_id}", response_model=dict)
+def update_policy(doc_id: str, updates: dict):
+    """Partially update a policy document by doc_id (e.g. flip policy_type to superseded)."""
+    try:
+        with open(POLICIES_PATH, "r", encoding="utf-8") as f:
+            policies = json.load(f)
+    except Exception:
+        raise HTTPException(status_code=404, detail="policies.json not found")
+
+    found = False
+    for p in policies:
+        if p.get("doc_id") == doc_id:
+            p.update(updates)
+            found = True
+            break
+
+    if not found:
+        raise HTTPException(status_code=404, detail=f"Policy '{doc_id}' not found")
+
+    tmp_path = POLICIES_PATH.with_suffix(".tmp")
+    with open(tmp_path, "w", encoding="utf-8") as f:
+        json.dump(policies, f, ensure_ascii=False, indent=2)
+    tmp_path.replace(POLICIES_PATH)
+
+    init_knowledge_base()
+    return {"status": "success", "message": f"Policy '{doc_id}' updated and KB refreshed"}
+
 
 
 if __name__ == "__main__":

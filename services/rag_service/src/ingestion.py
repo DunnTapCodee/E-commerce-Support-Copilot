@@ -20,6 +20,7 @@ def load_policy_documents(policy_file_path: Path) -> List[RetrievedDocument]:
         documents.append(
             RetrievedDocument(
                 doc_id=item["doc_id"],
+                category=item.get("category"),
                 title=item["title"],
                 content=item["content"],
                 version=str(item.get("version", "1.0")),

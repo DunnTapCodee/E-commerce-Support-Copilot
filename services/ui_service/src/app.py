@@ -6,6 +6,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Optional
+import datetime
 
 import pandas as pd
 import requests
@@ -48,8 +49,8 @@ if "review_started_interaction_id" not in st.session_state:
 if "recorded_actions" not in st.session_state:
     st.session_state.recorded_actions = {}
 
-tab1, tab2 = st.tabs(
-    ["💬 Agent Workbench", "📊 Audit & Analytics Dashboard"]
+tab1, tab2, tab3 = st.tabs(
+    ["💬 Agent Workbench", "📊 Audit & Analytics Dashboard", "📜 Quản lý Chính sách"]
 )
 
 # ====================================================================
@@ -531,3 +532,392 @@ with tab2:
         st.warning(
             f"Chưa kết nối được với Telemetry Service qua Gateway: {exc}"
         )
+
+# ====================================================================
+# TAB 3: Quản lý Chính sách (LLM-powered extraction)
+# ====================================================================
+
+def _compute_is_active(ptype: str, eff_raw, exp_raw, check_date: datetime.date):
+    """
+    Tính trạng thái isActive dựa trên loại chính sách và ngày kiểm tra.
+    - permanent : hoạt động kể từ effective_date (nếu có), không có ngày kết thúc.
+    - temporary : hoạt động trong khoảng [effective_date, expiration_date].
+    - superseded: nếu có khoảng [effective_date, expiration_date], hoạt động trong khoảng đó;
+                  sau expiration_date sẽ là không hoạt động (đã bị thay thế).
+    Trả về (is_active: bool, reason: str)
+    """
+    try:
+        eff = datetime.date.fromisoformat(eff_raw) if eff_raw else None
+    except Exception:
+        eff = None
+    try:
+        exp = datetime.date.fromisoformat(exp_raw) if exp_raw else None
+    except Exception:
+        exp = None
+
+    if ptype == "superseded":
+        if eff and exp:
+            if eff <= check_date <= exp:
+                return True, f"superseded — hiệu lực giai đoạn {eff} → {exp}"
+            elif check_date > exp:
+                return False, f"superseded — đã bị thay thế sau ngày {exp}"
+            else:
+                return False, f"superseded — chưa bắt đầu (từ {eff})"
+        elif exp:
+            if check_date <= exp:
+                return True, f"superseded — hiệu lực đến {exp}"
+            return False, f"superseded — đã bị thay thế từ {exp}"
+        return False, "superseded — đã bị thay thế"
+
+    if ptype == "permanent":
+        if eff:
+            active = check_date >= eff
+            return active, f"permanent từ {eff}" if active else f"permanent — chưa có hiệu lực (bắt đầu từ {eff})"
+        return True, "permanent (không có ngày bắt đầu — luôn hoạt động)"
+
+    # temporary
+    if eff and exp:
+        active = eff <= check_date <= exp
+        if active:
+            return True, f"temporary ({eff} → {exp})"
+        elif check_date < eff:
+            return False, f"temporary — chưa bắt đầu (từ {eff})"
+        else:
+            return False, f"temporary — đã kết thúc vào {exp}"
+    if eff:
+        active = check_date >= eff
+        return active, f"temporary từ {eff}" if active else f"temporary — chưa bắt đầu (từ {eff})"
+    return False, "temporary — thiếu ngày hiệu lực"
+
+
+with tab3:
+    st.subheader("📜 Quản lý Chính sách")
+
+    # ----------------------------------------------------------------
+    # SECTION A: kiểm tra isActive toàn bộ Knowledge Base
+    # ----------------------------------------------------------------
+    with st.expander("🔍 Kiểm tra isActive toàn bộ Knowledge Base", expanded=True):
+        st.caption(
+            "Chọn một ngày kiểm tra để xem chính sách nào đang **hoạt động** "
+            "hay **không hoạt động** tại thời điểm đó."
+        )
+
+        check_date = st.date_input(
+            "📅 Ngày kiểm tra",
+            value=datetime.date.today(),
+            key="kb_check_date",
+        )
+
+        if st.button("🔄 Tải & Kiểm tra tất cả chính sách"):
+            try:
+                kb_res = requests.get(
+                    f"{GATEWAY_URL}/api/v1/copilot/policies",
+                    timeout=15,
+                )
+                if kb_res.status_code == 200:
+                    st.session_state["kb_policies"] = kb_res.json()
+                else:
+                    st.error(f"Không thể tải KB ({kb_res.status_code}): {kb_res.text}")
+            except requests.RequestException as exc:
+                st.error(f"Lỗi kết nối: {exc}")
+
+        kb_policies = st.session_state.get("kb_policies", [])
+        if kb_policies:
+            rows = []
+            for p in kb_policies:
+                ptype = p.get("policy_type", "permanent")
+                eff_raw = p.get("effective_date")
+                exp_raw = p.get("expiration_date")
+                is_active, reason = _compute_is_active(ptype, eff_raw, exp_raw, check_date)
+                rows.append({
+                    "ID": p.get("doc_id", ""),
+                    "Tiêu đề": p.get("title", ""),
+                    "Loại": ptype,
+                    "Ngày bắt đầu": eff_raw or "—",
+                    "Ngày kết thúc": exp_raw or "—",
+                    "isActive": "🟢 Hoạt động" if is_active else "🔴 Không hoạt động",
+                    "Lý do": reason,
+                })
+
+            df = pd.DataFrame(rows)
+            active_count = sum(1 for r in rows if "🟢" in r["isActive"])
+            inactive_count = len(rows) - active_count
+
+            c1, c2, c3 = st.columns(3)
+            c1.metric("Tổng số chính sách", len(rows))
+            c2.metric("🟢 Đang hoạt động", active_count)
+            c3.metric("🔴 Không hoạt động", inactive_count)
+
+            st.dataframe(df, use_container_width=True, height=380)
+        else:
+            st.info("Nhấn **Tải & Kiểm tra** để xem danh sách chính sách trong KB.")
+
+    st.markdown("---")
+    # ----------------------------------------------------------------
+    # SECTION B: Thêm chính sách mới (LLM extraction)
+    # ----------------------------------------------------------------
+    st.markdown("### ➕ Thêm chính sách mới")
+    st.caption(
+        "Nhập văn bản chính sách thô. Hệ thống sẽ dùng Gemini LLM "
+        "để tự động trích xuất các trường cấu trúc."
+    )
+
+    with st.expander("🔑 Cấu hình Gemini API Key (cho tính năng LLM)", expanded=False):
+        user_key = st.text_input(
+            "Google Gemini API Key",
+            value=st.session_state.get("custom_gemini_key", ""),
+            type="password",
+            placeholder="Nhập Gemini API Key (AQ... hoặc AIzaSy...)",
+            help="Nhập Gemini API Key của bạn để sử dụng mô hình LLM trích xuất chính sách tự động.",
+            key="custom_gemini_key_input",
+        )
+        if user_key:
+            st.session_state["custom_gemini_key"] = user_key.strip()
+
+    raw_policy = st.text_area(
+        "Nhập quy tắc chính sách thô (định dạng tự do)",
+        height=180,
+        placeholder=(
+            "Ví dụ: Chính sách đổi trả — Khách hàng có quyền đổi trả "
+            "trong 30 ngày kể từ ngày nhận hàng..."
+        ),
+        help="Nhập nguyên văn chính sách, LLM sẽ tự động trích xuất các trường.",
+        key="raw_policy_input",
+    )
+
+    if st.button("🔎 Chuẩn hoá nội dung (LLM)"):
+        if raw_policy.strip():
+            with st.spinner("Đang gọi Gemini để trích xuất thông tin..."):
+                try:
+                    payload = {
+                        "raw_text": raw_policy,
+                        "gemini_api_key": st.session_state.get("custom_gemini_key", "").strip() or None,
+                    }
+                    res = requests.post(
+                        f"{GATEWAY_URL}/api/v1/copilot/policy/filter",
+                        json=payload,
+                        timeout=25,
+                    )
+                    if res.status_code == 200:
+                        st.session_state.policy_parsed = res.json()
+                    else:
+                        st.error(f"Lỗi phân tích chính sách ({res.status_code}): {res.text}")
+                except requests.RequestException as exc:
+                    st.error(f"Không thể kết nối đến Gateway: {exc}")
+        else:
+            st.warning("Vui lòng nhập nội dung chính sách.")
+
+    # Show parsed result if available
+    if st.session_state.get("policy_parsed"):
+        parsed = st.session_state.policy_parsed
+        ep = parsed.get("extracted_policy") or {}
+        extraction_warnings = parsed.get("warnings", [])
+        confidence = parsed.get("confidence_score", 0.0)
+
+        # Remove date-related warnings as requested
+        filtered_warnings = [
+            w for w in extraction_warnings
+            if "ngày hiệu lực" not in w.lower() and "ngày hết hạn" not in w.lower()
+        ]
+        if filtered_warnings:
+            for w in filtered_warnings:
+                st.warning(f"⚠️ {w}")
+        st.info(f"🎯 Độ tin cậy trích xuất: **{confidence:.0%}**")
+
+        st.markdown("### Kết quả chuẩn hoá")
+        col_a, col_b = st.columns(2)
+
+        with col_a:
+            policy_id = st.text_input("ID (tự động)", value=ep.get("doc_id", ""), key="pol_id")
+
+            # Category
+            category_opts = [
+                "return_refund",
+                "shipping",
+                "payment",
+                "warranty",
+                "promotions",
+                "support",
+                "account",
+                "general",
+            ]
+            cat_val = ep.get("category") or "support"
+            if cat_val not in category_opts:
+                category_opts.insert(0, cat_val)
+            category = st.selectbox(
+                "📂 Chuyên mục (category)",
+                options=category_opts,
+                index=category_opts.index(cat_val),
+                key="pol_category",
+            )
+
+            # Version
+            version = st.text_input(
+                "🔢 Phiên bản (version)",
+                value=str(ep.get("version", "1.0")),
+                key="pol_version",
+            )
+
+            title = st.text_input("Tiêu đề", value=ep.get("title", ""), key="pol_title")
+            description = st.text_area(
+                "Mô tả / Nội dung", value=ep.get("content", ""), height=140, key="pol_desc"
+            )
+
+            # Only permanent / temporary — superseded is NOT a creation option
+            ptype_options = ["permanent", "temporary"]
+            ptype_val = ep.get("policy_type", "permanent")
+            if ptype_val not in ptype_options:
+                ptype_val = "permanent"
+            policy_type = st.selectbox(
+                "Loại chính sách mới",
+                options=ptype_options,
+                index=ptype_options.index(ptype_val),
+                help=(
+                    "**permanent** – có hiệu lực từ ngày bắt đầu, không giới hạn thời gian.\n"
+                    "**temporary** – chỉ có hiệu lực trong khoảng ngày bắt đầu → kết thúc."
+                ),
+                key="pol_type",
+            )
+
+            st.markdown("---")
+            # Supersedes checkbox
+            does_supersede = st.checkbox(
+                "🔄 Chính sách này thay thế một chính sách cũ",
+                key="pol_does_supersede",
+                help=(
+                    "Nếu tick, chính sách cũ được chọn sẽ bị đổi sang loại **superseded** "
+                    "(không còn hoạt động) khi bạn lưu chính sách mới."
+                ),
+            )
+            old_policy_id = None
+            if does_supersede:
+                existing = st.session_state.get("kb_policies", [])
+                existing_opts = [
+                    f"{p.get('doc_id', '')} — {p.get('title', '')[:50]}"
+                    for p in existing
+                    if p.get("policy_type") != "superseded"
+                ]
+                if existing_opts:
+                    sel = st.selectbox(
+                        "📌 Chọn chính sách bị thay thế",
+                        options=["— chọn chính sách —"] + existing_opts,
+                        key="pol_old_sel",
+                    )
+                    if sel != "— chọn chính sách —":
+                        old_policy_id = sel.split(" — ")[0].strip()
+                        st.warning(
+                            f"⚠️ Sau khi lưu, **{old_policy_id}** sẽ bị gán `superseded = True` "
+                            "và **ngừng hoạt động**."
+                        )
+                else:
+                    old_policy_id = st.text_input(
+                        "📌 ID chính sách bị thay thế (nhập thủ công)",
+                        key="pol_old_manual",
+                    ) or None
+                    st.caption("Tải KB ở Section A trước để chọn từ danh sách.")
+
+        with col_b:
+            def _parse_ui_date(s):
+                if not s:
+                    return None
+                try:
+                    return datetime.date.fromisoformat(s)
+                except Exception:
+                    return None
+
+            tags_str = st.text_input(
+                "Tags (phân cách bằng dấu phẩy)",
+                value=", ".join(ep.get("tags") or []),
+                key="pol_tags",
+            )
+
+            eff_default = _parse_ui_date(ep.get("effective_date")) or datetime.date.today()
+            start_date = st.date_input(
+                "📅 Ngày có hiệu lực (effective_date)",
+                value=eff_default,
+                key="start_date",
+            )
+
+            end_date = None
+            if policy_type == "temporary":
+                exp_default = _parse_ui_date(ep.get("expiration_date")) or datetime.date.today()
+                end_date = st.date_input(
+                    "📅 Ngày kết thúc (expiration_date)",
+                    value=exp_default,
+                    key="end_date",
+                )
+            else:
+                st.caption("ℹ️ Chính sách **permanent** không có ngày kết thúc.")
+
+        # Save
+        if st.button("💾 Lưu chính sách vào hệ thống"):
+            tags_list = [t.strip() for t in tags_str.split(",") if t.strip()]
+            # Compute active status and dates based on policy type
+            today = datetime.date.today()
+            if policy_type == "temporary":
+                is_active_now = (
+                    start_date is not None
+                    and end_date is not None
+                    and start_date <= today <= end_date
+                )
+                effective_date = start_date.isoformat() if start_date else None
+                expiration_date = end_date.isoformat() if end_date else None
+            else:
+                # Permanent policies are always active and have no expiration date
+                is_active_now = True
+                effective_date = start_date.isoformat() if start_date else None
+                expiration_date = None
+            policy_obj = {
+                "doc_id": policy_id.strip(),
+                "category": category.strip() if category else "support",
+                "title": title.strip(),
+                "content": description.strip(),
+                "version": version.strip() if version else "1.0",
+                "is_active": is_active_now,
+                "policy_type": policy_type,
+                "effective_date": effective_date,
+                "expiration_date": expiration_date,
+                "tags": tags_list,
+                "score": None,
+            }
+            save_payload = {"policy": policy_obj, "admin_note": None}
+            try:
+                save_res = requests.post(
+                    f"{GATEWAY_URL}/api/v1/copilot/policy/create",
+                    json=save_payload,
+                    timeout=25,
+                )
+                if save_res.status_code in (200, 201):
+                    # Flip old policy to superseded if requested
+                    if does_supersede and old_policy_id:
+                        try:
+                            upd_res = requests.patch(
+                                f"{GATEWAY_URL}/api/v1/copilot/policies/{old_policy_id}",
+                                json={"policy_type": "superseded", "is_active": False},
+                                timeout=20,
+                            )
+                            if upd_res.status_code == 200:
+                                st.success(
+                                    f"✅ Chính sách mới đã lưu. "
+                                    f"Chính sách cũ **{old_policy_id}** đã được gán `superseded`."
+                                )
+                            else:
+                                st.warning(
+                                    f"✅ Chính sách mới đã lưu nhưng không thể cập nhật "
+                                    f"chính sách cũ {old_policy_id}: {upd_res.text}"
+                                )
+                        except requests.RequestException as exc:
+                            st.warning(f"✅ Lưu thành công nhưng không thể cập nhật chính sách cũ: {exc}")
+                    else:
+                        st.success("✅ Đã lưu chính sách thành công! KB đã được cập nhật và re-index.")
+
+                    # Clear cache so Section A shows fresh data next load
+                    st.session_state.pop("policy_parsed", None)
+                    st.session_state.pop("kb_policies", None)
+                    st.rerun()
+                else:
+                    st.error(f"Lưu thất bại ({save_res.status_code}): {save_res.text}")
+            except requests.RequestException as exc:
+                st.error(f"Không thể lưu: {exc}")
+
+

@@ -14,8 +14,29 @@ def get_gemini_api_key() -> str:
     return ""
 
 
-def get_gemini_api_url() -> str:
-    model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+def get_candidate_models() -> List[str]:
+    configured = os.getenv("GEMINI_MODEL", "").strip()
+    models = []
+    if configured:
+        models.append(configured)
+    models.extend([
+        "gemini-3.8-flash",
+        "gemini-flash-latest",
+        "gemini-2.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-2.0-flash",
+        "gemini-1.5-flash",
+    ])
+    seen = set()
+    result = []
+    for m in models:
+        if m and m not in seen:
+            seen.add(m)
+            result.append(m)
+    return result
+
+
+def get_gemini_api_url(model: str = "gemini-1.5-flash") -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
@@ -126,21 +147,31 @@ YÊU CẦU BẮT BUỘC:
             }
         }
 
-        api_url = get_gemini_api_url()
         async with httpx.AsyncClient(timeout=float(max(self.timeout_seconds - 2, 5))) as client:
-            resp = await client.post(
-                f"{api_url}?key={api_key}",
-                json=payload,
-            )
-            if resp.status_code == 200:
-                data = resp.json()
-                candidates = data.get("candidates", [])
-                if candidates:
-                    parts = candidates[0].get("content", {}).get("parts", [])
-                    if parts:
-                        return parts[0].get("text", "").strip()
-            else:
-                print(f"[LLMGenerator] Gemini returned status {resp.status_code}: {resp.text[:150]}")
+            for model_name in get_candidate_models():
+                api_url = get_gemini_api_url(model_name)
+                try:
+                    resp = await client.post(
+                        f"{api_url}?key={api_key}",
+                        json=payload,
+                    )
+                except Exception as req_err:
+                    print(f"[LLMGenerator] Error connecting to {model_name}: {req_err}")
+                    continue
+
+                if resp.status_code == 200:
+                    data = resp.json()
+                    candidates = data.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        if parts:
+                            return parts[0].get("text", "").strip()
+                elif resp.status_code in (403, 404, 429, 500, 502, 503, 504):
+                    print(f"[LLMGenerator] Model {model_name} returned {resp.status_code} (overloaded or unavailable), trying next...")
+                    continue
+                else:
+                    print(f"[LLMGenerator] Gemini ({model_name}) returned status {resp.status_code}: {resp.text[:150]}")
+                    continue
 
         return ""
 

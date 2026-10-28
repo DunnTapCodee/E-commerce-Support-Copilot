@@ -11,6 +11,8 @@ from contracts.schemas import (
     RAGGenerateResponse,
     RAGRetrieveRequest,
     RetrievedDocument,
+    RawPolicyFilterRequest,
+    PolicyCreateRequest,
 )
 from services.gateway.src.config import (
     INTENT_SERVICE_URL,
@@ -102,5 +104,42 @@ class MicroserviceClients:
         """Fetch audit metrics and stats from telemetry_service."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.get(f"{TELEMETRY_SERVICE_URL}/audit/stats")
+            resp.raise_for_status()
+            return resp.json()
+
+    async def filter_policy(self, request: RawPolicyFilterRequest) -> Dict[str, Any]:
+        """Call rag_service:8002/policy/filter — LLM-based policy extraction."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+            resp = await client.post(
+                f"{RAG_SERVICE_URL}/policy/filter",
+                json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def create_policy(self, request: PolicyCreateRequest) -> Dict[str, Any]:
+        """Call rag_service:8002/policy/create — persist policy and re-index KB."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+            resp = await client.post(
+                f"{RAG_SERVICE_URL}/policy/create",
+                json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def list_policies(self) -> List[Dict[str, Any]]:
+        """Call rag_service:8002/policies — return all KB policy documents."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
+            resp = await client.get(f"{RAG_SERVICE_URL}/policies")
+            resp.raise_for_status()
+            return resp.json()
+
+    async def update_policy(self, doc_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Call rag_service:8002/policies/{doc_id} — partially update a policy."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+            resp = await client.patch(
+                f"{RAG_SERVICE_URL}/policies/{doc_id}",
+                json=updates,
+            )
             resp.raise_for_status()
             return resp.json()

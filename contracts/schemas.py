@@ -53,9 +53,10 @@ class RetrievedDocument(BaseModel):
                        version.  Always treated as inactive regardless of dates.
     """
     doc_id: str = Field(..., description="Unique document / policy ID")
+    category: Optional[str] = Field(default=None, description="Policy category (e.g. return_refund, shipping, payment, promotions, support, warranty)")
     title: str = Field(..., description="Document title")
     content: str = Field(..., description="Policy body / chunk content")
-    version: str = Field(..., description="Document version")
+    version: str = Field(default="1.0", description="Document version")
     is_active: bool = Field(..., description="Active status of this document")
     policy_type: str = Field(
         default="permanent",
@@ -138,3 +139,24 @@ class GatewayResponse(BaseModel):
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
     generation_mode: str = "not_generated"
+
+# -------------------------------------------------------------------
+# 7. Policy Filter & Creation Contracts
+# -------------------------------------------------------------------
+
+class RawPolicyFilterRequest(BaseModel):
+    """Payload containing raw policy text supplied by staff."""
+    raw_text: str = Field(..., description="Unstructured policy text to be parsed")
+    suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
+    gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
+
+class PolicyFilterResult(BaseModel):
+    """Result of automatic extraction, ready for human review/edit."""
+    extracted_policy: RetrievedDocument
+    warnings: List[str] = Field(default_factory=list, description="Extraction or validation warnings")
+    confidence_score: float = Field(ge=0.0, le=1.0, description="Confidence of automatic parsing")
+
+class PolicyCreateRequest(BaseModel):
+    """Final payload to persist a new policy after human confirmation."""
+    policy: RetrievedDocument
+    admin_note: Optional[str] = None

@@ -20,6 +20,8 @@ from contracts.schemas import (
     IntentPredictionResponse,
     QueryRequest,
     RetrievedDocument,
+    RawPolicyFilterRequest,
+    PolicyCreateRequest,
 )
 from services.gateway.src.clients import MicroserviceClients
 from services.gateway.src.config import (
@@ -254,6 +256,30 @@ async def record_human_action(action_payload: HumanActionUpdate):
 async def get_dashboard_stats():
     """Proxy audit statistics from telemetry service for the UI dashboard."""
     return await clients.get_audit_stats()
+
+
+@app.post("/api/v1/copilot/policy/filter")
+async def proxy_policy_filter(request: RawPolicyFilterRequest):
+    """Proxy: extract structured policy from raw text via rag_service LLM parser."""
+    return await clients.filter_policy(request)
+
+
+@app.post("/api/v1/copilot/policy/create")
+async def proxy_policy_create(request: PolicyCreateRequest):
+    """Proxy: persist a confirmed policy into KB and re-index via rag_service."""
+    return await clients.create_policy(request)
+
+
+@app.get("/api/v1/copilot/policies")
+async def proxy_list_policies():
+    """Proxy: list all policies in the Knowledge Base from rag_service."""
+    return await clients.list_policies()
+
+
+@app.patch("/api/v1/copilot/policies/{doc_id}")
+async def proxy_update_policy(doc_id: str, updates: dict):
+    """Proxy: partially update a policy (e.g. flip to superseded) via rag_service."""
+    return await clients.update_policy(doc_id, updates)
 
 
 if __name__ == "__main__":
