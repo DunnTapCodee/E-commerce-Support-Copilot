@@ -65,7 +65,7 @@ with tab1:
                         res = requests.post(
                             f"{GATEWAY_URL}/api/v1/copilot/query",
                             json=payload,
-                            timeout=15,
+                            timeout=35,
                         )
                     if res.status_code == 200:
                         st.session_state.current_response = res.json()

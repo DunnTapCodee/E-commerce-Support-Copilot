@@ -26,6 +26,7 @@ class MicroserviceClients:
 
     def __init__(self):
         self.timeout = httpx.Timeout(10.0, connect=3.0)
+        self.llm_timeout = httpx.Timeout(35.0, connect=5.0)
 
     async def predict_intent(self, query: str) -> IntentPredictionResponse:
         """Call intent_service:8005/predict."""
@@ -56,7 +57,7 @@ class MicroserviceClients:
         self, query: str, citations: List[RetrievedDocument]
     ) -> RAGGenerateResponse:
         """Call rag_service:8002/generate."""
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
+        async with httpx.AsyncClient(timeout=self.llm_timeout) as client:
             req_data = RAGGenerateRequest(
                 query=query,
                 citations=citations,
