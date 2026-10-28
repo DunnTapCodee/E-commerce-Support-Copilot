@@ -1,6 +1,8 @@
 """ReAct Agent & Multi-Entity Extractor for Dynamic Order Tool Calling (Module 3)."""
+import json
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 import httpx
@@ -8,8 +10,22 @@ import httpx
 from contracts.schemas import ToolCallRecord
 from services.gateway.src.tools import TOOL_DEFINITIONS, ToolExecutor
 
+# Auto-load .env if not in environment
+_env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+if _env_file.exists():
+    try:
+        with open(_env_file, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    if _k.strip() not in os.environ:
+                        os.environ[_k.strip()] = _v.strip()
+    except Exception:
+        pass
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 
 # Regular Expression Patterns
 RE_BASELINE_ORDER = re.compile(r"\bORD-[A-Z0-9-]+\b", re.IGNORECASE)
@@ -135,79 +151,79 @@ class OrderReActAgent:
     async def run(
         self, query: str, customer_id: Optional[str] = None
     ) -> Tuple[List[ToolCallRecord], Optional[Dict[str, Any]], str]:
-        """Process inquiry, decide which tool(s) to call, execute them, and formulate synthesis context."""
+        """Process inquiry, extract entities via Gemini/Regex, execute dynamic tools, and synthesize context."""
         records: List[ToolCallRecord] = []
         resolved_order_data: Optional[Dict[str, Any]] = None
         synthesis_text = ""
 
-        # Check if Gemini Function Calling should be called
-        if GEMINI_API_KEY:
-            tool_decisions = await self._decide_tools_gemini(query)
-            if tool_decisions:
-                for tool_name, args in tool_decisions:
-                    rec = await self.executor.execute(tool_name, args)
-                    records.append(rec)
-                    if isinstance(rec.result, dict) and "order_id" in rec.result:
-                        resolved_order_data = rec.result
+        # 1. Trích xuất thực thể bằng Gemini LLM (Module 3)
+        entities = await self._extract_entities_gemini(query)
 
-        # Fallback to local heuristic ReAct decision engine
-        if not records:
-            entities = extract_entities_advanced(query, customer_id)
-            order_id = entities.get("order_id")
-            phone = entities.get("phone")
-            tracking = entities.get("tracking_code")
-            action = entities.get("action")
+        # 2. Bổ trợ bằng Regex (fallback nếu LLM rỗng, lỗi mạng, hoặc chưa cấu hình key)
+        regex_entities = extract_entities_advanced(query, customer_id)
+        if not entities:
+            entities = regex_entities
+        else:
+            # Gộp thông tin: nếu trường nào LLM chưa nhận diện được thì lấy từ regex
+            for k in ["order_id", "phone", "tracking_code", "action", "cancel_reason"]:
+                if not entities.get(k) and regex_entities.get(k):
+                    entities[k] = regex_entities[k]
 
-            # Decision 1: Cancellation Tool
-            if action == "cancel" and order_id:
-                rec = await self.executor.execute(
-                    "cancel_order",
-                    {"order_id": order_id, "reason": entities.get("cancel_reason")},
-                )
+        order_id = entities.get("order_id")
+        phone = entities.get("phone")
+        tracking = entities.get("tracking_code")
+        action = entities.get("action")
+
+        # Decision 1: Cancellation Tool
+        if action == "cancel" and order_id:
+            rec = await self.executor.execute(
+                "cancel_order",
+                {"order_id": order_id, "reason": entities.get("cancel_reason")},
+            )
+            records.append(rec)
+            if isinstance(rec.result, dict):
+                resolved_order_data = rec.result.get("order")
+
+        # Decision 2: Order Status Check Tool
+        elif action == "status" or phone or tracking:
+            ident = order_id or tracking or phone or customer_id
+            if ident:
+                rec = await self.executor.execute("check_order_status", {"identifier": ident})
                 records.append(rec)
-                if isinstance(rec.result, dict):
-                    resolved_order_data = rec.result.get("order")
+                # For phone lookups without specific order_id, check for multiple orders
+                if phone and not order_id and not tracking:
+                    orders_list = await self.executor.clients.lookup_orders_by_phone(phone)
+                    if len(orders_list) > 1:
+                        resolved_order_data = {
+                            "phone": phone,
+                            "customer_name": orders_list[0].get("customer_name"),
+                            "total_orders": len(orders_list),
+                            "orders": orders_list,
+                        }
+                    elif orders_list:
+                        resolved_order_data = orders_list[0]
+                else:
+                    full_order = await self.executor.clients.lookup_order(ident)
+                    if full_order:
+                        resolved_order_data = full_order
 
-            # Decision 2: Order Status Check Tool
-            elif action == "status" or phone or tracking:
-                ident = order_id or tracking or phone or customer_id
-                if ident:
-                    rec = await self.executor.execute("check_order_status", {"identifier": ident})
-                    records.append(rec)
-                    # For phone lookups without specific order_id, check for multiple orders
-                    if phone and not order_id and not tracking:
-                        orders_list = await self.executor.clients.lookup_orders_by_phone(phone)
-                        if len(orders_list) > 1:
-                            resolved_order_data = {
-                                "phone": phone,
-                                "customer_name": orders_list[0].get("customer_name"),
-                                "total_orders": len(orders_list),
-                                "orders": orders_list,
-                            }
-                        elif orders_list:
-                            resolved_order_data = orders_list[0]
-                    else:
-                        full_order = await self.executor.clients.lookup_order(ident)
-                        if full_order:
-                            resolved_order_data = full_order
+        # Decision 3: List Customer Orders Tool
+        elif action == "customer_orders" and customer_id:
+            rec = await self.executor.execute("get_customer_orders", {"customer_id": customer_id})
+            records.append(rec)
 
-            # Decision 3: List Customer Orders Tool
-            elif action == "customer_orders" and customer_id:
-                rec = await self.executor.execute("get_customer_orders", {"customer_id": customer_id})
-                records.append(rec)
+        # Decision 4: Order Details Tool
+        elif order_id:
+            rec = await self.executor.execute("get_order_details", {"order_id": order_id})
+            records.append(rec)
+            if isinstance(rec.result, dict):
+                resolved_order_data = rec.result
 
-            # Decision 4: Order Details Tool
-            elif order_id:
-                rec = await self.executor.execute("get_order_details", {"order_id": order_id})
-                records.append(rec)
-                if isinstance(rec.result, dict):
-                    resolved_order_data = rec.result
-
-            # Decision 5: General fallback by customer_id if no specific entity mentioned
-            elif customer_id:
-                full_order = await self.executor.clients.lookup_order(customer_id)
-                if full_order:
-                    resolved_order_data = full_order
+        # Decision 5: General fallback by customer_id if no specific entity mentioned
+        elif customer_id:
+            full_order = await self.executor.clients.lookup_order(customer_id)
+            if full_order:
+                resolved_order_data = full_order
 
         # Build synthesized summary text for LLM generation context
         if records:
@@ -234,6 +250,42 @@ class OrderReActAgent:
 
         return records, resolved_order_data, synthesis_text
 
-    async def _decide_tools_gemini(self, query: str) -> List[Tuple[str, Dict[str, Any]]]:
-        """Optionally prompt Gemini with tool declarations to return structured function calls."""
-        return []
+    async def _extract_entities_gemini(self, query: str) -> Optional[Dict[str, Any]]:
+        """Call Gemini to intelligently extract order entity parameters from unstructured text."""
+        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY") or ""
+        if not api_key or api_key.startswith("your_"):
+            return None
+
+        model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+
+        system_prompt = (
+            "Bạn là trợ lý AI chuyên bóc tách thực thể tra cứu đơn hàng thương mại điện tử Tiki.\n"
+            "Nhiệm vụ: Trích xuất các thực thể từ câu nói của khách hàng và trả về DUY NHẤT một chuỗi JSON hợp lệ.\n"
+            "Các trường trong JSON:\n"
+            "- order_id: Mã đơn hàng (chuẩn hóa về dạng 'ORD-XXXX', ví dụ: '1003', 'ORD - 1003', '#1003' -> 'ORD-1003'). Nếu không có thì null.\n"
+            "- phone: Số điện thoại (chuẩn hóa chuỗi số liền, ví dụ '0999 532 448' -> '0999532448'). Nếu không có thì null.\n"
+            "- tracking_code: Mã vận đơn (ví dụ: GHN883921, GIAO...). Nếu không có thì null.\n"
+            "- action: Hành động của khách: 'status' (kiểm tra trạng thái/vị trí giao), 'cancel' (hủy đơn), 'details' (xem chi tiết món hàng), 'customer_orders' (xem danh sách các đơn đã mua).\n"
+            "- cancel_reason: Lý do hủy nếu có (ví dụ 'giao hàng lâu quá'), nếu không thì null.\n"
+            "Chỉ trả về JSON thuần túy theo schema trên, không thêm bất kỳ văn bản nào khác."
+        )
+
+        payload = {
+            "contents": [{"parts": [{"text": f"{system_prompt}\n\nCâu của khách hàng: \"{query}\""}]}],
+            "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
+        }
+
+        timeout_sec = float(os.getenv("LLM_EXTRACT_TIMEOUT", "20"))
+        try:
+            async with httpx.AsyncClient(timeout=timeout_sec, verify=False) as client:
+                resp = await client.post(url, json=payload)
+                if resp.status_code == 200:
+                    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                    data = json.loads(text)
+                    return data
+                else:
+                    print(f"[OrderReActAgent] Gemini HTTP Error {resp.status_code}: {resp.text}")
+        except Exception as e:
+            print(f"[OrderReActAgent] Gemini entity extraction failed/timed out: {type(e).__name__} ({e})")
+        return None
