@@ -2,6 +2,7 @@
 pandas>=2.2
 pyarrow>=17
 lightgbm>=4.5
+xgboost>=2.1
 datasets>=3
 sentence-transformers>=3
 unidecode>=1.3
