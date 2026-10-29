@@ -5,6 +5,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, Optional
+import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -22,6 +23,7 @@ from contracts.schemas import (
     RetrievedDocument,
     RawPolicyFilterRequest,
     PolicyCreateRequest,
+    PolicyRollbackRequest,
 )
 from services.gateway.src.clients import MicroserviceClients
 from services.gateway.src.config import (
@@ -258,28 +260,68 @@ async def get_dashboard_stats():
     return await clients.get_audit_stats()
 
 
+async def _proxy_rag_call(coro):
+    """Safely execute downstream calls to rag_service with structured error mapping."""
+    try:
+        return await coro
+    except httpx.ConnectError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Không thể kết nối đến RAG Service (port 8002). Vui lòng kiểm tra RAG service đang chạy.",
+        )
+    except httpx.TimeoutException:
+        raise HTTPException(
+            status_code=status.HTTP_504_GATEWAY_TIMEOUT,
+            detail="Quá thời gian chờ phản hồi từ RAG Service (Timeout).",
+        )
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(
+            status_code=exc.response.status_code,
+            detail=exc.response.text,
+        )
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Lỗi downstream: {str(exc)}",
+        )
+
+
 @app.post("/api/v1/copilot/policy/filter")
 async def proxy_policy_filter(request: RawPolicyFilterRequest):
     """Proxy: extract structured policy from raw text via rag_service LLM parser."""
-    return await clients.filter_policy(request)
+    return await _proxy_rag_call(clients.filter_policy(request))
 
 
 @app.post("/api/v1/copilot/policy/create")
 async def proxy_policy_create(request: PolicyCreateRequest):
     """Proxy: persist a confirmed policy into KB and re-index via rag_service."""
-    return await clients.create_policy(request)
+    return await _proxy_rag_call(clients.create_policy(request))
 
 
 @app.get("/api/v1/copilot/policies")
 async def proxy_list_policies():
     """Proxy: list all policies in the Knowledge Base from rag_service."""
-    return await clients.list_policies()
+    return await _proxy_rag_call(clients.list_policies())
 
 
 @app.patch("/api/v1/copilot/policies/{doc_id}")
 async def proxy_update_policy(doc_id: str, updates: dict):
     """Proxy: partially update a policy (e.g. flip to superseded) via rag_service."""
-    return await clients.update_policy(doc_id, updates)
+    return await _proxy_rag_call(clients.update_policy(doc_id, updates))
+
+
+@app.get("/api/v1/copilot/policies/audit-logs")
+async def proxy_list_policy_audit_logs():
+    """Proxy: list all policy audit log entries from rag_service."""
+    return await _proxy_rag_call(clients.list_policy_audit_logs())
+
+
+@app.post("/api/v1/copilot/policies/rollback")
+async def proxy_rollback_policy(request: PolicyRollbackRequest):
+    """Proxy: rollback a policy change via rag_service."""
+    return await _proxy_rag_call(clients.rollback_policy(request))
+
+
 
 
 if __name__ == "__main__":

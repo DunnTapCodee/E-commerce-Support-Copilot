@@ -13,6 +13,7 @@ from contracts.schemas import (
     RetrievedDocument,
     RawPolicyFilterRequest,
     PolicyCreateRequest,
+    PolicyRollbackRequest,
 )
 from services.gateway.src.config import (
     INTENT_SERVICE_URL,
@@ -109,7 +110,7 @@ class MicroserviceClients:
 
     async def filter_policy(self, request: RawPolicyFilterRequest) -> Dict[str, Any]:
         """Call rag_service:8002/policy/filter — LLM-based policy extraction."""
-        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(35.0, connect=3.0)) as client:
             resp = await client.post(
                 f"{RAG_SERVICE_URL}/policy/filter",
                 json=request.model_dump(),
@@ -143,3 +144,21 @@ class MicroserviceClients:
             )
             resp.raise_for_status()
             return resp.json()
+
+    async def list_policy_audit_logs(self) -> List[Dict[str, Any]]:
+        """Call rag_service:8002/policies/audit-logs — return all policy audit log entries."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(15.0, connect=3.0)) as client:
+            resp = await client.get(f"{RAG_SERVICE_URL}/policies/audit-logs")
+            resp.raise_for_status()
+            return resp.json()
+
+    async def rollback_policy(self, request: PolicyRollbackRequest) -> Dict[str, Any]:
+        """Call rag_service:8002/policies/rollback — rollback a policy to prior version."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:
+            resp = await client.post(
+                f"{RAG_SERVICE_URL}/policies/rollback",
+                json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+

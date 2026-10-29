@@ -1,0 +1,138 @@
+[
+  {
+    "log_id": "LOG-20261029034359-BDC04F",
+    "timestamp": "2026-10-29T03:43:59.208341",
+    "doc_id": "POL-RET2026",
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi nhà sản xuất",
+        "sai mẫu mã",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034343-6D1B95",
+    "timestamp": "2026-10-29T03:43:43.293277",
+    "doc_id": "POL-RET2026",
+    "action": "CREATE",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Thêm mới chính sách 'POL-RET2026'",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi nhà sản xuất",
+        "sai mẫu mã",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-20261029034256-4771DC",
+    "timestamp": "2026-10-29T03:42:56.713257",
+    "doc_id": "POL-RET2026",
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": null,
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034252-677178",
+    "timestamp": "2026-10-29T03:42:52.891942",
+    "doc_id": "POL-RET2026",
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": null,
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034249-22D273",
+    "timestamp": "2026-10-29T03:42:49.421981",
+    "doc_id": "POL-RET2026",
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi sản xuất",
+        "giao sai mẫu",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034236-79FF20",
+    "timestamp": "2026-10-29T03:42:36.240197",
+    "doc_id": "POL-RET2026",
+    "action": "CREATE",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Thêm mới chính sách 'POL-RET2026'",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi sản xuất",
+        "giao sai mẫu",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    }
+  }
+]

@@ -49,7 +49,9 @@ class PolicyRetriever:
                 for doc in indexer.documents
                 if doc.is_active
             ]
-            if self.method == "bm25":
+            if not active_documents:
+                self.searcher = None
+            elif self.method == "bm25":
                 self.searcher = BM25Searcher(active_documents, include_tags=True)
             elif self.method == "dense":
                 self.searcher = DenseSearcher(active_documents, model_name=dense_model, device=device)
@@ -68,6 +70,9 @@ class PolicyRetriever:
         if self.method == "tfidf":
             scored_docs = self.indexer.search(query, top_k=top_k)
             return [doc.model_copy(update={"score": round(score, 4)}) for doc, score in scored_docs]
+
+        if not self.searcher:
+            return []
 
         hits = self.searcher.search(query, top_k=top_k)
         documents_by_id = {doc.doc_id: doc for doc in self.indexer.documents}

@@ -593,6 +593,19 @@ def _compute_is_active(ptype: str, eff_raw, exp_raw, check_date: datetime.date):
 with tab3:
     st.subheader("📜 Quản lý Chính sách")
 
+    col_staff1, col_staff2 = st.columns([2, 1])
+    with col_staff1:
+        staff_input = st.text_input(
+            "👤 Tên / Mã nhân viên phụ trách",
+            value=st.session_state.get("staff_name", "NV_CSKH_01"),
+            help="Tên nhân viên sẽ được gắn vào Audit Log khi thêm, sửa hoặc khôi phục chính sách.",
+            key="tab3_staff_name_input",
+        )
+        if staff_input:
+            st.session_state["staff_name"] = staff_input.strip()
+    with col_staff2:
+        st.caption("ℹ️ Mọi hành vi cập nhật đều được ghi vết và hỗ trợ khôi phục (Rollback).")
+
     # ----------------------------------------------------------------
     # SECTION A: kiểm tra isActive toàn bộ Knowledge Base
     # ----------------------------------------------------------------
@@ -696,14 +709,25 @@ with tab3:
                     res = requests.post(
                         f"{GATEWAY_URL}/api/v1/copilot/policy/filter",
                         json=payload,
-                        timeout=25,
+                        timeout=40,
                     )
                     if res.status_code == 200:
                         st.session_state.policy_parsed = res.json()
                     else:
-                        st.error(f"Lỗi phân tích chính sách ({res.status_code}): {res.text}")
+                        try:
+                            err_detail = res.json().get("detail", res.text)
+                        except Exception:
+                            err_detail = res.text
+                        st.error(f"❌ Lỗi phân tích chính sách ({res.status_code}): {err_detail}")
+                        if res.status_code in (500, 502, 503):
+                            st.warning(
+                                "💡 **Gợi ý khắc phục:** Kiểm tra xem hệ thống Backend có đang chạy hay không. "
+                                "Nếu vừa khởi động lại máy/IDE, hãy mở terminal chạy lệnh `python run_dev.py` "
+                                "để khởi động đồng thời Gateway (8000) và RAG Service (8002)."
+                            )
                 except requests.RequestException as exc:
-                    st.error(f"Không thể kết nối đến Gateway: {exc}")
+                    st.error(f"Không thể kết nối đến Gateway ({GATEWAY_URL}): {exc}")
+                    st.warning("💡 Vui lòng đảm bảo hệ thống đã được khởi động bằng lệnh: `python run_dev.py`")
         else:
             st.warning("Vui lòng nhập nội dung chính sách.")
 
@@ -880,7 +904,13 @@ with tab3:
                 "tags": tags_list,
                 "score": None,
             }
-            save_payload = {"policy": policy_obj, "admin_note": None}
+            current_staff = st.session_state.get("staff_name", "NV_CSKH_01")
+            save_payload = {
+                "policy": policy_obj,
+                "admin_note": f"Tạo bởi {current_staff}",
+                "performed_by": current_staff,
+                "reason": f"Thêm mới chính sách '{policy_id.strip()}'",
+            }
             try:
                 save_res = requests.post(
                     f"{GATEWAY_URL}/api/v1/copilot/policy/create",
@@ -891,15 +921,20 @@ with tab3:
                     # Flip old policy to superseded if requested
                     if does_supersede and old_policy_id:
                         try:
+                            upd_payload = {
+                                "updates": {"policy_type": "superseded", "is_active": False},
+                                "performed_by": current_staff,
+                                "reason": f"Bị thay thế bởi chính sách mới {policy_id.strip()}",
+                            }
                             upd_res = requests.patch(
                                 f"{GATEWAY_URL}/api/v1/copilot/policies/{old_policy_id}",
-                                json={"policy_type": "superseded", "is_active": False},
+                                json=upd_payload,
                                 timeout=20,
                             )
                             if upd_res.status_code == 200:
                                 st.success(
                                     f"✅ Chính sách mới đã lưu. "
-                                    f"Chính sách cũ **{old_policy_id}** đã được gán `superseded`."
+                                    f"Chính sách cũ **{old_policy_id}** đã được gán `superseded` (Audit Log đã ghi vết)."
                                 )
                             else:
                                 st.warning(
@@ -911,13 +946,155 @@ with tab3:
                     else:
                         st.success("✅ Đã lưu chính sách thành công! KB đã được cập nhật và re-index.")
 
-                    # Clear cache so Section A shows fresh data next load
+                    # Clear cache so Section A and Section C show fresh data
                     st.session_state.pop("policy_parsed", None)
                     st.session_state.pop("kb_policies", None)
+                    st.session_state.pop("audit_logs_cache", None)
                     st.rerun()
                 else:
                     st.error(f"Lưu thất bại ({save_res.status_code}): {save_res.text}")
             except requests.RequestException as exc:
                 st.error(f"Không thể lưu: {exc}")
+
+    st.markdown("---")
+    # ----------------------------------------------------------------
+    # SECTION C: Lịch sử phiên bản & Khôi phục (Audit Log & Rollback)
+    # ----------------------------------------------------------------
+    with st.expander("📜 Lịch sử phiên bản & Khôi phục (Audit Log & Rollback)", expanded=True):
+        st.caption(
+            "Ghi lại toàn bộ snapshot trước và sau mỗi lần tạo mới, sửa đổi hoặc thay thế chính sách. "
+            "Nhân viên có thể kiểm tra ai đã sửa và **khôi phục (Rollback / Undo)** về phiên bản trước."
+        )
+
+        col_audit_btn, col_audit_stat = st.columns([1, 3])
+        with col_audit_btn:
+            fetch_logs = st.button("🔄 Tải / Làm mới Lịch sử")
+
+        if fetch_logs or "audit_logs_cache" not in st.session_state:
+            try:
+                log_res = requests.get(
+                    f"{GATEWAY_URL}/api/v1/copilot/policies/audit-logs",
+                    timeout=15,
+                )
+                if log_res.status_code == 200:
+                    st.session_state["audit_logs_cache"] = log_res.json()
+                else:
+                    st.error(f"Không thể tải Audit Log: {log_res.text}")
+            except requests.RequestException as exc:
+                st.error(f"Lỗi kết nối Audit Log: {exc}")
+
+        audit_logs = st.session_state.get("audit_logs_cache", [])
+
+        if audit_logs:
+            # Metrics
+            total_logs = len(audit_logs)
+            create_cnt = sum(1 for x in audit_logs if x.get("action") == "CREATE")
+            supersede_cnt = sum(1 for x in audit_logs if x.get("action") == "SUPERSEDE")
+            rollback_cnt = sum(1 for x in audit_logs if x.get("action") == "ROLLBACK")
+
+            m1, m2, m3, m4 = st.columns(4)
+            m1.metric("Tổng số thay đổi", total_logs)
+            m2.metric("🟢 Thêm mới (CREATE)", create_cnt)
+            m3.metric("🔴 Thay thế (SUPERSEDE)", supersede_cnt)
+            m4.metric("🟣 Hoàn tác (ROLLBACK)", rollback_cnt)
+
+            # Table display
+            log_table = []
+            action_badge_map = {
+                "CREATE": "🟢 CREATE",
+                "UPDATE": "🟡 UPDATE",
+                "SUPERSEDE": "🔴 SUPERSEDE",
+                "ROLLBACK": "🟣 ROLLBACK",
+            }
+            for entry in audit_logs:
+                ts = entry.get("timestamp", "")
+                ts_display = ts[:19].replace("T", " ") if ts else "—"
+                act = entry.get("action", "")
+                badge = action_badge_map.get(act, act)
+                log_table.append({
+                    "Log ID": entry.get("log_id", ""),
+                    "Thời gian": ts_display,
+                    "Mã chính sách": entry.get("doc_id", ""),
+                    "Hành động": badge,
+                    "Người thực hiện": entry.get("performed_by", "Admin"),
+                    "Lý do / Ghi chú": entry.get("reason", "") or "—",
+                })
+
+            df_logs = pd.DataFrame(log_table)
+            st.dataframe(df_logs, use_container_width=True, height=280)
+
+            # Detailed Inspection & Rollback Interface
+            st.markdown("#### 🔍 Chi tiết bản ghi & Khôi phục (Rollback)")
+            log_options = [
+                f"{e.get('log_id')} | {e.get('action')} | {e.get('doc_id')} ({e.get('timestamp', '')[:19]})"
+                for e in audit_logs
+            ]
+            selected_option = st.selectbox(
+                "Chọn bản ghi Audit Log để kiểm tra hoặc hoàn tác:",
+                options=log_options,
+                key="audit_log_selected_option",
+            )
+
+            if selected_option:
+                sel_log_id = selected_option.split(" | ")[0].strip()
+                matched_entry = next((e for e in audit_logs if e.get("log_id") == sel_log_id), None)
+
+                if matched_entry:
+                    col_b_info, col_a_info = st.columns(2)
+                    with col_b_info:
+                        st.markdown("**Trạng thái TRƯỚC khi thay đổi (Before Snapshot):**")
+                        b_snap = matched_entry.get("before_snapshot")
+                        if b_snap:
+                            st.json(b_snap)
+                        else:
+                            st.info("*(Không có - Chính sách chưa tồn tại trước đó)*")
+
+                    with col_a_info:
+                        st.markdown("**Trạng thái SAU khi thay đổi (After Snapshot):**")
+                        a_snap = matched_entry.get("after_snapshot")
+                        if a_snap:
+                            st.json(a_snap)
+                        else:
+                            st.info("*(Không có - Chính sách đã bị gỡ bỏ)*")
+
+                    st.markdown("---")
+                    col_rb_reason, col_rb_action = st.columns([2, 1])
+                    with col_rb_reason:
+                        rb_reason_input = st.text_input(
+                            "Lý do khôi phục (Audit note)",
+                            value=f"Nhân viên {st.session_state.get('staff_name', 'NV_CSKH_01')} khôi phục thao tác {matched_entry.get('action')}",
+                            key="rb_reason_text",
+                        )
+                    with col_rb_action:
+                        st.write("")  # padding
+                        st.write("")
+                        btn_label = f"⏪ Hoàn tác {matched_entry.get('action')} (Rollback)"
+                        if st.button(btn_label, type="primary", key="btn_do_rollback"):
+                            with st.spinner("Đang khôi phục chính sách và re-index Knowledge Base..."):
+                                try:
+                                    rb_payload = {
+                                        "log_id": sel_log_id,
+                                        "performed_by": st.session_state.get("staff_name", "NV_CSKH_01"),
+                                        "reason": rb_reason_input.strip(),
+                                    }
+                                    rb_res = requests.post(
+                                        f"{GATEWAY_URL}/api/v1/copilot/policies/rollback",
+                                        json=rb_payload,
+                                        timeout=25,
+                                    )
+                                    if rb_res.status_code == 200:
+                                        res_data = rb_res.json()
+                                        st.success(f"🎉 {res_data.get('message', 'Khôi phục thành công!')}")
+                                        # Clear all relevant session caches
+                                        st.session_state.pop("kb_policies", None)
+                                        st.session_state.pop("audit_logs_cache", None)
+                                        st.rerun()
+                                    else:
+                                        st.error(f"Khôi phục thất bại ({rb_res.status_code}): {rb_res.text}")
+                                except requests.RequestException as exc:
+                                    st.error(f"Lỗi khi gửi yêu cầu khôi phục: {exc}")
+        else:
+            st.info("Chưa có bản ghi Audit Log nào. Mọi thao tác thêm/sửa chính sách sẽ tự động được lưu lại tại đây.")
+
 
 

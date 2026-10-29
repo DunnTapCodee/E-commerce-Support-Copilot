@@ -160,3 +160,32 @@ class PolicyCreateRequest(BaseModel):
     """Final payload to persist a new policy after human confirmation."""
     policy: RetrievedDocument
     admin_note: Optional[str] = None
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+class PolicyUpdateRequest(BaseModel):
+    """Payload to partially update an existing policy with audit tracking."""
+    updates: Dict[str, Any]
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+class PolicyAuditLogEntry(BaseModel):
+    """Audit log entry capturing policy lifecycle changes for traceability and rollback."""
+    log_id: str
+    timestamp: str
+    doc_id: str
+    action: str  # "CREATE", "UPDATE", "SUPERSEDE", "ROLLBACK"
+    performed_by: str = "Admin"
+    reason: Optional[str] = None
+    before_snapshot: Optional[Dict[str, Any]] = None
+    after_snapshot: Optional[Dict[str, Any]] = None
+
+
+class PolicyRollbackRequest(BaseModel):
+    """Request to rollback a policy to a prior version/state based on an audit log ID."""
+    log_id: str
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
