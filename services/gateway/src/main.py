@@ -83,6 +83,20 @@ async def process_copilot_query(
     draft_text = ""
     order_data: Optional[Dict[str, Any]] = None
 
+    # Delegate to Conversation Service if available
+    try:
+        import httpx
+        from services.gateway.src.config import CONVERSATION_SERVICE_URL
+        async with httpx.AsyncClient(timeout=12.0) as http_client:
+            resp = await http_client.post(
+                f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
+                json=request.model_dump(),
+            )
+            if resp.status_code == 200:
+                return GatewayResponse(**resp.json())
+    except Exception as exc:
+        pass  # Fall back to local gateway orchestration pipeline
+
     # Step 1: Predict Intent
     intent_service_error = None
 
@@ -236,6 +250,8 @@ async def process_copilot_query(
         draft_text=draft_text,
         order_data=order_data,
         generation_mode=generation_mode,
+        suggested_reply=draft_text,
+        customer_acknowledgement="Dạ em đã ghi nhận thông tin của bạn và đang kiểm tra hỗ trợ ngay đây ạ!",
     )
 
 
@@ -249,6 +265,21 @@ async def record_human_action(action_payload: HumanActionUpdate):
 async def get_dashboard_stats():
     """Proxy audit statistics from telemetry service for the UI dashboard."""
     return await clients.get_audit_stats()
+
+
+@app.post("/api/v1/copilot/handover")
+async def toggle_live_chat_handover(payload: dict):
+    """Proxy live chat handover toggle to conversation service."""
+    session_id = payload.get("session_id", "default")
+    is_live_chat = payload.get("is_live_chat", False)
+    agent_id = payload.get("agent_id", "agent_01")
+    return await clients.handover_session(session_id, is_live_chat, agent_id)
+
+
+@app.get("/api/v1/copilot/session/{session_id}")
+async def get_copilot_session(session_id: str):
+    """Proxy session state lookup to conversation service."""
+    return await clients.get_session_state(session_id)
 
 
 if __name__ == "__main__":

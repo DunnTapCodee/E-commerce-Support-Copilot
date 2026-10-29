@@ -123,3 +123,43 @@ class GatewayResponse(BaseModel):
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
     generation_mode: str = "not_generated"
+    suggested_reply: Optional[str] = Field(default=None, description="Suggested customer reply template")
+    agent_guidance: Optional[str] = Field(default=None, description="Internal guidance and warnings for support agent")
+    input_type: Optional[str] = Field(default=None, description="Input classification: question, fact_supplement, negation_reversal, chitchat")
+    active_facts: Dict[str, Any] = Field(default_factory=dict, description="Active dialogue facts (order_id, phone, etc.)")
+    is_live_chat: bool = Field(default=False, description="Whether session is in live human agent chat mode")
+    customer_acknowledgement: Optional[str] = Field(default=None, description="Immediate buffer response for customer (Phần 1)")
+    session_turns: List[Dict[str, Any]] = Field(default_factory=list, description="Recent conversation turns")
+    context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
+
+
+# -------------------------------------------------------------------
+# 7. Conversation Service State & Turn Contracts
+# -------------------------------------------------------------------
+class ChatMessageItem(BaseModel):
+    role: Literal["customer", "agent", "system"]
+    content: str
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationTurnItem(BaseModel):
+    turn_id: int
+    customer_query: str
+    agent_response: str
+    intent: Optional[str] = None
+    confidence: Optional[float] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationSessionState(BaseModel):
+    session_id: str
+    customer_id: Optional[str] = None
+    active_intent: Optional[str] = None
+    active_order_id: Optional[str] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    is_live_chat: bool = False
+    turns: List[ConversationTurnItem] = Field(default_factory=list)
+    context_summary: Optional[str] = None
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+

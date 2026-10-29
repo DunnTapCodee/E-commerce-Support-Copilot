@@ -18,6 +18,7 @@ from contracts.schemas import (
     RetrievedDocument,
 )
 from services.gateway.src.config import (
+    DISABLE_CONFIDENCE_GUARD,
     FAITHFULNESS_THRESHOLD,
     FINANCIAL_INTENTS,
     INTENT_CONFIDENCE_THRESHOLD,
@@ -62,7 +63,7 @@ def evaluate_intent_guard(
             "Yêu cầu nằm ngoài phạm vi hỗ trợ; cần nhân viên xử lý."
         )
 
-    if confidence < INTENT_CONFIDENCE_THRESHOLD:
+    if not DISABLE_CONFIDENCE_GUARD and confidence < INTENT_CONFIDENCE_THRESHOLD:
         return _escalate(
             f"Độ tin cậy thấp ({confidence:.0%}); "
             "cần nhân viên xác nhận ý định."

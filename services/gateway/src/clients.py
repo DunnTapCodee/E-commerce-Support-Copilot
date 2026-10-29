@@ -104,3 +104,20 @@ class MicroserviceClients:
             resp = await client.get(f"{TELEMETRY_SERVICE_URL}/audit/stats")
             resp.raise_for_status()
             return resp.json()
+
+    async def handover_session(self, session_id: str, is_live_chat: bool, agent_id: str = "agent_01") -> Dict[str, Any]:
+        """Forward live chat handover toggle to conversation service."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.post(
+                f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/handover",
+                json={"session_id": session_id, "is_live_chat": is_live_chat, "agent_id": agent_id},
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def get_session_state(self, session_id: str) -> Dict[str, Any]:
+        """Fetch conversation session state from conversation service."""
+        async with httpx.AsyncClient(timeout=self.timeout) as client:
+            resp = await client.get(f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/session/{session_id}")
+            resp.raise_for_status()
+            return resp.json()
