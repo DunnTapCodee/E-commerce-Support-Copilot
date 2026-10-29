@@ -65,35 +65,66 @@ class PromptOrderMatcher:
                 self.orders_by_phone.setdefault(ph, []).append(o)
 
     async def match(self, query: str) -> MatchResult:
-        """Call Gemini to extract order entities, then look up."""
+        """Call LLM (Ckey OpenAI-compatible or Gemini) to extract order entities, then look up."""
         import httpx
         start = time.perf_counter()
 
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY") or ""
-        model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+        api_key = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
+        provider = os.getenv("LLM_PROVIDER", "auto").lower()
+        base_url = os.getenv("LLM_BASE_URL", "")
 
         entities = {}
         if api_key and not api_key.startswith("your_"):
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            prompt = (
+            system_prompt = (
                 "Bạn là AI bóc tách thông tin đơn hàng thương mại điện tử Tiki. "
-                "Từ câu của người dùng, trích xuất DUY NHẤT một JSON hợp lệ: "
+                "Từ câu của người dùng, trích xuất DUY NHẤT một JSON hợp lệ không kèm giải thích: "
                 "{\"order_id\": string hoặc null (chuẩn hóa dạng ORD-XXXX, ví dụ 1003 -> ORD-1003), "
                 "\"phone\": string hoặc null (chuẩn hóa chuỗi số liền), "
                 "\"tracking_code\": string hoặc null (ví dụ GIAO..., GHN..., TIKI...), "
                 "\"customer_name\": string hoặc null, "
                 "\"product_keyword\": string hoặc null (tên món hàng nếu có)}"
             )
-            payload = {
-                "contents": [{"parts": [{"text": f"{prompt}\n\nCâu của khách: \"{query}\""}]}],
-                "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"}
-            }
+
+            is_openai = provider == "openai" or bool(base_url) or (api_key.startswith("sk-") and not api_key.startswith("AQ."))
+
             try:
-                async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
-                    resp = await client.post(url, json=payload)
-                    if resp.status_code == 200:
-                        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                        entities = json.loads(text)
+                if is_openai:
+                    endpoint = f"{base_url.rstrip('/')}/chat/completions" if base_url else "https://api.xah.io/v1/chat/completions"
+                    model = os.getenv("LLM_MODEL", "openai-gpt-oss-20b")
+                    payload = {
+                        "model": model,
+                        "messages": [
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": query},
+                        ],
+                        "temperature": 0.0,
+                        "max_tokens": 200,
+                    }
+                    async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
+                        resp = await client.post(
+                            endpoint,
+                            headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                            json=payload,
+                        )
+                        if resp.status_code == 200:
+                            content = resp.json()["choices"][0]["message"]["content"].strip()
+                            if "```json" in content:
+                                content = content.split("```json", 1)[1].split("```", 1)[0].strip()
+                            elif "```" in content:
+                                content = content.split("```", 1)[1].split("```", 1)[0].strip()
+                            entities = json.loads(content)
+                else:
+                    model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    payload = {
+                        "contents": [{"parts": [{"text": f"{system_prompt}\n\nCâu của khách: \"{query}\""}]}],
+                        "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
+                    }
+                    async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                            entities = json.loads(text)
             except Exception:
                 pass
 

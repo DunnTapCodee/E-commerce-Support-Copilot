@@ -156,8 +156,8 @@ class OrderReActAgent:
         resolved_order_data: Optional[Dict[str, Any]] = None
         synthesis_text = ""
 
-        # 1. Trích xuất thực thể bằng Gemini LLM (Module 3)
-        entities = await self._extract_entities_gemini(query)
+        # 1. Trích xuất thực thể bằng LLM (Ckey openai-gpt-oss-20b / Gemini)
+        entities = await self._extract_entities_llm(query)
 
         # 2. Bổ trợ bằng Regex (fallback nếu LLM rỗng, lỗi mạng, hoặc chưa cấu hình key)
         regex_entities = extract_entities_advanced(query, customer_id)
@@ -250,18 +250,19 @@ class OrderReActAgent:
 
         return records, resolved_order_data, synthesis_text
 
-    async def _extract_entities_gemini(self, query: str) -> Optional[Dict[str, Any]]:
-        """Call Gemini to intelligently extract order entity parameters from unstructured text."""
-        api_key = os.getenv("GEMINI_API_KEY") or os.getenv("LLM_API_KEY") or ""
+    async def _extract_entities_llm(self, query: str) -> Optional[Dict[str, Any]]:
+        """Call LLM (Ckey OpenAI-compatible or Gemini) to intelligently extract order entity parameters."""
+        api_key = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
         if not api_key or api_key.startswith("your_"):
             return None
 
-        model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+        provider = os.getenv("LLM_PROVIDER", "auto").lower()
+        base_url = os.getenv("LLM_BASE_URL", "")
+        timeout_sec = float(os.getenv("LLM_EXTRACT_TIMEOUT", "20"))
 
         system_prompt = (
             "Bạn là trợ lý AI chuyên bóc tách thực thể tra cứu đơn hàng thương mại điện tử Tiki.\n"
-            "Nhiệm vụ: Trích xuất các thực thể từ câu nói của khách hàng và trả về DUY NHẤT một chuỗi JSON hợp lệ.\n"
+            "Nhiệm vụ: Trích xuất các thực thể từ câu nói của khách hàng và trả về DUY NHẤT một chuỗi JSON hợp lệ không kèm lời giải thích.\n"
             "Các trường trong JSON:\n"
             "- order_id: Mã đơn hàng (chuẩn hóa về dạng 'ORD-XXXX', ví dụ: '1003', 'ORD - 1003', '#1003' -> 'ORD-1003'). Nếu không có thì null.\n"
             "- phone: Số điện thoại (chuẩn hóa chuỗi số liền, ví dụ '0999 532 448' -> '0999532448'). Nếu không có thì null.\n"
@@ -271,21 +272,56 @@ class OrderReActAgent:
             "Chỉ trả về JSON thuần túy theo schema trên, không thêm bất kỳ văn bản nào khác."
         )
 
-        payload = {
-            "contents": [{"parts": [{"text": f"{system_prompt}\n\nCâu của khách hàng: \"{query}\""}]}],
-            "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
-        }
+        is_openai = provider == "openai" or bool(base_url) or (api_key.startswith("sk-") and not api_key.startswith("AQ."))
 
-        timeout_sec = float(os.getenv("LLM_EXTRACT_TIMEOUT", "20"))
-        try:
-            async with httpx.AsyncClient(timeout=timeout_sec, verify=False) as client:
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    data = json.loads(text)
-                    return data
-                else:
-                    print(f"[OrderReActAgent] Gemini HTTP Error {resp.status_code}: {resp.text}")
-        except Exception as e:
-            print(f"[OrderReActAgent] Gemini entity extraction failed/timed out: {type(e).__name__} ({e})")
+        if is_openai:
+            endpoint = f"{base_url.rstrip('/')}/chat/completions" if base_url else "https://api.xah.io/v1/chat/completions"
+            model = os.getenv("LLM_MODEL", "openai-gpt-oss-20b")
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": query},
+                ],
+                "temperature": 0.0,
+                "max_tokens": 200,
+            }
+            try:
+                async with httpx.AsyncClient(timeout=timeout_sec, verify=False) as client:
+                    resp = await client.post(
+                        endpoint,
+                        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+                        json=payload,
+                    )
+                    if resp.status_code == 200:
+                        content = resp.json()["choices"][0]["message"]["content"].strip()
+                        # Extract JSON block if surrounded by markdown code fences
+                        if "```json" in content:
+                            content = content.split("```json", 1)[1].split("```", 1)[0].strip()
+                        elif "```" in content:
+                            content = content.split("```", 1)[1].split("```", 1)[0].strip()
+                        return json.loads(content)
+                    else:
+                        print(f"[OrderReActAgent] OpenAI-compatible HTTP Error {resp.status_code}: {resp.text}")
+            except Exception as e:
+                print(f"[OrderReActAgent] OpenAI-compatible extraction failed/timed out: {type(e).__name__} ({e})")
+        else:
+            # Fallback to Google Gemini
+            model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "contents": [{"parts": [{"text": f"{system_prompt}\n\nCâu của khách hàng: \"{query}\""}]}],
+                "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
+            }
+            try:
+                async with httpx.AsyncClient(timeout=timeout_sec, verify=False) as client:
+                    resp = await client.post(url, json=payload)
+                    if resp.status_code == 200:
+                        text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                        return json.loads(text)
+                    else:
+                        print(f"[OrderReActAgent] Gemini HTTP Error {resp.status_code}: {resp.text}")
+            except Exception as e:
+                print(f"[OrderReActAgent] Gemini entity extraction failed/timed out: {type(e).__name__} ({e})")
+
         return None
