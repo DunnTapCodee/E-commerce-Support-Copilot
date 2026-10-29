@@ -1,0 +1,166 @@
+{
+  "pure_prompt": {
+    "name": "Bản 1: Thuần Prompt (LLM)",
+    "accuracy_pct": 80.0,
+    "total_queries": 30,
+    "correct_queries": 24,
+    "mean_latency_ms": 1395.44,
+    "p50_latency_ms": 890.22,
+    "p95_latency_ms": 4233.07,
+    "breakdown_by_category": {
+      "exact_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "tracking": {
+        "total": 5,
+        "correct": 3,
+        "accuracy_pct": 60.0
+      },
+      "semantic_product": {
+        "total": 5,
+        "correct": 1,
+        "accuracy_pct": 20.0
+      },
+      "phone": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "shorthand_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "negative": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      }
+    }
+  },
+  "rule_normalize": {
+    "name": "Bản 2: Luật / Normalize (Regex)",
+    "accuracy_pct": 83.33,
+    "total_queries": 30,
+    "correct_queries": 25,
+    "mean_latency_ms": 0.05,
+    "p50_latency_ms": 0.04,
+    "p95_latency_ms": 0.12,
+    "breakdown_by_category": {
+      "exact_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "tracking": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "semantic_product": {
+        "total": 5,
+        "correct": 0,
+        "accuracy_pct": 0.0
+      },
+      "phone": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "shorthand_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "negative": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      }
+    }
+  },
+  "dense_embedding": {
+    "name": "Bản 3: Dense Embedding",
+    "accuracy_pct": 76.67,
+    "total_queries": 30,
+    "correct_queries": 23,
+    "mean_latency_ms": 1.36,
+    "p50_latency_ms": 1.25,
+    "p95_latency_ms": 3.22,
+    "breakdown_by_category": {
+      "exact_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "tracking": {
+        "total": 5,
+        "correct": 0,
+        "accuracy_pct": 0.0
+      },
+      "semantic_product": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "phone": {
+        "total": 5,
+        "correct": 3,
+        "accuracy_pct": 60.0
+      },
+      "shorthand_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "negative": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      }
+    }
+  },
+  "hybrid": {
+    "name": "Bản 4: Hybrid (Keyword + Embedding)",
+    "accuracy_pct": 100.0,
+    "total_queries": 30,
+    "correct_queries": 30,
+    "mean_latency_ms": 0.34,
+    "p50_latency_ms": 0.04,
+    "p95_latency_ms": 1.36,
+    "breakdown_by_category": {
+      "exact_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "tracking": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "semantic_product": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "phone": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "shorthand_id": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      },
+      "negative": {
+        "total": 5,
+        "correct": 5,
+        "accuracy_pct": 100.0
+      }
+    }
+  }
+}
