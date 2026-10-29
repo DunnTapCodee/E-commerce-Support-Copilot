@@ -81,6 +81,34 @@ TOOL_DEFINITIONS = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "search_orders",
+            "description": "Tìm kiếm đơn hàng theo tên món hàng/sản phẩm, tên khách hàng hoặc thuộc tính khi khách không có mã đơn.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "product_name": {
+                        "type": "string",
+                        "description": "Tên sản phẩm cần tìm (ví dụ: bình giữ nhiệt, chuột không dây).",
+                    },
+                    "customer_name": {
+                        "type": "string",
+                        "description": "Tên khách hàng đặt đơn (ví dụ: Hoàng Mai Yến, Trần Đức Nam).",
+                    },
+                    "brand_or_attributes": {
+                        "type": "string",
+                        "description": "Thương hiệu hoặc thuộc tính sản phẩm (ví dụ: Lock&Lock, 800ml).",
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "Trạng thái đơn hàng (ví dụ: Shipping, Cancelled).",
+                    },
+                },
+            },
+        },
+    },
 ]
 
 
@@ -163,6 +191,13 @@ class ToolExecutor:
                 orders = await self.clients.get_customer_orders(customer_id)
                 result = {"customer_id": customer_id, "total": len(orders), "orders": orders}
 
+            elif tool_name == "search_orders":
+                pname = str(arguments.get("product_name") or "").strip().lower()
+                cname = str(arguments.get("customer_name") or "").strip().lower()
+                brand = str(arguments.get("brand_or_attributes") or "").strip().lower()
+                stt = str(arguments.get("status") or "").strip().lower()
+                result = self._search_orders_multi_criteria(pname, cname, brand, stt)
+
             else:
                 result = {"error": f"Tool '{tool_name}' is not recognized."}
 
@@ -176,3 +211,98 @@ class ToolExecutor:
             result=result,
             latency_ms=latency_ms,
         )
+
+    def _search_orders_multi_criteria(
+        self,
+        product_name: str = "",
+        customer_name: str = "",
+        brand: str = "",
+        status: str = "",
+    ) -> Dict[str, Any]:
+        """Rank and return orders matching natural language criteria (product, customer, brand, status)."""
+        import json
+        from pathlib import Path
+
+        json_path = Path(__file__).resolve().parent.parent.parent.parent / "data" / "mock_orders.json"
+        if not json_path.exists():
+            return {"found": False, "message": "Database mock_orders.json not found."}
+
+        with open(json_path, "r", encoding="utf-8") as f:
+            all_orders = json.load(f)
+
+        scored: List[Tuple[float, Dict[str, Any], List[str]]] = []
+        for o in all_orders:
+            score = 0.0
+            reasons = []
+
+            # 1. Customer Name (0 - 50)
+            if customer_name:
+                cust = str(o.get("customer_name", "")).lower()
+                if customer_name == cust:
+                    score += 50.0
+                    reasons.append(f"exact_customer:{cust}")
+                elif customer_name in cust or cust in customer_name:
+                    score += 42.0
+                    reasons.append(f"partial_customer:{cust}")
+
+            # 2. Product Name / Type (0 - 45)
+            if product_name:
+                best_item_score = 0.0
+                for it in o.get("items", []):
+                    iname = str(it.get("name", "")).lower()
+                    if product_name in iname:
+                        best_item_score = max(best_item_score, 45.0)
+                    else:
+                        p_words = set(product_name.split())
+                        i_words = set(iname.split())
+                        overlap = len(p_words & i_words)
+                        if overlap >= 2:
+                            best_item_score = max(best_item_score, 30.0 * (overlap / max(1, len(p_words))))
+                if best_item_score > 0:
+                    score += best_item_score
+                    reasons.append(f"product:{product_name}")
+
+            # 3. Brand or Attributes (0 - 25)
+            if brand:
+                for it in o.get("items", []):
+                    iname = str(it.get("name", "")).lower()
+                    if brand in iname:
+                        score += 25.0
+                        reasons.append(f"brand:{brand}")
+                        break
+
+            # 4. Status (0 - 15)
+            if status:
+                ostt = str(o.get("order_status", "")).lower()
+                if status in ostt or ostt in status:
+                    score += 15.0
+                    reasons.append(f"status:{ostt}")
+
+            if score > 0:
+                scored.append((score, o, reasons))
+
+        if not scored:
+            return {"found": False, "message": "Không tìm thấy đơn hàng phù hợp với các tiêu chí tìm kiếm."}
+
+        scored.sort(key=lambda x: x[0], reverse=True)
+        best = scored[0][1]
+        top_score = scored[0][0]
+        reasons = scored[0][2]
+
+        return {
+            "found": True,
+            "total_found": len(scored),
+            "best_match": best,
+            "confidence": min(1.0, round(top_score / 100.0, 2)),
+            "reasons": reasons,
+            "matches": [
+                {
+                    "order_id": o.get("order_id"),
+                    "customer_name": o.get("customer_name"),
+                    "order_status": o.get("order_status"),
+                    "total_amount": o.get("total_amount"),
+                    "items": [it.get("name") for it in o.get("items", [])],
+                }
+                for _, o, _ in scored[:5]
+            ],
+        }

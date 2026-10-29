@@ -45,10 +45,10 @@ def load_all_orders(json_path: Path = ORDERS_JSON_PATH) -> List[Dict[str, Any]]:
 
 
 # =====================================================================
-# Bản 1: Pure Prompt (LLM Zero-Shot Entity Extraction)
+# Bản 1: Pure Prompt (LLM Zero-Shot Multi-Attribute Entity Extraction)
 # =====================================================================
 class PromptOrderMatcher:
-    """Method 1: Identify order by querying LLM with prompt to extract entities, then DB query."""
+    """Method 1: Identify order by querying LLM to extract full entity attributes, then multi-criteria DB query."""
 
     name = "pure_prompt"
 
@@ -65,7 +65,7 @@ class PromptOrderMatcher:
                 self.orders_by_phone.setdefault(ph, []).append(o)
 
     async def match(self, query: str) -> MatchResult:
-        """Call LLM (Ckey OpenAI-compatible or Gemini) to extract order entities, then look up."""
+        """Call LLM (Ckey OpenAI-compatible or Gemini) to extract comprehensive order entities, then score & look up."""
         import httpx
         start = time.perf_counter()
 
@@ -76,13 +76,19 @@ class PromptOrderMatcher:
         entities = {}
         if api_key and not api_key.startswith("your_"):
             system_prompt = (
-                "Bạn là AI bóc tách thông tin đơn hàng thương mại điện tử Tiki. "
-                "Từ câu của người dùng, trích xuất DUY NHẤT một JSON hợp lệ không kèm giải thích: "
-                "{\"order_id\": string hoặc null (chuẩn hóa dạng ORD-XXXX, ví dụ 1003 -> ORD-1003), "
-                "\"phone\": string hoặc null (chuẩn hóa chuỗi số liền), "
-                "\"tracking_code\": string hoặc null (ví dụ GIAO..., GHN..., TIKI...), "
-                "\"customer_name\": string hoặc null, "
-                "\"product_keyword\": string hoặc null (tên món hàng nếu có)}"
+                "Bạn là AI chuyên gia bóc tách thực thể tra cứu đơn hàng thương mại điện tử Tiki.\n"
+                "Nhiệm vụ: Phân tích kỹ câu của khách hàng và trích xuất TẤT CẢ các thông tin liên quan dưới dạng DUY NHẤT một chuỗi JSON hợp lệ không kèm bất kỳ giải thích nào:\n"
+                "{\n"
+                '  "order_id": string hoặc null (chuẩn hóa về dạng ORD-XXXX, ví dụ "1003", "#1003", "ORD 1003" -> "ORD-1003"),\n'
+                '  "phone": string hoặc null (chuẩn hóa chuỗi số liền không khoảng trắng, ví dụ "0999 532 448" -> "0999532448"),\n'
+                '  "tracking_code": string hoặc null (mã vận đơn, ví dụ GHN..., GIAO..., TIKI...),\n'
+                '  "customer_name": string hoặc null (tên khách hàng người mua, ví dụ "Hoàng Mai Yến", "Trần Đức Nam"),\n'
+                '  "product_name": string hoặc null (tên hoặc loại sản phẩm được nhắc tới, ví dụ "bình giữ nhiệt", "sạc dự phòng", "tai nghe"),\n'
+                '  "brand_or_attributes": string hoặc null (thương hiệu, kích thước, dung tích, màu sắc, ví dụ "Lock&Lock", "800ml", "inox 304"),\n'
+                '  "status_hint": string hoặc null (gợi ý trạng thái đơn: "Shipping", "Cancelled", "Delivered", "Processing", "Returned"),\n'
+                '  "action": string ("status", "cancel", "details", "search", "customer_orders"),\n'
+                '  "cancel_reason": string hoặc null\n'
+                "}"
             )
 
             is_openai = provider == "openai" or bool(base_url) or (api_key.startswith("sk-") and not api_key.startswith("AQ."))
@@ -98,21 +104,46 @@ class PromptOrderMatcher:
                             {"role": "user", "content": query},
                         ],
                         "temperature": 0.0,
-                        "max_tokens": 200,
+                        "max_tokens": 800,
                     }
-                    async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
+                    async with httpx.AsyncClient(timeout=15.0, verify=False) as client:
                         resp = await client.post(
                             endpoint,
                             headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
                             json=payload,
                         )
                         if resp.status_code == 200:
-                            content = resp.json()["choices"][0]["message"]["content"].strip()
-                            if "```json" in content:
-                                content = content.split("```json", 1)[1].split("```", 1)[0].strip()
-                            elif "```" in content:
-                                content = content.split("```", 1)[1].split("```", 1)[0].strip()
-                            entities = json.loads(content)
+                            data = resp.json()
+                            msg = data["choices"][0]["message"]
+                            content = (msg.get("content") or "").strip()
+                            reasoning = (msg.get("reasoning_content") or "").strip()
+
+                            # Helper parser
+                            def try_parse_json(text: str) -> Optional[Dict[str, Any]]:
+                                if not text:
+                                    return None
+                                cleaned = text
+                                if "```json" in cleaned:
+                                    cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+                                elif "```" in cleaned:
+                                    cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+                                try:
+                                    return json.loads(cleaned)
+                                except Exception:
+                                    # Try to find { ... } substring
+                                    m = re.search(r"\{[\s\S]*\}", cleaned)
+                                    if m:
+                                        try:
+                                            return json.loads(m.group(0))
+                                        except Exception:
+                                            pass
+                                return None
+
+                            parsed = try_parse_json(content)
+                            if not parsed and reasoning:
+                                parsed = try_parse_json(reasoning)
+                            if parsed:
+                                entities = parsed
                 else:
                     model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
@@ -120,7 +151,7 @@ class PromptOrderMatcher:
                         "contents": [{"parts": [{"text": f"{system_prompt}\n\nCâu của khách: \"{query}\""}]}],
                         "generationConfig": {"temperature": 0.0, "responseMimeType": "application/json"},
                     }
-                    async with httpx.AsyncClient(timeout=8.0, verify=False) as client:
+                    async with httpx.AsyncClient(timeout=10.0, verify=False) as client:
                         resp = await client.post(url, json=payload)
                         if resp.status_code == 200:
                             text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
@@ -131,15 +162,15 @@ class PromptOrderMatcher:
         matched_order = None
         matched_by = "none"
         conf = 0.0
+        details_extra: Dict[str, Any] = {"entities": entities}
 
-        # 1. Match by order_id
+        # 1. Khớp theo mã định danh duy nhất (Hard unique identifier)
         oid = entities.get("order_id")
         if oid and oid.upper() in self.orders_by_id:
             matched_order = self.orders_by_id[oid.upper()]
             matched_by = "order_id"
             conf = 1.0
 
-        # 2. Match by tracking_code
         if not matched_order and entities.get("tracking_code"):
             trk = str(entities.get("tracking_code")).upper().strip()
             if trk in self.orders_by_tracking:
@@ -147,34 +178,100 @@ class PromptOrderMatcher:
                 matched_by = "tracking_code"
                 conf = 1.0
 
-        # 3. Match by phone
         if not matched_order and entities.get("phone"):
             ph = re.sub(r"\D", "", str(entities.get("phone")))
             if ph in self.orders_by_phone:
-                matched_order = self.orders_by_phone[ph][0]
-                matched_by = "phone"
-                conf = 0.95
+                phone_orders = self.orders_by_phone[ph]
+                if len(phone_orders) == 1:
+                    matched_order = phone_orders[0]
+                    matched_by = "phone"
+                    conf = 0.98
+                else:
+                    matched_order = phone_orders[0]
+                    matched_by = "phone_multiple"
+                    conf = 0.90
+                    details_extra["all_orders_for_phone"] = [o["order_id"] for o in phone_orders]
 
-        # 4. Match by customer name or product keyword
+        # 2. Khớp đa tiêu chí có trọng số (Multi-Criteria Weighted Scoring)
+        # Sử dụng khi không có mã đơn/SĐT hoặc tra cứu bằng mô tả tự nhiên (tên sản phẩm, tên khách, thương hiệu)
         if not matched_order:
             cname = (entities.get("customer_name") or "").lower().strip()
-            kw = (entities.get("product_keyword") or "").lower().strip()
+            pname = (entities.get("product_name") or entities.get("product_keyword") or "").lower().strip()
+            brand = (entities.get("brand_or_attributes") or "").lower().strip()
+            stt_hint = (entities.get("status_hint") or "").lower().strip()
+
+            scored_candidates: List[Tuple[float, Dict[str, Any], List[str]]] = []
+
             for o in self.orders:
-                cust = o.get("customer_name", "").lower()
-                if cname and cname in cust:
-                    matched_order = o
-                    matched_by = "customer_name"
-                    conf = 0.90
-                    break
-                for item in o.get("items", []):
-                    iname = item.get("name", "").lower()
-                    if kw and (kw in iname or iname in kw):
-                        matched_order = o
-                        matched_by = "product_keyword"
-                        conf = 0.85
-                        break
-                if matched_order:
-                    break
+                score = 0.0
+                reasons: List[str] = []
+
+                # Tiêu chí 1: Khớp tên khách hàng (Tối đa 50 điểm)
+                if cname:
+                    cust = str(o.get("customer_name", "")).lower()
+                    if cname == cust:
+                        score += 50.0
+                        reasons.append(f"exact_customer:{cust}")
+                    elif cname in cust or cust in cname:
+                        score += 42.0
+                        reasons.append(f"partial_customer:{cust}")
+
+                # Tiêu chí 2: Khớp tên/loại sản phẩm (Tối đa 45 điểm)
+                if pname:
+                    best_item_score = 0.0
+                    for it in o.get("items", []):
+                        iname = str(it.get("name", "")).lower()
+                        if pname in iname:
+                            best_item_score = max(best_item_score, 45.0)
+                        else:
+                            p_tokens = set(pname.split())
+                            i_tokens = set(iname.split())
+                            overlap = len(p_tokens & i_tokens)
+                            if overlap >= 2:
+                                best_item_score = max(best_item_score, 30.0 * (overlap / max(1, len(p_tokens))))
+                    if best_item_score > 0:
+                        score += best_item_score
+                        reasons.append(f"product:{pname}")
+
+                # Tiêu chí 3: Khớp thương hiệu / thuộc tính / dung tích (Tối đa 25 điểm)
+                if brand:
+                    for it in o.get("items", []):
+                        iname = str(it.get("name", "")).lower()
+                        if brand in iname:
+                            score += 25.0
+                            reasons.append(f"brand_attr:{brand}")
+                            break
+
+                # Tiêu chí 4: Khớp trạng thái đơn (Tối đa 15 điểm)
+                if stt_hint:
+                    ostt = str(o.get("order_status", "")).lower()
+                    if stt_hint in ostt or ostt in stt_hint:
+                        score += 15.0
+                        reasons.append(f"status:{ostt}")
+
+                if score > 0:
+                    scored_candidates.append((score, o, reasons))
+
+            if scored_candidates:
+                scored_candidates.sort(key=lambda x: x[0], reverse=True)
+                top_score = scored_candidates[0][0]
+                top_tied = [c for c in scored_candidates if c[0] == top_score]
+
+                matched_order = scored_candidates[0][1]
+                details_extra["reasons"] = scored_candidates[0][2]
+                details_extra["top_score"] = top_score
+
+                if len(top_tied) > 1 and not cname:
+                    # Nhiều đơn cùng điểm (ví dụ chỉ tìm "bình giữ nhiệt" mà không có tên khách)
+                    matched_by = "product_name_multiple"
+                    conf = 0.75
+                    details_extra["is_ambiguous"] = True
+                    details_extra["tied_count"] = len(top_tied)
+                    details_extra["candidate_order_ids"] = [c[1]["order_id"] for c in top_tied[:5]]
+                else:
+                    # Có tiêu chí tên khách hoặc thuộc tính phân biệt rõ ràng
+                    matched_by = "multi_criteria_attributes"
+                    conf = min(0.99, round(top_score / 100.0, 2))
 
         latency_ms = (time.perf_counter() - start) * 1000
         return MatchResult(
@@ -183,7 +280,7 @@ class PromptOrderMatcher:
             confidence=conf,
             latency_ms=round(latency_ms, 2),
             matched_by=matched_by,
-            details={"entities": entities}
+            details=details_extra
         )
 
 

@@ -207,19 +207,52 @@ class OrderReActAgent:
                     if full_order:
                         resolved_order_data = full_order
 
-        # Decision 3: List Customer Orders Tool
+        # Decision 3: Natural language search by product/customer/attributes (e.g. "bình giữ nhiệt của Hoàng Mai Yến")
+        elif not order_id and not phone and not tracking and (entities.get("product_name") or entities.get("customer_name") or entities.get("brand_or_attributes")):
+            pname = entities.get("product_name") or ""
+            cname = entities.get("customer_name") or ""
+            brand = entities.get("brand_or_attributes") or ""
+            stt = entities.get("status_hint") or ""
+
+            rec = await self.executor.execute(
+                "search_orders",
+                {
+                    "product_name": pname,
+                    "customer_name": cname,
+                    "brand_or_attributes": brand,
+                    "status": stt,
+                },
+            )
+            records.append(rec)
+            if isinstance(rec.result, dict) and rec.result.get("found"):
+                best_order = rec.result.get("best_match")
+                resolved_order_data = best_order
+                # If the customer's intent was to cancel this identified order
+                if action == "cancel" and best_order and best_order.get("order_id"):
+                    cancel_rec = await self.executor.execute(
+                        "cancel_order",
+                        {
+                            "order_id": best_order["order_id"],
+                            "reason": entities.get("cancel_reason") or "Khách yêu cầu hủy qua chat",
+                        },
+                    )
+                    records.append(cancel_rec)
+                    if isinstance(cancel_rec.result, dict) and cancel_rec.result.get("order"):
+                        resolved_order_data = cancel_rec.result.get("order")
+
+        # Decision 4: List Customer Orders Tool
         elif action == "customer_orders" and customer_id:
             rec = await self.executor.execute("get_customer_orders", {"customer_id": customer_id})
             records.append(rec)
 
-        # Decision 4: Order Details Tool
+        # Decision 5: Order Details Tool
         elif order_id:
             rec = await self.executor.execute("get_order_details", {"order_id": order_id})
             records.append(rec)
             if isinstance(rec.result, dict):
                 resolved_order_data = rec.result
 
-        # Decision 5: General fallback by customer_id if no specific entity mentioned
+        # Decision 6: General fallback by customer_id if no specific entity mentioned
         elif customer_id:
             full_order = await self.executor.clients.lookup_order(customer_id)
             if full_order:
@@ -244,6 +277,26 @@ class OrderReActAgent:
                         + "\n".join(briefs)
                         + "\nTrợ lý CSKH hãy tóm tắt danh sách các đơn hàng này cho khách hàng và hỏi khách muốn xử lý đơn nào.]"
                     )
+                elif r.tool_name == "search_orders" and isinstance(r.result, dict):
+                    res = r.result
+                    best = res.get("best_match", {})
+                    total = res.get("total_found", 0)
+                    oid = best.get("order_id")
+                    cname = best.get("customer_name")
+                    stt = best.get("order_status")
+                    amt = f"{best.get('total_amount', 0):,}đ"
+                    items = ", ".join(i.get("name", "") for i in best.get("items", []))
+                    if total > 1 and not r.arguments.get("customer_name"):
+                        summary_parts.append(
+                            f"[Tìm kiếm đơn hàng theo '{r.arguments.get('product_name')}': Tìm thấy {total} đơn phù hợp. "
+                            f"Đơn khớp tiêu biểu nhất: Mã {oid} (Khách: {cname}), trạng thái: {stt}, sản phẩm: {items}, số tiền: {amt}. "
+                            f"Trợ lý CSKH hãy phản hồi thông tin đơn này hoặc hỏi khách mã đơn cụ thể nếu cần.]"
+                        )
+                    else:
+                        summary_parts.append(
+                            f"[Tìm thấy chính xác đơn hàng theo thông tin khách cung cấp: "
+                            f"Mã đơn: {oid}, Khách hàng: {cname}, Trạng thái: {stt}, Sản phẩm: {items}, Tổng tiền: {amt}.]"
+                        )
                 else:
                     summary_parts.append(f"[Tool: {r.tool_name}({r.arguments}) -> Kết quả: {r.result}]")
             synthesis_text = "\n".join(summary_parts)
@@ -251,7 +304,7 @@ class OrderReActAgent:
         return records, resolved_order_data, synthesis_text
 
     async def _extract_entities_llm(self, query: str) -> Optional[Dict[str, Any]]:
-        """Call LLM (Ckey OpenAI-compatible or Gemini) to intelligently extract order entity parameters."""
+        """Call LLM (Ckey OpenAI-compatible or Gemini) to intelligently extract comprehensive order entity parameters."""
         api_key = os.getenv("LLM_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
         if not api_key or api_key.startswith("your_"):
             return None
@@ -262,15 +315,38 @@ class OrderReActAgent:
 
         system_prompt = (
             "Bạn là trợ lý AI chuyên bóc tách thực thể tra cứu đơn hàng thương mại điện tử Tiki.\n"
-            "Nhiệm vụ: Trích xuất các thực thể từ câu nói của khách hàng và trả về DUY NHẤT một chuỗi JSON hợp lệ không kèm lời giải thích.\n"
-            "Các trường trong JSON:\n"
-            "- order_id: Mã đơn hàng (chuẩn hóa về dạng 'ORD-XXXX', ví dụ: '1003', 'ORD - 1003', '#1003' -> 'ORD-1003'). Nếu không có thì null.\n"
-            "- phone: Số điện thoại (chuẩn hóa chuỗi số liền, ví dụ '0999 532 448' -> '0999532448'). Nếu không có thì null.\n"
-            "- tracking_code: Mã vận đơn (ví dụ: GHN883921, GIAO...). Nếu không có thì null.\n"
-            "- action: Hành động của khách: 'status' (kiểm tra trạng thái/vị trí giao), 'cancel' (hủy đơn), 'details' (xem chi tiết món hàng), 'customer_orders' (xem danh sách các đơn đã mua).\n"
-            "- cancel_reason: Lý do hủy nếu có (ví dụ 'giao hàng lâu quá'), nếu không thì null.\n"
-            "Chỉ trả về JSON thuần túy theo schema trên, không thêm bất kỳ văn bản nào khác."
+            "Nhiệm vụ: Trích xuất TẤT CẢ các thông tin liên quan từ câu nói của khách hàng và trả về DUY NHẤT một chuỗi JSON hợp lệ không kèm lời giải thích:\n"
+            "{\n"
+            '  "order_id": string hoặc null (chuẩn hóa về dạng "ORD-XXXX", ví dụ: "1003", "#1003", "ORD 1003" -> "ORD-1003"),\n'
+            '  "phone": string hoặc null (chuẩn hóa chuỗi số liền, ví dụ "0999 532 448" -> "0999532448"),\n'
+            '  "tracking_code": string hoặc null (mã vận đơn, ví dụ GHN..., GIAO..., TIKI...),\n'
+            '  "customer_name": string hoặc null (tên khách hàng người mua, ví dụ "Hoàng Mai Yến", "Trần Đức Nam"),\n'
+            '  "product_name": string hoặc null (tên món hàng/loại sản phẩm, ví dụ "bình giữ nhiệt", "sạc dự phòng", "tai nghe"),\n'
+            '  "brand_or_attributes": string hoặc null (thương hiệu, màu sắc, dung tích, ví dụ "Lock&Lock", "800ml", "màu đen"),\n'
+            '  "status_hint": string hoặc null (gợi ý trạng thái đơn: "Shipping", "Cancelled", "Delivered", "Processing", "Returned"),\n'
+            '  "action": string ("status", "cancel", "details", "search", "customer_orders"),\n'
+            '  "cancel_reason": string hoặc null (lý do hủy nếu có, ví dụ "giao hàng lâu quá")\n'
+            "}"
         )
+
+        def try_parse_json(text: str) -> Optional[Dict[str, Any]]:
+            if not text:
+                return None
+            cleaned = text
+            if "```json" in cleaned:
+                cleaned = cleaned.split("```json", 1)[1].split("```", 1)[0].strip()
+            elif "```" in cleaned:
+                cleaned = cleaned.split("```", 1)[1].split("```", 1)[0].strip()
+            try:
+                return json.loads(cleaned)
+            except Exception:
+                m = re.search(r"\{[\s\S]*\}", cleaned)
+                if m:
+                    try:
+                        return json.loads(m.group(0))
+                    except Exception:
+                        pass
+            return None
 
         is_openai = provider == "openai" or bool(base_url) or (api_key.startswith("sk-") and not api_key.startswith("AQ."))
 
@@ -284,7 +360,7 @@ class OrderReActAgent:
                     {"role": "user", "content": query},
                 ],
                 "temperature": 0.0,
-                "max_tokens": 200,
+                "max_tokens": 800,
             }
             try:
                 async with httpx.AsyncClient(timeout=timeout_sec, verify=False) as client:
@@ -294,13 +370,16 @@ class OrderReActAgent:
                         json=payload,
                     )
                     if resp.status_code == 200:
-                        content = resp.json()["choices"][0]["message"]["content"].strip()
-                        # Extract JSON block if surrounded by markdown code fences
-                        if "```json" in content:
-                            content = content.split("```json", 1)[1].split("```", 1)[0].strip()
-                        elif "```" in content:
-                            content = content.split("```", 1)[1].split("```", 1)[0].strip()
-                        return json.loads(content)
+                        data = resp.json()
+                        msg = data["choices"][0]["message"]
+                        content = (msg.get("content") or "").strip()
+                        reasoning = (msg.get("reasoning_content") or "").strip()
+
+                        parsed = try_parse_json(content)
+                        if not parsed and reasoning:
+                            parsed = try_parse_json(reasoning)
+                        if parsed:
+                            return parsed
                     else:
                         print(f"[OrderReActAgent] OpenAI-compatible HTTP Error {resp.status_code}: {resp.text}")
             except Exception as e:
@@ -318,7 +397,7 @@ class OrderReActAgent:
                     resp = await client.post(url, json=payload)
                     if resp.status_code == 200:
                         text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                        return json.loads(text)
+                        return try_parse_json(text)
                     else:
                         print(f"[OrderReActAgent] Gemini HTTP Error {resp.status_code}: {resp.text}")
             except Exception as e:
