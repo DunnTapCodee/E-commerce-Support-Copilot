@@ -60,6 +60,9 @@ class LLMIntentClassifier:
                 return self._parse(r.json()['choices'][0]['message']['content'])
             except (httpx.HTTPError, KeyError, ValueError) as exc:
                 error = exc
+                status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
+                if status and status < 500 and status != 429:  # auth/model/request errors will not fix themselves
+                    raise RuntimeError(f'LLM request rejected ({status}) by {self.api_base} for model {self.model}: {exc.response.text[:300]}') from exc
                 import time;time.sleep(2 ** attempt)
         raise RuntimeError(f'LLM request failed after {self.retries} attempts: {error}')
 
