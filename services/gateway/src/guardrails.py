@@ -10,7 +10,7 @@ Includes:
 from datetime import date, datetime
 import math
 import re
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from contracts.schemas import (
     GuardrailResult,
@@ -251,6 +251,7 @@ def evaluate_response_faithfulness(
     draft_text: str,
     citations: List[RetrievedDocument],
     threshold: float = FAITHFULNESS_THRESHOLD,
+    order_data: Optional[Dict[str, Any]] = None,
 ) -> GuardrailResult:
     """NLI Entailment & Hallucination Check:
     Verify whether every claim in the LLM draft is faithfully supported by the retrieved context.
@@ -272,8 +273,16 @@ def evaluate_response_faithfulness(
             hallucination_detected=True,
         )
 
-    # 1. Build Ground Truth Premise from citations
-    premise_text = " ".join(f"{doc.title} {doc.content}" for doc in citations).lower()
+    # 1. Build Ground Truth Premise from citations and order data
+    premise_parts = [f"{doc.title} {doc.content}" for doc in citations]
+    if order_data:
+        order_str = " ".join(f"{k} {v}" for k, v in order_data.items() if k not in ("shipping_timeline", "items"))
+        if "items" in order_data and isinstance(order_data["items"], list):
+            order_str += " " + " ".join(it.get("name", "") if isinstance(it, dict) else str(it) for it in order_data["items"])
+        if "shipping_timeline" in order_data and isinstance(order_data["shipping_timeline"], list):
+            order_str += " " + " ".join(t.get("status", "") if isinstance(t, dict) else str(t) for t in order_data["shipping_timeline"])
+        premise_parts.append(order_str)
+    premise_text = " ".join(premise_parts).lower()
     premise_numbers = set(_extract_numeric_entities(premise_text))
 
     # 2. Extract atomic claims from LLM draft

@@ -156,18 +156,22 @@ class OrderReActAgent:
         resolved_order_data: Optional[Dict[str, Any]] = None
         synthesis_text = ""
 
-        # 1. Trích xuất thực thể bằng LLM (Ckey openai-gpt-oss-20b / Gemini)
-        entities = await self._extract_entities_llm(query)
-
-        # 2. Bổ trợ bằng Regex (fallback nếu LLM rỗng, lỗi mạng, hoặc chưa cấu hình key)
+        # 1. Kiểm tra nhanh bằng Regex (< 0.1ms)
         regex_entities = extract_entities_advanced(query, customer_id)
-        if not entities:
+
+        # FAST PATH: Nếu Regex đã bắt trúng mã đơn (ORD-XXXX), mã vận đơn, hoặc SĐT rõ ràng
+        # Bỏ qua gọi LLM để tiết kiệm 3-5 giây độ trễ và trả kết quả tức thì
+        if regex_entities.get("order_id") or regex_entities.get("tracking_code") or regex_entities.get("phone"):
             entities = regex_entities
         else:
-            # Gộp thông tin: nếu trường nào LLM chưa nhận diện được thì lấy từ regex
-            for k in ["order_id", "phone", "tracking_code", "action", "cancel_reason"]:
-                if not entities.get(k) and regex_entities.get(k):
-                    entities[k] = regex_entities[k]
+            # SLOW PATH: Câu tìm kiếm ngôn ngữ tự nhiên (vd 'bình giữ nhiệt của Hoàng Mai Yến'), gọi LLM bóc tách:
+            entities = await self._extract_entities_llm(query)
+            if not entities:
+                entities = regex_entities
+            else:
+                for k in ["order_id", "phone", "tracking_code", "action", "cancel_reason"]:
+                    if not entities.get(k) and regex_entities.get(k):
+                        entities[k] = regex_entities[k]
 
         order_id = entities.get("order_id")
         phone = entities.get("phone")

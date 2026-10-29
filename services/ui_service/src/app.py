@@ -401,7 +401,7 @@ with tab_user:
                 resp = requests.post(
                     f"{GATEWAY_URL}/api/v1/copilot/query",
                     json=payload,
-                    timeout=15,
+                    timeout=45,
                 )
 
             if resp.status_code == 200:
