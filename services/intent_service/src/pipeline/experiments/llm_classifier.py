@@ -4,6 +4,7 @@ import json
 import os
 import re
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import httpx
@@ -13,7 +14,7 @@ INVALID = 'invalid_llm_output'
 
 
 class LLMIntentClassifier:
-    def __init__(self, labels, model=None, api_base=None, api_key=None, workers=8, cache=Path('results/intent_eval_en/llm_cache.jsonl'), timeout=60., retries=3, examples=None):
+    def __init__(self, labels, model=None, api_base=None, api_key=None, workers=2, rpm=15, cache=Path('results/intent_eval_en/llm_cache.jsonl'), timeout=60., retries=6, examples=None):
         self.labels = list(labels)
         self.model = model or os.getenv('LLM_MODEL', 'gpt-4o-mini')
         self.api_base = (api_base or os.getenv('LLM_API_BASE', DEFAULT_BASE)).rstrip('/')
@@ -21,6 +22,8 @@ class LLMIntentClassifier:
         if not self.api_key:
             raise ValueError('Set LLM_API_KEY (or pass api_key)')
         self.workers, self.retries, self.timeout = workers, retries, timeout
+        # Global pacing: at most `rpm` requests per minute across all threads (free API tiers are strict).
+        self.interval, self._next, self._rate_lock = (60. / rpm if rpm else 0.), 0., threading.Lock()
         self.cache_path, self._lock = Path(cache), threading.Lock()
         self.cache = {}
         if self.cache_path.exists():
@@ -49,11 +52,18 @@ class LLMIntentClassifier:
         value = value.lower().replace(' ', '_').replace('-', '_')
         return value if value in self.labels else INVALID
 
+    def _pace(self):
+        with self._rate_lock:
+            wait = self._next - time.monotonic()
+            self._next = max(time.monotonic(), self._next) + self.interval
+        if wait > 0:time.sleep(wait)
+
     def _call(self, client, text):
-        body = {'model': self.model, 'temperature': 0, 'max_tokens': 40,
+        body = {'model': self.model, 'temperature': 0, 'max_tokens': 512,
                 'messages': [{'role': 'system', 'content': self.system}, {'role': 'user', 'content': text}]}
         error = None
         for attempt in range(self.retries):
+            self._pace()
             try:
                 r = client.post(f'{self.api_base}/chat/completions', json=body, headers={'Authorization': f'Bearer {self.api_key}'})
                 r.raise_for_status()
@@ -61,9 +71,13 @@ class LLMIntentClassifier:
             except (httpx.HTTPError, KeyError, ValueError) as exc:
                 error = exc
                 status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None
-                if status and status < 500 and status != 429:  # auth/model/request errors will not fix themselves
+                if status == 429:  # rate limited: honour Retry-After, else back off 5s, 10s, 20s ... (max 60s)
+                    retry_after = exc.response.headers.get('retry-after', '')
+                    time.sleep(min(float(retry_after) if retry_after.replace('.', '', 1).isdigit() else 5 * 2 ** attempt, 60))
+                    continue
+                if status and status < 500:  # auth/model/request errors will not fix themselves
                     raise RuntimeError(f'LLM request rejected ({status}) by {self.api_base} for model {self.model}: {exc.response.text[:300]}') from exc
-                import time;time.sleep(2 ** attempt)
+                time.sleep(2 ** attempt)
         raise RuntimeError(f'LLM request failed after {self.retries} attempts: {error}')
 
     def predict(self, texts):
