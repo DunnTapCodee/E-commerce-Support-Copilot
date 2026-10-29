@@ -179,7 +179,7 @@ def evaluate(predictions, tests, labels, slice_cols=('dtype', 'length', 'style')
 def stratified_sample(tests, n, seed=42):
     """Cap the (paid, slow) LLM evaluation while keeping every intent and data type represented."""
     if n is None or n >= len(tests):return tests
-    return tests.groupby(['intent', 'dtype'], group_keys=False).apply(lambda g: g.sample(max(1, round(n * len(g) / len(tests))), random_state=seed))
+    return pd.concat([g.sample(max(1, round(n * len(g) / len(tests))), random_state=seed) for _, g in tests.groupby(['intent', 'dtype'])])
 
 
 def run(models=ALL_MODELS, llm_samples=500, use_llm=True, out=OUT):
