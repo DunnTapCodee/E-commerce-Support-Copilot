@@ -2,6 +2,8 @@
 
 Everything is reported per model, per intent and per data slice (clean/noisy, length, Bitext style tags)."""
 import hashlib
+import importlib.util
+import json
 import random
 import re
 import unicodedata
@@ -38,6 +40,7 @@ def group_id(text):
 
 PROCESSED = Path('data/processed/module1')
 OUT = Path('results/intent_eval_en')
+MODELS = Path('artifacts/models/intent_eval_en')
 # Bitext linguistic-variation tags; documented in the dataset card.
 STYLE = {'B': 'basic', 'I': 'interrogative', 'C': 'coordinated', 'N': 'negation', 'M': 'morphological', 'L': 'lexical',
          'E': 'abbreviation', 'P': 'politeness', 'Q': 'colloquial', 'W': 'offensive', 'K': 'keyword', 'Z': 'noisy'}
@@ -103,6 +106,24 @@ class SklearnIntentModel:
             self.clf.fit(X, y)
         self.train_time_s = time.perf_counter() - start
         return self
+
+    def save(self, root=MODELS, metrics=None):
+        """Persist the fitted model (no lambdas, so it unpickles anywhere eval_intent_en is importable)."""
+        import importlib.metadata, joblib
+        from datetime import datetime
+        path = Path(root) / self.name;path.mkdir(parents=True, exist_ok=True)
+        joblib.dump({'features': self.feats, 'select': self.select, 'classifier': self.clf, 'encoder': self.enc}, path / 'model.joblib')
+        (path / 'meta.json').write_text(json.dumps({'name': self.name, 'lang': 'en', 'classes': list(map(str, self.enc.classes_)),
+            'train_time_s': self.train_time_s, 'metrics': metrics, 'created_at': datetime.now().astimezone().isoformat(),
+            'library_versions': {k: importlib.metadata.version(k) for k in ['scikit-learn', 'xgboost', 'lightgbm'] if importlib.util.find_spec(k.replace('scikit-learn', 'sklearn'))}}, indent=2))
+        return path
+
+    @classmethod
+    def load(cls, path):
+        import joblib
+        b = joblib.load(Path(path) / 'model.joblib');m = cls.__new__(cls)
+        m.feats, m.select, m.clf, m.enc, m.name = b['features'], b['select'], b['classifier'], b['encoder'], Path(path).name
+        return m
 
     def early_stopping_kwargs(self):
         if self.name == 'tfidf_lightgbm':
@@ -187,6 +208,7 @@ def run(models=ALL_MODELS, llm_samples=500, use_llm=True, out=OUT):
     train, val, tests = load_en_data();labels = sorted(train.intent.unique());preds, times = {}, {}
     for name, model in build_models(models).items():
         model.fit(train, val);preds[model.name] = model.predict(tests.text);times[model.name] = model.train_time_s
+        model.save(metrics=score(tests.intent, preds[model.name], labels)[0])
     sub = tests
     if use_llm:
         try:
