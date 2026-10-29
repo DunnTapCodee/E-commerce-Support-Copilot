@@ -8,16 +8,22 @@ services:
       dockerfile: services/intent_service/Dockerfile
     container_name: intent_service
     ports:
-      - "8005:8005"
+      - "18005:8005"
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
-      - ./ML-model:/app/ML-model
     environment:
       - PORT=8005
-      - MODEL_PATH=/app/artifacts/models/intent_model.pkl
+      - INTENT_MODEL_DIR=/app/artifacts/models/intent
+      - INTENT_ROUTING_MODE=${INTENT_ROUTING_MODE:-router}
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8005/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; import json; r=urllib.request.urlopen('http://localhost:8005/health'); assert json.load(r)['model_loaded']"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -36,7 +42,7 @@ services:
         INSTALL_RAG_MODEL_DEPS: ${INSTALL_RAG_MODEL_DEPS:-false}
     container_name: rag_service
     ports:
-      - "8002:8002"
+      - "18002:8002"
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
@@ -50,6 +56,10 @@ services:
       - RERANKER_MODEL=${RERANKER_MODEL:-BAAI/bge-reranker-base}
       - RETRIEVAL_DEVICE=${RETRIEVAL_DEVICE:-cpu}
       - HF_HOME=/models/huggingface
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     healthcheck:
@@ -70,7 +80,7 @@ services:
       dockerfile: services/telemetry_service/Dockerfile
     container_name: telemetry_service
     ports:
-      - "8003:8003"
+      - "18003:8003"
     volumes:
       - ./data:/app/data
       - ./copilot_telemetry.sqlite3:/app/copilot_telemetry.sqlite3
@@ -88,7 +98,44 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 4. API Gateway & Central State Machine (Port 8000)
+  # 4. Conversation & Dialogue Orchestrator (Port 8001)
+  # -------------------------------------------------------------
+  conversation_service:
+    build:
+      context: .
+      dockerfile: services/conversation_service/Dockerfile
+    container_name: conversation_service
+    ports:
+      - "18001:8001"
+    environment:
+      - PORT=8001
+      - INTENT_SERVICE_URL=http://intent_service:8005
+      - RAG_SERVICE_URL=http://rag_service:8002
+      - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+    depends_on:
+      intent_service:
+        condition: service_healthy
+      rag_service:
+        condition: service_healthy
+      telemetry_service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 5. API Gateway & Ingress Router (Port 8000)
   # -------------------------------------------------------------
   gateway:
     build:
@@ -96,18 +143,22 @@ services:
       dockerfile: services/gateway/Dockerfile
     container_name: gateway
     ports:
-      - "8000:8000"
+      - "18000:8000"
     environment:
       - PORT=8000
+      - INTENT_CONFIDENCE_THRESHOLD=${INTENT_CONFIDENCE_THRESHOLD:-0.60}
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
+      - CONVERSATION_SERVICE_URL=http://conversation_service:8001
     depends_on:
       intent_service:
         condition: service_healthy
       rag_service:
         condition: service_healthy
       telemetry_service:
+        condition: service_healthy
+      conversation_service:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]

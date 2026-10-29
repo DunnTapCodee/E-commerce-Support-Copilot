@@ -1,0 +1,14 @@
+{
+  "id": "KUSER/k00-end-to-end-nlu",
+  "title": "k00-end-to-end-nlu",
+  "code_file": "k00_end_to_end_nlu.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [],
+  "kernel_sources": [],
+  "competition_sources": []
+}

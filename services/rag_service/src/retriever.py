@@ -50,12 +50,12 @@ class PolicyRetriever:
                 if doc.is_active
             ]
             if self.method == "bm25":
-                self.searcher = BM25Searcher(active_documents)
+                self.searcher = BM25Searcher(active_documents, include_tags=True)
             elif self.method == "dense":
                 self.searcher = DenseSearcher(active_documents, model_name=dense_model, device=device)
             else:
                 hybrid = HybridSearcher(
-                    BM25Searcher(active_documents),
+                    BM25Searcher(active_documents, include_tags=True),
                     DenseSearcher(active_documents, model_name=dense_model, device=device),
                 )
                 self.searcher = (

@@ -61,15 +61,34 @@ def record_audit_log(payload: AuditLogCreate):
 
 
 @app.post("/audit/action")
-def update_human_action(payload: HumanActionUpdate):
-    """Update human review action for an interaction."""
-    success = repo_instance.update_human_action(payload)
-    if not success:
+def record_human_action(payload: HumanActionUpdate):
+    """Record a support agent's review decision for an interaction."""
+    try:
+        updated = repo_instance.update_human_action(payload)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to record the human review action.",
+        ) from exc
+
+    if not updated:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Interaction {payload.interaction_id} not found in telemetry logs",
+            detail="Không tìm thấy interaction_id cần cập nhật.",
         )
-    return {"status": "success", "interaction_id": payload.interaction_id}
+
+    return {
+        "status": "recorded",
+        "interaction_id": payload.interaction_id,
+        "action": payload.action,
+        "message": "Đã ghi nhận quyết định kiểm duyệt của nhân viên.",
+    }
+
 
 
 @app.get("/audit/stats")

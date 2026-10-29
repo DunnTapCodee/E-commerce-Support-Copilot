@@ -1,6 +1,6 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
 
@@ -27,6 +27,9 @@ class IntentPredictionResponse(BaseModel):
     intent: str = Field(..., description="Predicted intent name")
     confidence: float = Field(ge=0.0, le=1.0, description="Prediction confidence score")
     is_in_scope: bool = Field(..., description="Whether intent belongs to operational scope")
+    language: Optional[str] = None
+    model_name: Optional[str] = None
+    latency_ms: Optional[float] = Field(default=None, ge=0)
     all_probabilities: Dict[str, float] = Field(
         default_factory=dict,
         description="Probability distribution across candidate classes"
@@ -43,6 +46,9 @@ class RetrievedDocument(BaseModel):
     content: str = Field(..., description="Policy body / chunk content")
     version: str = Field(..., description="Document version")
     is_active: bool = Field(..., description="Active status of this document")
+    effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
+    tags: List[str] = Field(default_factory=list, description="Associated policy tags")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
 
@@ -61,10 +67,11 @@ class RAGGenerateRequest(BaseModel):
 
 
 class RAGGenerateResponse(BaseModel):
-    """LLM generation response."""
-    draft_text: str = Field(..., description="Grounded response text with [doc_id] citations")
-    citations: List[RetrievedDocument] = Field(default_factory=list, description="Citations used in draft")
-    latency_ms: int = Field(ge=0, description="Inference latency in milliseconds")
+    draft_text: str
+    citations: List[RetrievedDocument] = Field(default_factory=list)
+    latency_ms: int = Field(ge=0)
+    generation_mode: str = "unknown"
+    fallback_reason: Optional[str] = None
 
 
 # -------------------------------------------------------------------
@@ -75,6 +82,9 @@ class GuardrailResult(BaseModel):
     allow_llm: bool = Field(..., description="Whether generation with LLM is permitted")
     action_type: str = Field(..., description="Action: PROCEED_TO_LLM, DIRECT_REFUND_FORM, ESCALATE_HUMAN")
     reason: str = Field(..., description="Audit rationale explaining the decision")
+    faithfulness_score: Optional[float] = Field(default=None, description="Response faithfulness / NLI entailment score (0.0 to 1.0)")
+    hallucination_detected: Optional[bool] = Field(default=None, description="Whether hallucination was detected in response")
+    temporal_status: Optional[str] = Field(default=None, description="Temporal status: ACTIVE, EXPIRED, NOT_YET_EFFECTIVE")
 
 
 # -------------------------------------------------------------------
@@ -95,7 +105,7 @@ class AuditLogCreate(BaseModel):
 class HumanActionUpdate(BaseModel):
     """CS Support agent action recorded on a draft."""
     interaction_id: str = Field(..., description="Target interaction ID")
-    action: str = Field(..., description="Action: APPROVE, EDIT, REJECT, ESCALATE")
+    action: Literal["APPROVE", "EDIT", "REJECT", "ESCALATE"]
     final_text: Optional[str] = Field(default=None, description="Final sent text after agent edit")
     agent_notes: Optional[str] = Field(default=None, description="Agent notes")
     handling_time_ms: int = Field(default=0, ge=0, description="Time spent by agent in milliseconds")
@@ -113,6 +123,15 @@ class GatewayResponse(BaseModel):
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
     tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tools invoked during processing")
+    generation_mode: str = "not_generated"
+    suggested_reply: Optional[str] = Field(default=None, description="Suggested customer reply template")
+    agent_guidance: Optional[str] = Field(default=None, description="Internal guidance and warnings for support agent")
+    input_type: Optional[str] = Field(default=None, description="Input classification: question, fact_supplement, negation_reversal, chitchat")
+    active_facts: Dict[str, Any] = Field(default_factory=dict, description="Active dialogue facts (order_id, phone, etc.)")
+    is_live_chat: bool = Field(default=False, description="Whether session is in live human agent chat mode")
+    customer_acknowledgement: Optional[str] = Field(default=None, description="Immediate buffer response for customer (Phần 1)")
+    session_turns: List[Dict[str, Any]] = Field(default_factory=list, description="Recent conversation turns")
+    context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
 
 
 # -------------------------------------------------------------------
@@ -137,4 +156,35 @@ class ToolCallRecord(BaseModel):
     arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments passed to tool")
     result: Any = Field(default=None, description="Output returned by tool")
     latency_ms: float = Field(default=0.0, description="Execution latency in milliseconds")
+
+
+# -------------------------------------------------------------------
+# 8. Conversation Service State & Turn Contracts
+# -------------------------------------------------------------------
+class ChatMessageItem(BaseModel):
+    role: Literal["customer", "agent", "system"]
+    content: str
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationTurnItem(BaseModel):
+    turn_id: int
+    customer_query: str
+    agent_response: str
+    intent: Optional[str] = None
+    confidence: Optional[float] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationSessionState(BaseModel):
+    session_id: str
+    customer_id: Optional[str] = None
+    active_intent: Optional[str] = None
+    active_order_id: Optional[str] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    is_live_chat: bool = False
+    turns: List[ConversationTurnItem] = Field(default_factory=list)
+    context_summary: Optional[str] = None
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
 

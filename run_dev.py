@@ -6,12 +6,12 @@ import sys
 import time
 from pathlib import Path
 
-if sys.platform == 'win32':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-        sys.stderr.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
+# Fix Vietnamese/emoji output on Windows consoles with cp1252 encoding
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
 
 ROOT_DIR = Path(__file__).resolve().parent
 
@@ -30,6 +30,15 @@ if env_file.exists():
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)
                 env[k.strip()] = v.strip()
+
+# Deployment-generated calibrated threshold takes precedence over demo defaults.
+deployment_env = ROOT_DIR / "artifacts/models/intent/deployment.env"
+if deployment_env.exists():
+    for line in deployment_env.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            key, value = line.split("=", 1)
+            env[key.strip()] = value.strip()
 
 COMMANDS = [
     {
