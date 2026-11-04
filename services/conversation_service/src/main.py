@@ -55,6 +55,7 @@ from services.conversation_service.src.policies import (
     CustomerAcknowledgementEngine,
     CopilotDraftEngine,
 )
+from services.conversation_service.src.tools import OrderTools
 
 
 app = FastAPI(
@@ -76,6 +77,7 @@ rag_client = RAGServiceClient()
 telemetry_client = TelemetryServiceClient()
 input_classifier = InputClassifier()
 turn_buffer = TurnBuffer(max_turns=5)
+order_tools = OrderTools()
 
 
 @app.get("/health")
@@ -164,7 +166,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         model_name="hybrid_dialogue_tracker",
     )
 
-    # Step 4: Order Lookup
+    # Step 4: Order Lookup (Telemetry Service with OrderTools local fallback)
     order_data: Optional[Dict[str, Any]] = None
     lookup_key = state.active_order_id or customer_id
     if lookup_key:
@@ -172,6 +174,12 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
             order_data = await telemetry_client.lookup_order(lookup_key)
         except Exception as exc:
             print(f"[ConversationService] Order lookup error: {exc}")
+
+    # Fallback to local order store if telemetry returned None
+    if not order_data and state.active_order_id:
+        order_data = order_tools.get_order_by_id(state.active_order_id)
+    if not order_data and state.facts.get("order_cached"):
+        order_data = state.facts["order_cached"]
 
     # Step 5: Knowledge Retrieval (if question or happy path candidate)
     citations: List[RetrievedDocument] = []
@@ -227,7 +235,6 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         agent_draft = suggested_macro or draft_fallback
 
     # Step 9: Background Tasks (Non-blocking async memory & audit persistence)
-    # Store customer acknowledgement in turn buffer so far
     background_tasks.add_task(
         MemoryWorker.update_memory_task,
         session_id=session_id,

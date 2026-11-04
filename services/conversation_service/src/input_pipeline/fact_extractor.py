@@ -17,7 +17,7 @@ CARRIER_RE = re.compile(r"\b(tikinow|ghn|ghtk|viettel\s*post|ninja\s*van|j&t|sho
 
 
 def extract_facts(text: str) -> Dict[str, Any]:
-    """Extract domain facts from customer utterance, falling back to hybrid order matcher."""
+    """Extract domain facts from customer utterance, falling back to local hybrid order matcher."""
     facts: Dict[str, Any] = {}
 
     order_match = ORDER_RE.search(text)
@@ -46,10 +46,10 @@ def extract_facts(text: str) -> Dict[str, Any]:
     if carrier_match:
         facts["carrier"] = carrier_match.group(0).upper()
 
-    # If no order_id found by regex, use configured hybrid matcher for semantic lookup
+    # If no order_id found by regex, use local hybrid matcher for semantic lookup
     if "order_id" not in facts:
         try:
-            from services.gateway.src.order_matchers import get_order_matcher
+            from services.conversation_service.src.input_pipeline.order_matcher import get_order_matcher
             matcher = get_order_matcher()
             if not inspect.iscoroutinefunction(matcher.match):
                 res = matcher.match(text)

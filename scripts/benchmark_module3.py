@@ -31,7 +31,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from services.gateway.src.agent import extract_entities_advanced, extract_entities_baseline
+from services.conversation_service.src.input_pipeline.order_matcher import extract_entities_advanced, extract_entities_baseline
 from services.telemetry_service.src.cache import OrderLRUCache, normalize_phone
 from services.telemetry_service.src.database import get_db_connection, init_db, migrate_mock_orders
 from services.telemetry_service.src.repository import TelemetryRepository

@@ -107,11 +107,14 @@ services:
     container_name: conversation_service
     ports:
       - "18001:8001"
+    volumes:
+      - ./data:/app/data:ro
     environment:
       - PORT=8001
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
+      - MOCK_ORDERS_PATH=/app/data/mock_orders.json
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
@@ -170,7 +173,7 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 5. CSKH Workbench UI (Port 8501)
+  # 6. CSKH Workbench UI (Port 8501)
   # -------------------------------------------------------------
   ui_service:
     build:

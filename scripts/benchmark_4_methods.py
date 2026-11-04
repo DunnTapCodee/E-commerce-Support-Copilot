@@ -39,7 +39,7 @@ if sys.platform == "win32":
     except Exception:
         pass
 
-from services.gateway.src.order_matchers import (
+from services.conversation_service.src.input_pipeline.order_matcher import (
     EmbeddingOrderMatcher,
     HybridOrderMatcher,
     PromptOrderMatcher,

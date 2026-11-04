@@ -3,13 +3,21 @@ Inspired by VoiceAgent packs/public-service/new_policy.py.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from typing import Any, Dict, Literal, Optional, Tuple
 import httpx
 from pydantic import BaseModel
 
-from services.conversation_service.src.config import GEMINI_API_KEY, GEMINI_MODEL
+from services.conversation_service.src.config import (
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    LLM_PROVIDER,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
+    OPENAI_MODEL,
+)
 from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
 
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -32,10 +40,12 @@ _NEGATION_PATTERNS = [
 
 
 class InputClassifier:
-    """Hybrid Classifier combining instant regex (< 1ms) with Gemini 2.5 Flash (~300ms)."""
+    """Hybrid Classifier combining instant regex (< 1ms) with LLM Structured Classifier (openai-gpt-oss-20b / Gemini)."""
 
     def __init__(self, gemini_api_key: Optional[str] = None):
         self.api_key = gemini_api_key or GEMINI_API_KEY
+        self.openai_key = OPENAI_API_KEY
+        self.provider = LLM_PROVIDER
 
     def classify_fast_tier(self, text: str, facts: Dict[str, Any]) -> Optional[InputCategory]:
         """Tier 1: Fast Rule / Lexicon evaluation."""
@@ -46,7 +56,7 @@ class InputClassifier:
         if cleaned in _CHITCHAT_EXACT:
             return "chitchat"
 
-        # Compound courtesies (e.g. "dạ vâng cảm ơn shop", "vâng cảm ơn bạn", "ok cảm ơn nhé")
+        # Compound courtesies
         if len(cleaned.split()) <= 6:
             courtesy_tokens = {
                 "da", "dạ", "vang", "vâng", "a", "ạ", "cam", "on", "cảm", "ơn",
@@ -57,7 +67,7 @@ class InputClassifier:
             if tokens and tokens.issubset(courtesy_tokens):
                 return "chitchat"
 
-        # 2. Pure fact input (e.g. customer sends just 'ORD-1003' or phone number)
+        # 2. Pure fact input
         words = text.strip().split()
         if len(words) <= 3 and ("order_id" in facts or "phone" in facts):
             return "fact_supplement"
@@ -75,34 +85,39 @@ class InputClassifier:
         active_intent: Optional[str] = None,
         context_summary: Optional[str] = None,
     ) -> Tuple[InputCategory, Dict[str, Any], float]:
-        """Full hybrid classification: Tier 1 -> Tier 2 (LLM).
-        Returns (category, extracted_facts, confidence).
-        """
+        """Full hybrid classification: Tier 1 -> Tier 2 (LLM)."""
         extracted = extract_facts(text)
         fast_category = self.classify_fast_tier(text, extracted)
         if fast_category:
             return fast_category, extracted, 0.95
 
-        # If length is long and has question cues, default to new_question
-        if not self.api_key:
-            return "new_question", extracted, 0.85
+        # Tier 2: LLM Structured Output
+        prompt = self._build_prompt(text, active_intent, context_summary)
 
-        # Tier 2: LLM Structured Output with Gemini Flash
-        try:
-            category, llm_facts, conf = await self._classify_with_gemini(text, active_intent, context_summary)
-            extracted.update(llm_facts)
-            return category, extracted, conf
-        except Exception:
-            return "new_question", extracted, 0.75
+        # 1. Try OpenAI-compatible (openai-gpt-oss-20b)
+        if self.provider == "openai_compatible" and self.openai_key:
+            try:
+                res = await self._classify_with_openai_compatible(prompt)
+                if res:
+                    category, llm_facts, conf = res
+                    extracted.update(llm_facts)
+                    return category, extracted, conf
+            except Exception:
+                pass
 
-    async def _classify_with_gemini(
-        self,
-        text: str,
-        active_intent: Optional[str],
-        context_summary: Optional[str],
-    ) -> Tuple[InputCategory, Dict[str, Any], float]:
-        """Send concise context to Gemini 2.5 Flash for structured categorization."""
-        prompt = f"""Bạn là bộ phân loại câu hội thoại cho trợ lý CSKH E-commerce.
+        # 2. Fallback to Gemini if configured
+        if self.api_key and self.api_key != "your_gemini_api_key_here":
+            try:
+                category, llm_facts, conf = await self._classify_with_gemini(prompt)
+                extracted.update(llm_facts)
+                return category, extracted, conf
+            except Exception:
+                pass
+
+        return "new_question", extracted, 0.85
+
+    def _build_prompt(self, text: str, active_intent: Optional[str], context_summary: Optional[str]) -> str:
+        return f"""Bạn là bộ phân loại câu hội thoại cho trợ lý CSKH E-commerce.
 Hãy phân tích tin nhắn của khách hàng và phân loại vào ĐÚNG 1 TRONG 4 LOẠI:
 - "chitchat": Câu chào hỏi, cảm ơn, xã giao (ví dụ: "chào bạn", "cảm ơn nhiều nhé").
 - "fact_supplement": Câu bổ sung mã đơn hàng, số điện thoại, chi tiết sản phẩm cho ý định trước đó mà không có ý định mới.
@@ -120,35 +135,57 @@ YÊU CẦU: Trả về JSON hợp lệ theo định dạng:
 {{"input_type": "...", "order_id": "...", "confidence": 0.95}}
 Chỉ trả về JSON thuần túy, không thêm markdown.
 """
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
+
+    async def _classify_with_openai_compatible(
+        self, prompt: str
+    ) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
+        url = f"{OPENAI_BASE_URL}/chat/completions"
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.openai_key}",
+        }
+        payload = {
+            "model": OPENAI_MODEL,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.0,
+            "max_tokens": 200,
+        }
+        async with httpx.AsyncClient(timeout=4.0) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code == 200:
+                raw_text = resp.json()["choices"][0]["message"]["content"].strip()
+                return self._parse_json_result(raw_text)
+        return None
+
+    async def _classify_with_gemini(
+        self, prompt: str
+    ) -> Tuple[InputCategory, Dict[str, Any], float]:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
         payload = {
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {
                 "temperature": 0.0,
-                "maxOutputTokens": 500,
-                "thinkingConfig": {
-                    "thinkingBudget": 0
-                },
-            }
+                "maxOutputTokens": 300,
+            },
         }
-
         async with httpx.AsyncClient(timeout=3.0) as client:
             resp = await client.post(url, json=payload)
             if resp.status_code == 200:
-                data = resp.json()
-                raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                # Clean code blocks if returned
-                raw_text = re.sub(r"^```(?:json)?", "", raw_text).strip()
-                raw_text = re.sub(r"```$", "", raw_text).strip()
-                import json
-                parsed = json.loads(raw_text)
-                category = parsed.get("input_type", "new_question")
-                if category not in {"chitchat", "fact_supplement", "negation_reversal", "new_question"}:
-                    category = "new_question"
-                llm_facts = {}
-                if parsed.get("order_id"):
-                    llm_facts["order_id"] = parsed["order_id"].upper()
-                conf = float(parsed.get("confidence", 0.90))
-                return category, llm_facts, conf
-
+                raw_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                res = self._parse_json_result(raw_text)
+                if res:
+                    return res
         return "new_question", {}, 0.80
+
+    def _parse_json_result(self, raw_text: str) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
+        raw_text = re.sub(r"^```(?:json)?", "", raw_text).strip()
+        raw_text = re.sub(r"```$", "", raw_text).strip()
+        parsed = json.loads(raw_text)
+        category = parsed.get("input_type", "new_question")
+        if category not in {"chitchat", "fact_supplement", "negation_reversal", "new_question"}:
+            category = "new_question"
+        llm_facts = {}
+        if parsed.get("order_id"):
+            llm_facts["order_id"] = str(parsed["order_id"]).upper()
+        conf = float(parsed.get("confidence", 0.90))
+        return category, llm_facts, conf

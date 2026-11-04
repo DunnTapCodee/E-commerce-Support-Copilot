@@ -17,6 +17,10 @@ ACK_TEMPLATES = {
         "Dạ em đang đối soát vị trí bưu kiện đơn hàng{order_clause} từ bưu cục "
         "để cập nhật tình trạng giao nhận cho anh/chị ngay đây ạ!"
     ),
+    "track_order_missing": (
+        "Dạ em chào anh/chị! Em đã ghi nhận yêu cầu của mình. "
+        "Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
+    ),
     # 2. Thời gian giao hàng / Giao trễ
     "delivery_time": (
         "Dạ em rất xin lỗi vì đơn hàng{order_clause} khiến anh/chị phải chờ đợi. "
@@ -143,7 +147,7 @@ class CustomerAcknowledgementEngine:
         elif any(k in q_lower for k in ["thanh lý", "thu mua", "thu cũ", "đổi mới", "bán lại", "mua lại", "iphone cũ", "máy cũ", "đồ cũ"]):
             template_key = "service_inquiry"
 
-        # 3. Return shipping fees / Shipper home pick-up (e.g. ai chịu phí ship, shipper đến tận nhà lấy)
+        # 3. Return shipping fees / Shipper home pick-up
         elif any(k in q_lower for k in ["ai chịu", "ai trả", "chịu phí", "trả phí", "phí ship", "cước ship", "shipper đến", "tận nhà", "thu hồi tận nhà", "lấy tận nhà"]):
             template_key = "return_shipping"
 
@@ -163,7 +167,9 @@ class CustomerAcknowledgementEngine:
         # 6. Intent-based mapping with anti-repetition fallback
         else:
             template_key = intent
-            if intent == "return_product" and last_ack and "sự cố sản phẩm" in last_ack:
+            if intent in ("track_order", "delivery_time") and not facts.get("order_id"):
+                template_key = "track_order_missing"
+            elif intent == "return_product" and last_ack and "sự cố sản phẩm" in last_ack:
                 template_key = "return_followup"
             elif intent == "track_order" and last_ack and "kết nối hệ thống bưu tá" in last_ack:
                 template_key = "track_order_alt"

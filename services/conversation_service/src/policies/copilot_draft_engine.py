@@ -157,9 +157,10 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
 === YÊU CẦU BẮT BUỘC ĐỐI VỚI BẢN THẢO CSKH ===
 1. Quy tắc xưng hô BẮT BUỘC: Nhân viên CSKH luôn xưng "em" và gọi khách hàng là "anh/chị" (hoặc "mình"). TUYỆT ĐỐI KHÔNG dùng từ "bạn" khi xưng hô với khách hàng. Luôn mở đầu tự nhiên bằng "Dạ em chào anh/chị...".
 2. Giải quyết trúng đích: Tận dụng trực tiếp dữ liệu đơn hàng ở mục 4 (tên khách hàng, SĐT, trạng thái, bưu cục/dự kiến giao) và lịch sử trao đổi để giải đáp cụ thể. ĐÃ CÓ ĐẦY ĐỦ THÔNG TIN ĐƠN HÀNG, TUYỆT ĐỐI KHÔNG hỏi lại những thông tin đã có (như SĐT, email, mã đơn...).
-3. Căn cứ chính sách: Mỗi khi đưa ra điều kiện, thời hạn hoặc quy định, hãy trích dẫn mã tài liệu tương ứng ở ngay phía sau câu đó theo định dạng [POL-XXX].
-4. Độ dài chuẩn mực: Viết ngắn gọn, súc tích trong khoảng 3 - 5 câu (hoặc gạch đầu dòng rõ ràng nếu hướng dẫn các bước), sẵn sàng để nhân viên chỉ cần đọc lướt và nhấn nút gửi cho khách.
-5. Tuyệt đối không bịa đặt những điều không có trong tài liệu hoặc dữ liệu đơn hàng.
+3. Nếu khách hàng hỏi về tiến độ đơn hàng mà chưa có mã đơn hoặc thông tin đơn trong hồ sơ, hãy lịch sự đề nghị: "Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé."
+4. Căn cứ chính sách: Mỗi khi đưa ra điều kiện, thời hạn hoặc quy định, hãy trích dẫn mã tài liệu tương ứng ở ngay phía sau câu đó theo định dạng [POL-XXX].
+5. Độ dài chuẩn mực: Viết ngắn gọn, súc tích trong khoảng 3 - 5 câu (hoặc gạch đầu dòng rõ ràng nếu hướng dẫn các bước), sẵn sàng để nhân viên chỉ cần đọc lướt và nhấn nút gửi cho khách.
+6. Tuyệt đối không bịa đặt những điều không có trong tài liệu hoặc dữ liệu đơn hàng.
 """
         return prompt
 
@@ -246,15 +247,20 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
         citation_tags = " ".join([f"[{d.doc_id}]" for d in citations if getattr(d, "is_active", True)]) or "[POL-INFO]"
         order_id = facts.get("order_id") or (order_data.get("order_id") if order_data else None)
 
-        if intent in ("track_order", "delivery_time") and order_data:
-            shipper = order_data.get("shipper_name") or "bưu tá"
-            phone = f" ({order_data.get('shipper_phone')})" if order_data.get("shipper_phone") else ""
-            status = order_data.get("status", "đang được vận chuyển")
-            est = order_data.get("estimated_delivery", "trong ngày hôm nay")
+        if intent in ("track_order", "delivery_time"):
+            if order_data:
+                shipper = order_data.get("shipper_name") or "bưu tá"
+                phone = f" ({order_data.get('shipper_phone')})" if order_data.get("shipper_phone") else ""
+                status = order_data.get("status", "đang được vận chuyển")
+                est = order_data.get("estimated_delivery", "trong ngày hôm nay")
+                return (
+                    f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
+                    f"Hiện đơn hàng {status} bởi {shipper}{phone} và dự kiến giao đến mình {est} {citation_tags} ạ. "
+                    f"Anh/chị chú ý giữ điện thoại để nhận hàng giúp em nhé!"
+                )
             return (
-                f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
-                f"Hiện đơn hàng {status} bởi {shipper}{phone} và dự kiến giao đến mình {est} {citation_tags} ạ. "
-                f"Anh/chị chú ý giữ điện thoại để nhận hàng giúp em nhé!"
+                f"Dạ Tiki chào anh/chị, để em hỗ trợ kiểm tra chi tiết lộ trình đơn hàng cho mình, "
+                f"Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
             )
 
         if intent in ("return_policy", "return_product"):
