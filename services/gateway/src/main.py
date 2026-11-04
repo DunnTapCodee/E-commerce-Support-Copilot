@@ -124,6 +124,13 @@ async def process_copilot_query(
         )
         if resolved_order:
             order_data = resolved_order
+            # Domain Intent Alignment: If an order was unequivocally verified by Module 3,
+            # resolve intent to track_order / cancel_order if previously uncertain or out_of_scope
+            if (not intent_resp.is_in_scope or intent_resp.confidence < 0.60):
+                is_cancel = any("cancel" in getattr(t, "tool_name", "") for t in tool_records)
+                intent_resp.intent = "cancel_order" if is_cancel else "track_order"
+                intent_resp.confidence = 0.95
+                intent_resp.is_in_scope = True
     except Exception as tool_err:
         print(f"[Gateway] Warning: Tool agent encountered error: {tool_err}")
 
