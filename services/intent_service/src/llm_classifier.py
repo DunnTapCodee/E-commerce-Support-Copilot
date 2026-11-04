@@ -309,7 +309,7 @@ class LLMIntentClassifier:
             return self._build_resp("delivery_time", 0.94, query)
 
         # 14. Track order
-        if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|check.*order|order.*status|order\s*#?\d{4,}|kiểm\s*tra\s*(?:mã\s*)?(?:đơn|order)|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status)\b", q_lower):
+        if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status)\b", q_lower):
             return self._build_resp("track_order", 0.94, query)
 
         # 15. General keywords
