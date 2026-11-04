@@ -3,7 +3,7 @@
 Approaches:
 1. PromptOrderMatcher: Pure LLM prompt zero-shot entity extraction & DB lookup
 2. RuleOrderMatcher: Rule-based regex & text normalization
-3. EmbeddingOrderMatcher: Dense semantic vector similarity matching on order profiles
+3. EmbeddingOrderMatcher: Dense semantic vector similarity matching on order profiles (TF-IDF or BAAI/bge-m3)
 4. HybridOrderMatcher: Cascade / Fusion of Keyword rules + Dense embedding matching
 """
 from __future__ import annotations
@@ -130,7 +130,6 @@ class PromptOrderMatcher:
                                 try:
                                     return json.loads(cleaned)
                                 except Exception:
-                                    # Try to find { ... } substring
                                     m = re.search(r"\{[\s\S]*\}", cleaned)
                                     if m:
                                         try:
@@ -193,7 +192,6 @@ class PromptOrderMatcher:
                     details_extra["all_orders_for_phone"] = [o["order_id"] for o in phone_orders]
 
         # 2. Khớp đa tiêu chí có trọng số (Multi-Criteria Weighted Scoring)
-        # Sử dụng khi không có mã đơn/SĐT hoặc tra cứu bằng mô tả tự nhiên (tên sản phẩm, tên khách, thương hiệu)
         if not matched_order:
             cname = (entities.get("customer_name") or "").lower().strip()
             pname = (entities.get("product_name") or entities.get("product_keyword") or "").lower().strip()
@@ -262,14 +260,12 @@ class PromptOrderMatcher:
                 details_extra["top_score"] = top_score
 
                 if len(top_tied) > 1 and not cname:
-                    # Nhiều đơn cùng điểm (ví dụ chỉ tìm "bình giữ nhiệt" mà không có tên khách)
                     matched_by = "product_name_multiple"
                     conf = 0.75
                     details_extra["is_ambiguous"] = True
                     details_extra["tied_count"] = len(top_tied)
                     details_extra["candidate_order_ids"] = [c[1]["order_id"] for c in top_tied[:5]]
                 else:
-                    # Có tiêu chí tên khách hoặc thuộc tính phân biệt rõ ràng
                     matched_by = "multi_criteria_attributes"
                     conf = min(0.99, round(top_score / 100.0, 2))
 
@@ -353,12 +349,23 @@ class RuleOrderMatcher:
 # Bản 3: Embedding (Dense Vector Semantic Matching)
 # =====================================================================
 class EmbeddingOrderMatcher:
-    """Method 3: Vectorize orders and calculate semantic cosine similarity with query."""
+    """Method 3: Vectorize orders and calculate semantic cosine similarity with query.
+    Supports:
+      - 'tfidf' (default, sublinear n-gram, 0.3ms latency)
+      - 'bge-m3' (dense 1024-dim multilingual SentenceTransformer)
+    """
 
     name = "dense_embedding"
 
-    def __init__(self, orders: Optional[List[Dict[str, Any]]] = None):
+    def __init__(
+        self,
+        orders: Optional[List[Dict[str, Any]]] = None,
+        embedding_model: Optional[str] = None,
+    ):
         self.orders = orders if orders is not None else load_all_orders()
+        self.embedding_model = (
+            embedding_model or os.getenv("ORDER_EMBEDDING_MODEL", "tfidf")
+        ).lower()
         self.documents = []
         for o in self.orders:
             oid = str(o.get("order_id", ""))
@@ -376,12 +383,23 @@ class EmbeddingOrderMatcher:
             )
             self.documents.append(doc)
 
-        # Word + Character n-grams for typo-tolerant dense retrieval
-        self.vectorizer = TfidfVectorizer(
-            ngram_range=(1, 2),
-            sublinear_tf=True
-        )
-        self.matrix = self.vectorizer.fit_transform(self.documents)
+        self.st_model = None
+        if self.embedding_model == "bge-m3":
+            try:
+                from sentence_transformers import SentenceTransformer
+                self.st_model = SentenceTransformer("BAAI/bge-m3")
+                self.matrix = self.st_model.encode(self.documents, normalize_embeddings=True)
+            except Exception as e:
+                print(f"[EmbeddingOrderMatcher] Could not load BAAI/bge-m3 ({e}), falling back to tfidf.")
+                self.embedding_model = "tfidf"
+
+        if self.embedding_model != "bge-m3":
+            # Word + Character n-grams for typo-tolerant dense retrieval
+            self.vectorizer = TfidfVectorizer(
+                ngram_range=(1, 2),
+                sublinear_tf=True
+            )
+            self.matrix = self.vectorizer.fit_transform(self.documents)
 
     def match(self, query: str, threshold: float = 0.22) -> MatchResult:
         """Compute cosine similarity between query and all indexed order documents."""
@@ -397,13 +415,21 @@ class EmbeddingOrderMatcher:
         best_idx = 0
 
         if not is_general:
-            query_vec = self.vectorizer.transform([query])
-            scores = cosine_similarity(query_vec, self.matrix)[0]
-            best_idx = int(np.argmax(scores))
-            best_score = float(scores[best_idx])
-
-            if best_score >= threshold:
-                matched_order = self.orders[best_idx]
+            if self.embedding_model == "bge-m3" and self.st_model is not None:
+                q_vec = self.st_model.encode([query], normalize_embeddings=True)
+                scores = np.dot(self.matrix, q_vec[0])
+                best_idx = int(np.argmax(scores))
+                best_score = float(scores[best_idx])
+                bge_thresh = threshold if threshold != 0.22 else 0.40
+                if best_score >= bge_thresh:
+                    matched_order = self.orders[best_idx]
+            else:
+                query_vec = self.vectorizer.transform([query])
+                scores = cosine_similarity(query_vec, self.matrix)[0]
+                best_idx = int(np.argmax(scores))
+                best_score = float(scores[best_idx])
+                if best_score >= threshold:
+                    matched_order = self.orders[best_idx]
 
         latency_ms = (time.perf_counter() - start) * 1000
         return MatchResult(
@@ -414,6 +440,7 @@ class EmbeddingOrderMatcher:
             matched_by="semantic_similarity" if matched_order else "none",
             details={
                 "top_score": best_score,
+                "embedding_model": self.embedding_model,
                 "top_order_id": self.orders[best_idx].get("order_id") if not is_general else None
             }
         )
@@ -427,10 +454,14 @@ class HybridOrderMatcher:
 
     name = "hybrid_keyword_embedding"
 
-    def __init__(self, orders: Optional[List[Dict[str, Any]]] = None):
+    def __init__(
+        self,
+        orders: Optional[List[Dict[str, Any]]] = None,
+        embedding_model: Optional[str] = None,
+    ):
         self.orders = orders if orders is not None else load_all_orders()
         self.rule_matcher = RuleOrderMatcher(self.orders)
-        self.embedding_matcher = EmbeddingOrderMatcher(self.orders)
+        self.embedding_matcher = EmbeddingOrderMatcher(self.orders, embedding_model=embedding_model)
 
     def match(self, query: str) -> MatchResult:
         """Two-tier cascade: check rule exact match first, blend with embedding."""
@@ -470,5 +501,23 @@ class HybridOrderMatcher:
             details={
                 "rule_matched_by": rule_res.matched_by,
                 "rule_order_id": rule_res.order.get("order_id") if rule_res.order else None,
+                "embedding_model": self.embedding_matcher.embedding_model,
             }
         )
+
+
+def get_order_matcher(
+    mode: Optional[str] = None,
+    orders: Optional[List[Dict[str, Any]]] = None,
+    embedding_model: Optional[str] = None,
+):
+    """Factory function returning the active OrderMatcher based on configuration."""
+    mode = (mode or os.getenv("ORDER_MATCHER_MODE", "hybrid")).lower()
+    if mode == "prompt":
+        return PromptOrderMatcher(orders)
+    elif mode == "rule":
+        return RuleOrderMatcher(orders)
+    elif mode == "embedding":
+        return EmbeddingOrderMatcher(orders, embedding_model=embedding_model)
+    else:
+        return HybridOrderMatcher(orders, embedding_model=embedding_model)

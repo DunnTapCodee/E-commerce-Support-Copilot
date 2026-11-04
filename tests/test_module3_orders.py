@@ -127,6 +127,59 @@ class TestModule3OrdersAndTools(unittest.TestCase):
         self.assertIn("ORD-1003", order_ids_found)
         self.assertIn("ORD-1088", order_ids_found)
 
+    def test_rule_order_matcher(self):
+        """Verify Method 2: RuleOrderMatcher exact keyword & regex extraction."""
+        from services.gateway.src.order_matchers import RuleOrderMatcher
+        matcher = RuleOrderMatcher()
+        
+        # Test exact order ID
+        r1 = matcher.match("kiểm tra mã đơn ORD-1003")
+        self.assertIsNotNone(r1.order)
+        self.assertEqual(r1.order["order_id"], "ORD-1003")
+        self.assertEqual(r1.matched_by, "order_id")
+
+        # Test tracking code
+        r2 = matcher.match("tra cứu bưu phẩm TIKI71662963")
+        self.assertIsNotNone(r2.order)
+        self.assertEqual(r2.order["order_id"], "ORD-1004")
+        self.assertEqual(r2.matched_by, "tracking_code")
+
+    def test_embedding_order_matcher_tfidf(self):
+        """Verify Method 3: EmbeddingOrderMatcher semantic similarity with TF-IDF."""
+        from services.gateway.src.order_matchers import EmbeddingOrderMatcher
+        matcher = EmbeddingOrderMatcher(embedding_model="tfidf")
+
+        # Semantic query by product and customer name
+        r = matcher.match("kiểm tra đơn mua bình giữ nhiệt của Hoàng Mai Yến")
+        self.assertIsNotNone(r.order)
+        self.assertEqual(r.order["order_id"], "ORD-1008")
+        self.assertEqual(r.matched_by, "semantic_similarity")
+        self.assertGreater(r.confidence, 0.40)
+
+        # General policy query should be guarded and abstain
+        r_gen = matcher.match("cửa hàng có bán bình giữ nhiệt không")
+        self.assertIsNone(r_gen.order)
+
+    def test_hybrid_order_matcher_default(self):
+        """Verify Method 4: HybridOrderMatcher as system default."""
+        from services.gateway.src.order_matchers import get_order_matcher, HybridOrderMatcher
+        matcher = get_order_matcher()
+        self.assertIsInstance(matcher, HybridOrderMatcher)
+
+        # Fast path exact match
+        r_exact = matcher.match("check order ORD-1003")
+        self.assertIsNotNone(r_exact.order)
+        self.assertEqual(r_exact.order["order_id"], "ORD-1003")
+        self.assertEqual(r_exact.matched_by, "exact_order_id")
+        self.assertEqual(r_exact.confidence, 1.0)
+
+        # Semantic path match
+        r_sem = matcher.match("kiểm tra đơn mua bình giữ nhiệt của Hoàng Mai Yến")
+        self.assertIsNotNone(r_sem.order)
+        self.assertEqual(r_sem.order["order_id"], "ORD-1008")
+        self.assertEqual(r_sem.matched_by, "semantic_embedding")
+        self.assertGreater(r_sem.confidence, 0.40)
+
 
 if __name__ == "__main__":
     unittest.main()

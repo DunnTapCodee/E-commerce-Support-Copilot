@@ -1,4 +1,5 @@
 """ReAct Agent & Multi-Entity Extractor for Dynamic Order Tool Calling (Module 3)."""
+import inspect
 import json
 import os
 import re
@@ -41,7 +42,7 @@ RE_PHONE = re.compile(
     r"\b0\d{9}\b",
     re.IGNORECASE,
 )
-RE_TRACKING = re.compile(r"\b(?:GIAO|GHN|VTP|SPX)[A-Z0-9]{6,}\b", re.IGNORECASE)
+RE_TRACKING = re.compile(r"\b(?:GIAO|GHN|VTP|SPX|TIKI)[A-Z0-9]{6,}\b", re.IGNORECASE)
 
 
 def extract_entities_baseline(query: str) -> Dict[str, Optional[str]]:
@@ -145,128 +146,108 @@ def extract_entities_advanced(
 class OrderReActAgent:
     """ReAct / Tool-Calling Agent determining dynamic order actions and executing tools."""
 
-    def __init__(self, executor: ToolExecutor):
+    def __init__(self, executor: ToolExecutor, matcher_mode: Optional[str] = None):
         self.executor = executor
+        from services.gateway.src.order_matchers import get_order_matcher
+        self.matcher_mode = (matcher_mode or os.getenv("ORDER_MATCHER_MODE", "hybrid")).lower()
+        self.matcher = get_order_matcher(self.matcher_mode)
 
     async def run(
         self, query: str, customer_id: Optional[str] = None
     ) -> Tuple[List[ToolCallRecord], Optional[Dict[str, Any]], str]:
-        """Process inquiry, extract entities via Gemini/Regex, execute dynamic tools, and synthesize context."""
+        """Process inquiry, run configured OrderMatcher (default: Hybrid), execute dynamic tools, and synthesize context."""
         records: List[ToolCallRecord] = []
         resolved_order_data: Optional[Dict[str, Any]] = None
         synthesis_text = ""
 
-        # 1. Kiểm tra nhanh bằng Regex (< 0.1ms)
+        # Extract basic actions & phone/tracking hints
         regex_entities = extract_entities_advanced(query, customer_id)
+        action = regex_entities.get("action", "lookup")
+        cancel_reason = regex_entities.get("cancel_reason", "Khách hàng yêu cầu hủy đơn qua chat")
+        phone = regex_entities.get("phone")
 
-        # FAST PATH: Nếu Regex đã bắt trúng mã đơn (ORD-XXXX), mã vận đơn, hoặc SĐT rõ ràng
-        # Bỏ qua gọi LLM để tiết kiệm 3-5 giây độ trễ và trả kết quả tức thì
-        if regex_entities.get("order_id") or regex_entities.get("tracking_code") or regex_entities.get("phone"):
-            entities = regex_entities
+        # 1. Execute Order Matcher (Hybrid by default)
+        if inspect.iscoroutinefunction(self.matcher.match):
+            match_res = await self.matcher.match(query)
         else:
-            # SLOW PATH: Câu tìm kiếm ngôn ngữ tự nhiên (vd 'bình giữ nhiệt của Hoàng Mai Yến'), gọi LLM bóc tách:
-            entities = await self._extract_entities_llm(query)
-            if not entities:
-                entities = regex_entities
-            else:
-                for k in ["order_id", "phone", "tracking_code", "action", "cancel_reason"]:
-                    if not entities.get(k) and regex_entities.get(k):
-                        entities[k] = regex_entities[k]
+            match_res = self.matcher.match(query)
 
-        order_id = entities.get("order_id")
-        phone = entities.get("phone")
-        tracking = entities.get("tracking_code")
-        action = entities.get("action")
+        matched_order = match_res.order
 
-        # Decision 1: Cancellation Tool
-        if action == "cancel" and order_id:
-            rec = await self.executor.execute(
-                "cancel_order",
-                {"order_id": order_id, "reason": entities.get("cancel_reason")},
+        if matched_order:
+            oid = matched_order.get("order_id")
+            # Record tool call for telemetry and UI visualization
+            records.append(
+                ToolCallRecord(
+                    tool_name=f"{self.matcher_mode}_order_match",
+                    arguments={"query": query},
+                    result={
+                        "matched_order_id": oid,
+                        "matched_by": match_res.matched_by,
+                        "confidence": match_res.confidence,
+                        "latency_ms": match_res.latency_ms,
+                        "order_status": matched_order.get("order_status"),
+                        "customer_name": matched_order.get("customer_name"),
+                        "total_amount": matched_order.get("total_amount"),
+                    },
+                )
             )
-            records.append(rec)
-            if isinstance(rec.result, dict):
-                resolved_order_data = rec.result.get("order")
 
-        # Decision 2: Order Status Check Tool
-        elif action == "status" or phone or tracking:
-            ident = order_id or tracking or phone or customer_id
-            if ident:
-                rec = await self.executor.execute("check_order_status", {"identifier": ident})
-                records.append(rec)
-                # For phone lookups without specific order_id, check for multiple orders
-                if phone and not order_id and not tracking:
-                    orders_list = await self.executor.clients.lookup_orders_by_phone(phone)
-                    if len(orders_list) > 1:
-                        resolved_order_data = {
-                            "phone": phone,
-                            "customer_name": orders_list[0].get("customer_name"),
-                            "total_orders": len(orders_list),
-                            "orders": orders_list,
-                        }
-                    elif orders_list:
-                        resolved_order_data = orders_list[0]
-                else:
-                    full_order = await self.executor.clients.lookup_order(ident)
-                    if full_order:
-                        resolved_order_data = full_order
+            # Check phone multi-order scenario
+            if phone and not regex_entities.get("order_id"):
+                orders_list = await self.executor.clients.lookup_orders_by_phone(phone)
+                if len(orders_list) > 1:
+                    resolved_order_data = {
+                        "phone": phone,
+                        "customer_name": orders_list[0].get("customer_name"),
+                        "total_orders": len(orders_list),
+                        "orders": orders_list,
+                    }
+                    rec = await self.executor.execute("check_order_status", {"identifier": phone})
+                    records.append(rec)
 
-        # Decision 3: Natural language search by product/customer/attributes (e.g. "bình giữ nhiệt của Hoàng Mai Yến")
-        elif not order_id and not phone and not tracking and (entities.get("product_name") or entities.get("customer_name") or entities.get("brand_or_attributes")):
-            pname = entities.get("product_name") or ""
-            cname = entities.get("customer_name") or ""
-            brand = entities.get("brand_or_attributes") or ""
-            stt = entities.get("status_hint") or ""
-
-            rec = await self.executor.execute(
-                "search_orders",
-                {
-                    "product_name": pname,
-                    "customer_name": cname,
-                    "brand_or_attributes": brand,
-                    "status": stt,
-                },
-            )
-            records.append(rec)
-            if isinstance(rec.result, dict) and rec.result.get("found"):
-                best_order = rec.result.get("best_match")
-                resolved_order_data = best_order
-                # If the customer's intent was to cancel this identified order
-                if action == "cancel" and best_order and best_order.get("order_id"):
+            # Downstream action execution
+            if not resolved_order_data:
+                if action == "cancel":
                     cancel_rec = await self.executor.execute(
                         "cancel_order",
-                        {
-                            "order_id": best_order["order_id"],
-                            "reason": entities.get("cancel_reason") or "Khách yêu cầu hủy qua chat",
-                        },
+                        {"order_id": oid, "reason": cancel_reason},
                     )
                     records.append(cancel_rec)
                     if isinstance(cancel_rec.result, dict) and cancel_rec.result.get("order"):
                         resolved_order_data = cancel_rec.result.get("order")
-
-        # Decision 4: List Customer Orders Tool
-        elif action == "customer_orders" and customer_id:
-            rec = await self.executor.execute("get_customer_orders", {"customer_id": customer_id})
-            records.append(rec)
-
-        # Decision 5: Order Details Tool
-        elif order_id:
-            rec = await self.executor.execute("get_order_details", {"order_id": order_id})
-            records.append(rec)
-            if isinstance(rec.result, dict):
-                resolved_order_data = rec.result
-
-        # Decision 6: General fallback by customer_id if no specific entity mentioned
-        elif customer_id:
-            full_order = await self.executor.clients.lookup_order(customer_id)
-            if full_order:
-                resolved_order_data = full_order
+                    else:
+                        resolved_order_data = matched_order
+                elif action == "details":
+                    rec = await self.executor.execute("get_order_details", {"order_id": oid})
+                    records.append(rec)
+                    resolved_order_data = rec.result if isinstance(rec.result, dict) else matched_order
+                else:
+                    rec = await self.executor.execute("check_order_status", {"identifier": oid})
+                    records.append(rec)
+                    resolved_order_data = matched_order
+        else:
+            # When no specific order matched
+            if action == "customer_orders" and customer_id:
+                rec = await self.executor.execute("get_customer_orders", {"customer_id": customer_id})
+                records.append(rec)
+            elif customer_id:
+                full_order = await self.executor.clients.lookup_order(customer_id)
+                if full_order:
+                    resolved_order_data = full_order
 
         # Build synthesized summary text for LLM generation context
         if records:
             summary_parts = []
             for r in records:
-                if isinstance(r.result, dict) and r.result.get("total_orders", 0) > 1:
+                if r.tool_name.endswith("_order_match") and isinstance(r.result, dict):
+                    res = r.result
+                    summary_parts.append(
+                        f"[Hệ thống tự động đối soát đơn hàng ({self.matcher_mode.upper()} Matcher - {res.get('matched_by')}): "
+                        f"Mã đơn: {res.get('matched_order_id')}, Khách hàng: {res.get('customer_name')}, "
+                        f"Trạng thái: {res.get('order_status')}, Độ tin cậy: {res.get('confidence')} ({res.get('latency_ms')}ms)]"
+                    )
+                elif isinstance(r.result, dict) and r.result.get("total_orders", 0) > 1:
                     total = r.result["total_orders"]
                     cname = r.result.get("customer_name", "")
                     briefs = []
@@ -281,26 +262,6 @@ class OrderReActAgent:
                         + "\n".join(briefs)
                         + "\nTrợ lý CSKH hãy tóm tắt danh sách các đơn hàng này cho khách hàng và hỏi khách muốn xử lý đơn nào.]"
                     )
-                elif r.tool_name == "search_orders" and isinstance(r.result, dict):
-                    res = r.result
-                    best = res.get("best_match", {})
-                    total = res.get("total_found", 0)
-                    oid = best.get("order_id")
-                    cname = best.get("customer_name")
-                    stt = best.get("order_status")
-                    amt = f"{best.get('total_amount', 0):,}đ"
-                    items = ", ".join(i.get("name", "") for i in best.get("items", []))
-                    if total > 1 and not r.arguments.get("customer_name"):
-                        summary_parts.append(
-                            f"[Tìm kiếm đơn hàng theo '{r.arguments.get('product_name')}': Tìm thấy {total} đơn phù hợp. "
-                            f"Đơn khớp tiêu biểu nhất: Mã {oid} (Khách: {cname}), trạng thái: {stt}, sản phẩm: {items}, số tiền: {amt}. "
-                            f"Trợ lý CSKH hãy phản hồi thông tin đơn này hoặc hỏi khách mã đơn cụ thể nếu cần.]"
-                        )
-                    else:
-                        summary_parts.append(
-                            f"[Tìm thấy chính xác đơn hàng theo thông tin khách cung cấp: "
-                            f"Mã đơn: {oid}, Khách hàng: {cname}, Trạng thái: {stt}, Sản phẩm: {items}, Tổng tiền: {amt}.]"
-                        )
                 else:
                     summary_parts.append(f"[Tool: {r.tool_name}({r.arguments}) -> Kết quả: {r.result}]")
             synthesis_text = "\n".join(summary_parts)
@@ -389,7 +350,6 @@ class OrderReActAgent:
             except Exception as e:
                 print(f"[OrderReActAgent] OpenAI-compatible extraction failed/timed out: {type(e).__name__} ({e})")
         else:
-            # Fallback to Google Gemini
             model = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
             payload = {

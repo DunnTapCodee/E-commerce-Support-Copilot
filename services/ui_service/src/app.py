@@ -745,6 +745,28 @@ with tab_agent:
                     st.info("Không có mã đơn hàng nào được nhận diện trong lượt tương tác này.")
 
             # -----------------------------------------------------------------
+            # 2.5 Tool Calls & Order Matcher Card (Module 3)
+            # -----------------------------------------------------------------
+            tool_calls = current_resp.get("tool_calls", [])
+            with st.expander("🛠️ Tiến Trình Xử Lý Công Cụ (Dynamic Tool Calling - Module 3)", expanded=bool(tool_calls)):
+                if tool_calls:
+                    for tc in tool_calls:
+                        tname = tc.get("tool_name", "unknown_tool")
+                        args = tc.get("arguments", {})
+                        res = tc.get("result", {})
+                        st.markdown(f"**Công cụ:** `{tname}`")
+                        if isinstance(res, dict) and "matched_by" in res:
+                            st.write(
+                                f"• **Phương thức khớp:** `{res.get('matched_by')}` | "
+                                f"**Mã đơn:** `{res.get('matched_order_id')}` | "
+                                f"**Độ tin cậy:** `{res.get('confidence')}` | "
+                                f"**Độ trễ:** `{res.get('latency_ms')} ms`"
+                            )
+                        st.json({"arguments": args, "result": res})
+                else:
+                    st.caption("Chưa có tool nào được kích hoạt trong lượt này.")
+
+            # -----------------------------------------------------------------
             # 3. Policy Citations Card
             # -----------------------------------------------------------------
             with st.expander("📚 Căn Cứ Chính Sách & Điều Khoản RAG", expanded=bool(citations)):

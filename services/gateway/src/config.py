@@ -36,3 +36,8 @@ FALLBACK_HALLUCINATION_MESSAGE = (
     "[CẦN NHÂN VIÊN XỬ LÝ: Bản nháp bị chặn do phát hiện nguy cơ ảo giác (Hallucination) hoặc không được chứng minh bởi tài liệu chính sách.]"
 )
 
+# Module 3: Dynamic Order Matching & Retrieval Engine
+# Options: 'hybrid' (default, Rule + Semantic Embedding), 'prompt' (Pure LLM), 'rule' (Regex only), 'embedding' (Dense vector)
+ORDER_MATCHER_MODE = os.getenv("ORDER_MATCHER_MODE", "hybrid").lower()
+# Options: 'tfidf' (default, sublinear n-gram, 0.3ms latency), 'bge-m3' (dense 1024-dim SentenceTransformer)
+ORDER_EMBEDDING_MODEL = os.getenv("ORDER_EMBEDDING_MODEL", "tfidf").lower()

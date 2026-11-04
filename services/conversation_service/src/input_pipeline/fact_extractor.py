@@ -3,6 +3,7 @@ Inspired by VoiceAgent packs/public-service/facts.py.
 """
 from __future__ import annotations
 
+import inspect
 import re
 from typing import Any, Dict
 
@@ -16,7 +17,7 @@ CARRIER_RE = re.compile(r"\b(tikinow|ghn|ghtk|viettel\s*post|ninja\s*van|j&t|sho
 
 
 def extract_facts(text: str) -> Dict[str, Any]:
-    """Extract domain facts from customer utterance."""
+    """Extract domain facts from customer utterance, falling back to hybrid order matcher."""
     facts: Dict[str, Any] = {}
 
     order_match = ORDER_RE.search(text)
@@ -44,5 +45,19 @@ def extract_facts(text: str) -> Dict[str, Any]:
     carrier_match = CARRIER_RE.search(text)
     if carrier_match:
         facts["carrier"] = carrier_match.group(0).upper()
+
+    # If no order_id found by regex, use configured hybrid matcher for semantic lookup
+    if "order_id" not in facts:
+        try:
+            from services.gateway.src.order_matchers import get_order_matcher
+            matcher = get_order_matcher()
+            if not inspect.iscoroutinefunction(matcher.match):
+                res = matcher.match(text)
+                if res.order and res.order.get("order_id"):
+                    facts["order_id"] = res.order["order_id"]
+                    if res.order.get("customer_name") and "customer_name" not in facts:
+                        facts["customer_name"] = res.order["customer_name"]
+        except Exception:
+            pass
 
     return facts
