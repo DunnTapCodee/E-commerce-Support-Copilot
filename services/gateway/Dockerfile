@@ -10,9 +10,11 @@ COPY services/gateway/ /app/services/gateway/
 
 ENV PYTHONPATH=/app
 ENV PORT=8000
-ENV INTENT_SERVICE_URL=http://intent_service:8001
+ENV INTENT_SERVICE_URL=http://intent_service:8005
 ENV RAG_SERVICE_URL=http://rag_service:8002
 ENV TELEMETRY_SERVICE_URL=http://telemetry_service:8003
+ENV DOCUMENT_SERVICE_URL=http://document_service:8004
+ENV CONVERSATION_SERVICE_URL=http://conversation_service:8006
 
 EXPOSE 8000
 
