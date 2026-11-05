@@ -1,0 +1,81 @@
+{
+  "timestamp": "2026-10-27 16:45:22",
+  "latency_metrics": {
+    "json_sequential_scan": {
+      "p50_ms": 0.6197,
+      "p90_ms": 0.7314,
+      "p95_ms": 1.9723,
+      "p99_ms": 2.2451,
+      "mean_ms": 0.7284,
+      "qps": 1372.8,
+      "target_under_2ms": true
+    },
+    "sqlite_unindexed": {
+      "p50_ms": 0.5051,
+      "p90_ms": 0.5626,
+      "p95_ms": 0.61,
+      "p99_ms": 0.866,
+      "mean_ms": 0.519,
+      "qps": 1926.8,
+      "target_under_2ms": true
+    },
+    "sqlite_indexed": {
+      "p50_ms": 0.4756,
+      "p90_ms": 0.5241,
+      "p95_ms": 0.5567,
+      "p99_ms": 0.7324,
+      "mean_ms": 0.4848,
+      "qps": 2062.9,
+      "target_under_2ms": true
+    },
+    "sqlite_lru_cache": {
+      "p50_ms": 0.0143,
+      "p90_ms": 0.5012,
+      "p95_ms": 0.5285,
+      "p99_ms": 0.5795,
+      "mean_ms": 0.0788,
+      "qps": 12686.2,
+      "target_under_2ms": true
+    }
+  },
+  "extraction_metrics": {
+    "total_test_scenarios": 40,
+    "baseline_regex": {
+      "order_extraction": {
+        "precision": 1.0,
+        "recall": 0.6296,
+        "f1_score": 0.7727,
+        "tp": 17,
+        "fp": 0,
+        "fn": 10
+      },
+      "phone_extraction": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "tp": 0,
+        "fp": 0,
+        "fn": 7
+      }
+    },
+    "advanced_react_extractor": {
+      "order_extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "tp": 27,
+        "fp": 0,
+        "fn": 0
+      },
+      "phone_extraction": {
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1_score": 1.0,
+        "tp": 7,
+        "fp": 0,
+        "fn": 0
+      },
+      "action_intent_accuracy": 87.5
+    }
+  }
+}

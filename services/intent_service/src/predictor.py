@@ -7,6 +7,7 @@ from pathlib import Path
 
 import numpy as np
 from contracts.schemas import IntentPredictionResponse
+from services.intent_service.src.llm_classifier import LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
 from services.intent_service.src.preprocessing import preprocess, segment_vi
 from services.intent_service.src.router import LanguageRouter
@@ -98,6 +99,9 @@ class IntentPredictor:
         if self.routing_mode not in {'router', 'multilingual'}:
             raise ValueError('INTENT_ROUTING_MODE must be router or multilingual')
 
+        self.intent_backend = os.getenv("INTENT_BACKEND", "llm").lower()
+        self.llm_classifier = LLMIntentClassifier()
+
         self.backends = {}
         self.metadata = {}
         self.legacy_model = None
@@ -180,6 +184,12 @@ class IntentPredictor:
 
     @property
     def models(self):
+        if self.intent_backend == "llm":
+            return {"llm": "gemini-2.5-flash"}
+        if self.intent_backend == "hybrid":
+            base = {lang: meta['method'] for lang, meta in self.metadata.items()} if (not self.is_legacy and self.metadata) else {"legacy": "baseline_sklearn"}
+            base["fallback"] = "llm_gemini"
+            return base
         if not self.is_legacy and self.metadata:
             return {lang: meta['method'] for lang, meta in self.metadata.items()}
         res = {}
@@ -191,9 +201,10 @@ class IntentPredictor:
 
     @property
     def is_loaded(self):
-        return bool(self.backends) or (self.legacy_model is not None)
+        return (self.intent_backend in {"llm", "hybrid"}) or bool(self.backends) or (self.legacy_model is not None)
 
-    def predict(self, query):
+    def _predict_ml(self, query: str) -> IntentPredictionResponse:
+        """Execute legacy/module 1 ML model pipeline."""
         start = time.perf_counter()
         text = preprocess(query) if callable(globals().get("preprocess")) else query.strip()
         language = self.router.detect(text)
@@ -313,3 +324,21 @@ class IntentPredictor:
             model_name=model_name,
             latency_ms=(time.perf_counter() - start) * 1000,
         )
+
+    def predict(self, query: str) -> IntentPredictionResponse:
+        # Pure LLM Intent Classifier
+        if self.intent_backend == "llm":
+            return self.llm_classifier.predict(query)
+
+        # Pure ML model
+        if self.intent_backend == "ml":
+            return self._predict_ml(query)
+
+        # Hybrid: run ML first; if low confidence or out-of-scope, fallback to LLM
+        ml_resp = self._predict_ml(query)
+        q_low = query.lower()
+        if ml_resp.intent == "track_order" and any(k in q_low for k in ["hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund"]):
+            return self.llm_classifier.predict(query)
+        if ml_resp.is_in_scope and ml_resp.confidence >= 0.75:
+            return ml_resp
+        return self.llm_classifier.predict(query)

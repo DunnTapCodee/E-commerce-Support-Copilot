@@ -10,7 +10,7 @@ Includes:
 from datetime import date, datetime
 import math
 import re
-from typing import List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from contracts.schemas import (
     GuardrailResult,
@@ -18,6 +18,7 @@ from contracts.schemas import (
     RetrievedDocument,
 )
 from services.gateway.src.config import (
+    DISABLE_CONFIDENCE_GUARD,
     FAITHFULNESS_THRESHOLD,
     FINANCIAL_INTENTS,
     INTENT_CONFIDENCE_THRESHOLD,
@@ -72,7 +73,7 @@ def evaluate_intent_guard(
             "Yêu cầu nằm ngoài phạm vi hỗ trợ; cần nhân viên xử lý."
         )
 
-    if confidence < INTENT_CONFIDENCE_THRESHOLD:
+    if not DISABLE_CONFIDENCE_GUARD and confidence < INTENT_CONFIDENCE_THRESHOLD:
         return _escalate(
             f"Độ tin cậy thấp ({confidence:.0%}); "
             "cần nhân viên xác nhận ý định."
@@ -321,7 +322,7 @@ def evaluate_response_faithfulness(
     citations: List[RetrievedDocument],
     threshold: float = FAITHFULNESS_THRESHOLD,
     customer_query: Optional[str] = None,
-    order_data: Optional[dict] = None,
+    order_data: Optional[Dict[str, Any]] = None,
 ) -> GuardrailResult:
     """NLI Entailment & Hallucination Check:
     Verify whether every claim in the LLM draft is faithfully supported by the retrieved context.
@@ -358,7 +359,12 @@ def evaluate_response_faithfulness(
     if customer_query:
         premise_parts.append(customer_query)
     if order_data:
-        premise_parts.append(" ".join(str(v) for v in order_data.values() if v is not None))
+        order_str = " ".join(f"{k} {v}" for k, v in order_data.items() if k not in ("shipping_timeline", "items"))
+        if "items" in order_data and isinstance(order_data["items"], list):
+            order_str += " " + " ".join(it.get("name", "") if isinstance(it, dict) else str(it) for it in order_data["items"])
+        if "shipping_timeline" in order_data and isinstance(order_data["shipping_timeline"], list):
+            order_str += " " + " ".join(t.get("status", "") if isinstance(t, dict) else str(t) for t in order_data["shipping_timeline"])
+        premise_parts.append(order_str)
     premise_text = " ".join(premise_parts).lower()
     premise_numbers = set(_extract_numeric_entities(premise_text))
 

@@ -1,10 +1,11 @@
-"""API Gateway & Central State Machine Orchestrator on Port 8000."""
+"""API Gateway & Central Ingress Router on Port 8000."""
 import os
+import re
 import sys
 import time
 import uuid
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,9 +25,11 @@ from contracts.schemas import (
     RawPolicyFilterRequest,
     PolicyCreateRequest,
     PolicyRollbackRequest,
+    ToolCallRecord,
 )
 from services.gateway.src.clients import MicroserviceClients
 from services.gateway.src.config import (
+    CONVERSATION_SERVICE_URL,
     FALLBACK_EXPIRED_POLICY_MESSAGE,
     FALLBACK_FINANCIAL_MESSAGE,
     FALLBACK_HALLUCINATION_MESSAGE,
@@ -43,8 +46,8 @@ from services.gateway.src.guardrails import (
 
 app = FastAPI(
     title="API Gateway Orchestrator",
-    description="Central Gateway coordinating distributed ML, RAG, Safety and Telemetry services",
-    version="1.0.0",
+    description="Central Gateway coordinating distributed ML, RAG, Safety, Telemetry, and Conversation Service",
+    version="2.0.0",
 )
 
 app.add_middleware(
@@ -60,45 +63,49 @@ clients = MicroserviceClients()
 
 @app.get("/health")
 def health_check():
-    """Gateway health check."""
-    return {"status": "healthy", "service": "gateway", "port": 8000}
+    return {
+        "status": "healthy",
+        "service": "gateway",
+        "port": int(os.getenv("PORT", 8000)),
+    }
 
 
 @app.post("/api/v1/copilot/query", response_model=GatewayResponse)
 async def process_copilot_query(
     request: QueryRequest, background_tasks: BackgroundTasks
 ):
-    """Central Orchestrator endpoint executing state machine:
-    1. Call intent_service:8001/predict.
-    2. Guardrail 1: Confidence (< 0.60) / scope check -> ESCALATE_HUMAN.
-    3. Guardrail 2: Refund / payment check -> DIRECT_REFUND_FORM + fetch mock order.
-    4. Call rag_service:8002/retrieve.
-    5. Guardrail 3 (Temporal Policy Guard): Policy validity / expiration check -> ESCALATE_HUMAN if expired.
-    6. Call rag_service:8002/generate.
-    6.5. Guardrail 4 (Output Guardrail): Response Faithfulness / NLI Entailment Hallucination check.
-    7. Async telemetry audit log via telemetry_service:8003.
+    """Central Ingress endpoint:
+    1. Primary path: Delegate 100% of multi-turn dialogue to Conversation Service.
+    2. Fallback path: Standalone degraded response if Conversation Service is unreachable.
     """
     start_time = time.perf_counter()
     interaction_id = str(uuid.uuid4())
     customer_query = request.query.strip()
     customer_id = request.customer_id or "demo-customer"
     generation_mode = "not_generated"
-    citations: list[RetrievedDocument] = []
+    citations: List[RetrievedDocument] = []
     draft_text = ""
     order_data: Optional[Dict[str, Any]] = None
 
-    # Step 1: Predict Intent
-    intent_service_error = None
-
+    # Delegate to Conversation Service (Primary Path)
     try:
-        intent_resp: IntentPredictionResponse = (
-            await clients.predict_intent(customer_query)
-        )
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as http_client:
+            resp = await http_client.post(
+                f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
+                json=request.model_dump(),
+            )
+            if resp.status_code == 200:
+                return GatewayResponse(**resp.json())
+    except Exception as exc:
+        print(f"[Gateway] Conversation Service unreachable: {exc}. Running graceful gateway fallback.")
+
+    # Graceful Fallback Pipeline (if Conversation Service is down)
+    intent_service_error = None
+    try:
+        intent_resp: IntentPredictionResponse = await clients.predict_intent(customer_query)
     except Exception as exc:
         intent_service_error = str(exc)
         print(f"[Gateway] Intent service unavailable: {exc}")
-
-        # Fail closed: không có dự đoán tin cậy thì không gọi LLM.
         intent_resp = IntentPredictionResponse(
             intent="unknown_query",
             confidence=0.0,
@@ -106,7 +113,17 @@ async def process_copilot_query(
             all_probabilities={},
         )
 
-    # Step 2: Intent Guardrail Check
+    # Order lookup fallback
+    tool_records: List[ToolCallRecord] = []
+    order_match = re.search(r"\bORD-[A-Za-z0-9-]+\b", customer_query, re.IGNORECASE)
+    lookup_key = order_match.group(0) if order_match else customer_id
+    if lookup_key:
+        try:
+            order_data = await clients.lookup_order(lookup_key)
+        except Exception:
+            pass
+
+    # Intent Guardrail Check
     intent_guard = evaluate_intent_guard(intent_resp)
     if intent_service_error:
         intent_guard = GuardrailResult(
@@ -119,9 +136,9 @@ async def process_copilot_query(
                 f"Chi tiết lỗi: {intent_service_error}"
             ),
         )
+
     if not intent_guard.allow_llm:
         guardrail_decision = intent_guard
-
         if intent_service_error:
             draft_text = (
                 "[CẦN NHÂN VIÊN XỬ LÝ: Không thể xác định ý định "
@@ -132,110 +149,155 @@ async def process_copilot_query(
         else:
             draft_text = FALLBACK_UNCERTAIN_MESSAGE
 
-    else:
-        # Chỉ tra cứu đơn hàng khi intent đã vượt qua guardrail.
-        # Ưu tiên mã đơn hàng có dạng ORD-... trong câu hỏi.
-        import re
+        audit_payload = AuditLogCreate(
+            interaction_id=interaction_id,
+            customer_query=customer_query,
+            predicted_intent=intent_resp.intent,
+            intent_confidence=intent_resp.confidence,
+            guardrail_action=guardrail_decision.action_type,
+            retrieved_doc_ids="",
+            raw_draft_text=draft_text,
+            latency_ms=int((time.perf_counter() - start_time) * 1000),
+        )
+        background_tasks.add_task(clients.record_audit_log, audit_payload)
 
-        order_match = re.search(
-            r"\bORD-[A-Za-z0-9-]+\b",
-            customer_query,
-            re.IGNORECASE,
+        return GatewayResponse(
+            interaction_id=interaction_id,
+            intent=intent_resp,
+            guardrail=guardrail_decision,
+            citations=[],
+            draft_text=draft_text,
+            order_data=order_data,
+            tool_calls=tool_records,
+            generation_mode=generation_mode,
+            suggested_reply=draft_text,
         )
 
-        lookup_key = order_match.group(0) if order_match else customer_id
+    # Financial Guard Check
+    financial_guard = evaluate_financial_guard(intent_resp.intent)
+    if financial_guard and not financial_guard.allow_llm:
+        guardrail_decision = financial_guard
+        draft_text = FALLBACK_FINANCIAL_MESSAGE
+        generation_mode = "blocked_financial"
+        if order_data:
+            order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
+            draft_text += f"\n\n[Dữ liệu đơn đối soát]: {order_summary}"
 
-        try:
-            order_data = await clients.lookup_order(lookup_key)
-        except Exception as exc:
-            print(f"[Gateway] Order lookup failed: {exc}")
-            order_data = None
+        audit_payload = AuditLogCreate(
+            interaction_id=interaction_id,
+            customer_query=customer_query,
+            predicted_intent=intent_resp.intent,
+            intent_confidence=intent_resp.confidence,
+            guardrail_action=guardrail_decision.action_type,
+            retrieved_doc_ids="",
+            raw_draft_text=draft_text,
+            latency_ms=int((time.perf_counter() - start_time) * 1000),
+        )
+        background_tasks.add_task(clients.record_audit_log, audit_payload)
 
-        # Step 3: Financial Guardrail Check
-        financial_guard = evaluate_financial_guard(intent_resp.intent)
-        if financial_guard and not financial_guard.allow_llm:
-            guardrail_decision = financial_guard
-            draft_text = FALLBACK_FINANCIAL_MESSAGE
-            if order_data:
-                order_summary = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
-                draft_text += f"\n\n[Dữ liệu đơn đối soát]: {order_summary}"
+        return GatewayResponse(
+            interaction_id=interaction_id,
+            intent=intent_resp,
+            guardrail=guardrail_decision,
+            citations=[],
+            draft_text=draft_text,
+            order_data=order_data,
+            tool_calls=tool_records,
+            generation_mode=generation_mode,
+            suggested_reply=draft_text,
+        )
 
-        else:
-            # Step 4: Knowledge Retrieval
-            try:
-                citations = await clients.retrieve_policies(
-                    query=customer_query, intent=intent_resp.intent, top_k=3
-                )
-            except Exception as exc:
-                citations = []
+    # Retrieval
+    try:
+        citations = await clients.retrieve_policies(
+            query=customer_query,
+            intent=intent_resp.intent,
+            top_k=3,
+        )
+    except Exception as exc:
+        print(f"[Gateway] RAG retrieve error: {exc}")
+        citations = []
 
-            # Step 5: Temporal Policy Guardrail Check
-            policy_guard = evaluate_policy_guard(citations)
-            if not policy_guard.allow_llm:
-                guardrail_decision = policy_guard
-                if policy_guard.temporal_status == "EXPIRED":
-                    draft_text = f"{FALLBACK_EXPIRED_POLICY_MESSAGE}\n[Lý do]: {policy_guard.reason}"
-                else:
-                    draft_text = FALLBACK_NO_ACTIVE_POLICY_MESSAGE
-            else:
-                # Step 6: LLM Generation
-                guardrail_decision = policy_guard
-                try:
-                    generation_prompt = customer_query
-                    if order_data:
-                        order_details = "; ".join(f"{k}: {v}" for k, v in order_data.items() if k not in ("items", "shipping_timeline"))
-                        generation_prompt += f"\n[Thông tin thực tế của đơn hàng từ hệ thống: {order_details}]"
+    # Policy Guardrail Check
+    policy_guard = evaluate_policy_guard(citations)
+    if not policy_guard.allow_llm:
+        guardrail_decision = policy_guard
+        draft_text = (
+            FALLBACK_EXPIRED_POLICY_MESSAGE
+            if policy_guard.temporal_status == "EXPIRED"
+            else FALLBACK_NO_ACTIVE_POLICY_MESSAGE
+        )
+        generation_mode = "blocked_policy"
 
-                    gen_resp = await clients.generate_draft(generation_prompt, citations,)
-                    draft_text = gen_resp.draft_text
-                    generation_mode = gen_resp.generation_mode
+        audit_payload = AuditLogCreate(
+            interaction_id=interaction_id,
+            customer_query=customer_query,
+            predicted_intent=intent_resp.intent,
+            intent_confidence=intent_resp.confidence,
+            guardrail_action=guardrail_decision.action_type,
+            retrieved_doc_ids=",".join(d.doc_id for d in citations),
+            raw_draft_text=draft_text,
+            latency_ms=int((time.perf_counter() - start_time) * 1000),
+        )
+        background_tasks.add_task(clients.record_audit_log, audit_payload)
 
-                    if generation_mode == "template_fallback":
-                        print(
-                            "[Gateway] RAG dùng bản nháp dự phòng. "
-                            f"Lý do: {gen_resp.fallback_reason}"
-                        )
+        return GatewayResponse(
+            interaction_id=interaction_id,
+            intent=intent_resp,
+            guardrail=guardrail_decision,
+            citations=citations,
+            draft_text=draft_text,
+            order_data=order_data,
+            tool_calls=tool_records,
+            generation_mode=generation_mode,
+            suggested_reply=draft_text,
+        )
 
-                    # Step 6.5: Response Faithfulness & Hallucination Guardrail Check (NLI Entailment)
-                    faithfulness_guard = evaluate_response_faithfulness(
-                        draft_text,
-                        citations,
-                        customer_query=customer_query,
-                        order_data=order_data,
-                    )
-                    if not faithfulness_guard.allow_llm:
-                        guardrail_decision = faithfulness_guard
-                        generation_mode = "blocked_hallucination"
-                        draft_text = (
-                            f"{FALLBACK_HALLUCINATION_MESSAGE}\n"
-                            f"[Chi tiết kiểm tra an toàn NLI]: {faithfulness_guard.reason}"
-                        )
-                    else:
-                        guardrail_decision = faithfulness_guard
+    # Generation via RAG Service
+    try:
+        rag_resp = await clients.generate_draft(
+            query=customer_query, citations=citations
+        )
+        draft_text = rag_resp.draft_text
+        generation_mode = rag_resp.generation_mode
+    except Exception as exc:
+        print(f"[Gateway] RAG generate error: {exc}")
+        draft_text = FALLBACK_UNCERTAIN_MESSAGE
+        generation_mode = "error_fallback"
 
-                except Exception as exc:
-                    generation_mode = "not_generated"
-                    guardrail_decision = GuardrailResult(
-                        allow_llm=False,
-                        action_type="ESCALATE_HUMAN",
-                        reason=f"LLM Generation service error: {str(exc)}",
-                    )
-                    draft_text = "[Cần nhân viên xử lý: Lỗi dịch vụ sinh bản nháp an toàn.]"
+    # Faithfulness Check
+    faithfulness_guard = evaluate_response_faithfulness(
+        draft_text=draft_text,
+        citations=citations,
+        customer_query=customer_query,
+        order_data=order_data,
+    )
+    if not faithfulness_guard.allow_llm:
+        guardrail_decision = faithfulness_guard
+        generation_mode = "blocked_hallucination"
+        draft_text = (
+            f"{FALLBACK_HALLUCINATION_MESSAGE}\n"
+            f"[Chi tiết kiểm tra an toàn NLI]: {faithfulness_guard.reason}"
+        )
+    else:
+        guardrail_decision = GuardrailResult(
+            allow_llm=True,
+            action_type="APPROVED_BY_GUARDRAILS",
+            reason="Tất cả các trạm kiểm soát guardrail đã thông qua thành công.",
+        )
 
-    total_latency_ms = int((time.perf_counter() - start_time) * 1000)
-
-    # Step 7: Asynchronous Telemetry Audit Log
-    log_record = AuditLogCreate(
+    # Async audit log
+    audit_payload = AuditLogCreate(
         interaction_id=interaction_id,
         customer_query=customer_query,
         predicted_intent=intent_resp.intent,
         intent_confidence=intent_resp.confidence,
         guardrail_action=guardrail_decision.action_type,
-        retrieved_doc_ids=",".join(doc.doc_id for doc in citations),
+        retrieved_doc_ids=",".join(d.doc_id for d in citations),
         raw_draft_text=draft_text,
-        latency_ms=total_latency_ms,
+        latency_ms=int((time.perf_counter() - start_time) * 1000),
     )
-    background_tasks.add_task(clients.log_telemetry, log_record)
+    background_tasks.add_task(clients.record_audit_log, audit_payload)
 
     return GatewayResponse(
         interaction_id=interaction_id,
@@ -244,14 +306,22 @@ async def process_copilot_query(
         citations=citations,
         draft_text=draft_text,
         order_data=order_data,
+        tool_calls=tool_records,
         generation_mode=generation_mode,
+        suggested_reply=draft_text,
     )
 
 
 @app.post("/api/v1/copilot/action")
-async def record_human_action(action_payload: HumanActionUpdate):
+async def record_human_action(payload: HumanActionUpdate):
     """Forward CS Support agent action review to telemetry service."""
-    return await clients.record_human_action(action_payload)
+    try:
+        return await clients.record_human_action(payload)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to record human action update: {exc}",
+        )
 
 
 @app.get("/api/v1/copilot/stats")
@@ -320,8 +390,6 @@ async def proxy_list_policy_audit_logs():
 async def proxy_rollback_policy(request: PolicyRollbackRequest):
     """Proxy: rollback a policy change via rag_service."""
     return await _proxy_rag_call(clients.rollback_policy(request))
-
-
 
 
 if __name__ == "__main__":

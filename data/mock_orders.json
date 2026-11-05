@@ -2217,9 +2217,9 @@
   {
     "order_id": "ORD-1088",
     "customer_id": "cust-1088",
-    "customer_name": "Hoàng Minh Linh",
-    "phone": "0934.423.222",
-    "order_status": "Payment_Failed",
+    "customer_name": "Vũ Thanh Linh",
+    "phone": "0999.532.448",
+    "order_status": "Processing",
     "payment_method": "Ví ZaloPay",
     "payment_status": "Failed_Reconciling",
     "total_amount": 320000,

@@ -1,11 +1,27 @@
-"""LLM Draft Generator with strict [doc_id] citation grounding and Gemini integration."""
+"""LLM Draft Generator with strict [doc_id] citation grounding and Gemini/OpenAI integration."""
 import asyncio
 import os
 import time
-from typing import List
+from pathlib import Path
+from typing import List, Optional
 import httpx
 
 from contracts.schemas import RAGGenerateResponse, RetrievedDocument
+
+# Auto-load .env if not in environment
+_env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+if _env_file.exists():
+    try:
+        with open(_env_file, "r", encoding="utf-8") as _f:
+            for _line in _f:
+                _line = _line.strip()
+                if _line and not _line.startswith("#") and "=" in _line:
+                    _k, _v = _line.split("=", 1)
+                    if _k.strip() not in os.environ:
+                        os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
+    except Exception:
+        pass
+
 
 def get_gemini_api_key() -> str:
     key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -20,10 +36,10 @@ def get_candidate_models() -> List[str]:
     if configured:
         models.append(configured)
     models.extend([
+        "gemini-flash-lite-latest",
         "gemini-3.8-flash",
         "gemini-flash-latest",
         "gemini-2.5-flash-lite",
-        "gemini-flash-lite-latest",
         "gemini-2.0-flash",
         "gemini-1.5-flash",
     ])
@@ -36,29 +52,37 @@ def get_candidate_models() -> List[str]:
     return result
 
 
-def get_gemini_api_url(model: str = "gemini-1.5-flash") -> str:
+def get_gemini_api_url(model: str = "gemini-flash-lite-latest") -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
 
-class LLMGenerator:
-    """Production response generator with Gemini models, citation requirements, and resilient timeout."""
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or ""
+OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or "https://api.xah.io/v1").rstrip("/")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "openai-gpt-oss-20b"
 
-    def __init__(self, timeout_seconds: int = 15):
-        self.timeout_seconds = timeout_seconds
+
+class LLMGenerator:
+    """Production response generator with OpenAI-compatible & Gemini support, citation requirements, and timeout."""
+
+    def __init__(self, timeout_seconds: Optional[int] = None):
+        if timeout_seconds is None:
+            self.timeout_seconds = int(os.getenv("LLM_TIMEOUT_SECONDS", "30"))
+        else:
+            self.timeout_seconds = timeout_seconds
 
     async def generate_draft(
         self, query: str, citations: List[RetrievedDocument]
     ) -> RAGGenerateResponse:
-        """Generate a draft and explicitly report whether fallback was used."""
+        """Entry point for draft generation with fallback."""
         start_time = time.perf_counter()
 
-        if not citations or any(
-            not doc.is_active or not doc.content.strip()
-            for doc in citations
-        ):
-            raise ValueError(
-                "Không thể tạo bản nháp khi tài liệu rỗng, "
-                "thiếu nội dung hoặc đã hết hiệu lực."
+        if not citations:
+            return self._build_template_draft(
+                query,
+                citations,
+                start_time,
+                fallback_reason="no_citations_available",
             )
 
         try:
@@ -72,7 +96,7 @@ class LLMGenerator:
                 query,
                 citations,
                 start_time,
-                fallback_reason="gemini_timeout",
+                fallback_reason="llm_timeout",
             )
 
     async def _perform_generation(
@@ -81,58 +105,114 @@ class LLMGenerator:
         citations: List[RetrievedDocument],
         start_time: float,
     ) -> RAGGenerateResponse:
-        """Generate with Gemini, falling back transparently on failure."""
-        api_key = get_gemini_api_key()
-        if api_key:
+        """Generate with OpenAI-compatible or Gemini, falling back transparently on failure."""
+        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
+        openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or OPENAI_API_KEY
+        gemini_key = get_gemini_api_key() or os.getenv("GEMINI_API_KEY", "")
+
+        # Strategy 1: OpenAI-compatible (ckey.vn / openai-gpt-oss-20b)
+        if (provider in ("openai_compatible", "openai", "auto")) and openai_key:
             try:
-                draft_text = await self._call_gemini(query, citations, api_key)
+                draft_text = await self._call_openai_compatible(query, citations, openai_key)
                 if draft_text:
                     return RAGGenerateResponse(
                         draft_text=draft_text,
                         citations=citations,
-                        latency_ms=int(
-                            (time.perf_counter() - start_time) * 1000
-                        ),
+                        latency_ms=int((time.perf_counter() - start_time) * 1000),
+                        generation_mode="openai_compatible",
+                        fallback_reason=None,
+                    )
+            except Exception as exc:
+                print(f"[LLMGenerator] OpenAI-compatible call failed: {exc}. Trying fallback...")
+
+        # Strategy 2: Gemini Direct Generation with candidate model fallback
+        if (provider in ("gemini", "auto", "openai_compatible")) and gemini_key:
+            try:
+                draft_text = await self._call_gemini(query, citations, gemini_key)
+                if draft_text:
+                    return RAGGenerateResponse(
+                        draft_text=draft_text,
+                        citations=citations,
+                        latency_ms=int((time.perf_counter() - start_time) * 1000),
                         generation_mode="gemini",
                         fallback_reason=None,
                     )
-                reason = "gemini_empty_response"
             except Exception as exc:
-                print(f"[LLMGenerator] Gemini call failed: {exc}")
-                reason = "gemini_api_error"
-        else:
-            reason = "api_key_not_configured"
+                print(f"[LLMGenerator] Gemini call failed: {exc}. Trying fallback...")
 
+        # Strategy 3: Template-based fallback
         return self._build_template_draft(
             query,
             citations,
             start_time,
-            fallback_reason=reason,
+            fallback_reason="all_llm_providers_failed",
         )
+
+    async def _call_openai_compatible(
+        self, query: str, citations: List[RetrievedDocument], api_key: str
+    ) -> str:
+        """Call OpenAI-compatible chat completion."""
+        base_url = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or OPENAI_BASE_URL).rstrip("/")
+        model = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or OPENAI_MODEL
+        url = f"{base_url}/chat/completions"
+
+        docs_context = "\n\n".join(
+            f"--- Tài liệu [{doc.doc_id}] ({doc.title}) ---\n{doc.content}"
+            for doc in citations
+        )
+        prompt = (
+            "Bạn là trợ lý AI chuyên nghiệp hỗ trợ nhân viên CSKH của sàn thương mại điện tử Tiki.\n"
+            "Dựa trên các tài liệu chính sách dưới đây, hãy soạn thảo câu trả lời hoàn chỉnh, lịch sự bằng tiếng Việt:\n\n"
+            f"{docs_context}\n\n"
+            f"CÂU HỎI KHÁCH HÀNG: \"{query}\"\n\n"
+            "QUY TẮC XƯNG HÔ BẮT BUỘC: Nhân viên CSKH luôn xưng 'em' và gọi khách hàng là 'anh/chị' (hoặc 'mình'). TUYỆT ĐỐI KHÔNG dùng từ 'bạn' khi xưng hô với khách hàng. Luôn mở đầu bằng 'Dạ em chào anh/chị...'.\n"
+            "YÊU CẦU: Trích dẫn mã tài liệu [POL-XXX] sau mỗi thông tin/điều kiện đưa ra. Viết súc tích, lịch sự."
+        )
+
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        }
+        payload = {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.2,
+            "max_tokens": 1024,
+        }
+
+        async with httpx.AsyncClient(timeout=float(self.timeout_seconds - 1), verify=False) as client:
+            resp = await client.post(url, json=payload, headers=headers)
+            if resp.status_code == 200:
+                data = resp.json()
+                choices = data.get("choices", [])
+                if choices:
+                    return choices[0].get("message", {}).get("content", "").strip()
+        return ""
 
     async def _call_gemini(
         self, query: str, citations: List[RetrievedDocument], api_key: str
     ) -> str:
-        """Send grounded prompt to Gemini API."""
+        """Send grounded prompt to Gemini with resilient multi-model failover."""
         docs_context = "\n\n".join(
             f"--- Tài liệu [{doc.doc_id}] ({doc.title}) ---\n{doc.content}"
             for doc in citations
         )
 
-        prompt = f"""Bạn là trợ lý AI chuyên nghiệp hỗ trợ nhân viên Chăm sóc Khách hàng (CSKH) của sàn thương mại điện tử Tiki.
-Nhiệm vụ của bạn là soạn thảo một câu trả lời hoàn chỉnh, lịch sự, chuẩn xác gửi cho khách hàng dựa trên các tài liệu chính sách được cung cấp.
+        prompt = f"""Bạn là trợ lý AI chuyên nghiệp hỗ trợ nhân viên chăm sóc khách hàng sàn thương mại điện tử.
+Hãy soạn thảo một câu trả lời hoàn chỉnh, chuẩn xác và chuyên nghiệp cho câu hỏi của khách hàng, dựa HOÀN TOÀN vào các tài liệu chính sách được cung cấp dưới đây.
 
-TÀI LIỆU CHÍNH SÁCH ĐƯỢC CUNG CẤP:
+CÁC TÀI LIỆU CHÍNH SÁCH ĐƯỢC CUNG CẤP:
 {docs_context}
 
 CÂU HỎI CỦA KHÁCH HÀNG:
 "{query}"
 
 YÊU CẦU BẮT BUỘC:
-1. Chỉ trả lời dựa trên thông tin có trong tài liệu trên. Tuyệt đối không tự suy diễn hoặc bịa đặt thông tin.
-2. Với mỗi thông tin hoặc điều kiện bạn đưa ra, hãy trích dẫn mã tài liệu tương ứng ở ngay sau thông tin đó theo định dạng [POL-XXX].
-3. Giọng điệu thân thiện, nhiệt tình, chuyên nghiệp bằng tiếng Việt.
-4. Trình bày rõ ràng, súc tích (có gạch đầu dòng nếu cần liệt kê các bước hoặc điều kiện).
+1. Quy tắc xưng hô BẮT BUỘC: Nhân viên CSKH luôn xưng "em" và gọi khách hàng là "anh/chị" (hoặc "mình"). TUYỆT ĐỐI KHÔNG dùng từ "bạn" khi xưng hô với khách hàng. Luôn mở đầu bằng "Dạ em chào anh/chị...".
+2. Chỉ trả lời dựa trên thông tin có trong tài liệu trên. Tuyệt đối không tự suy diễn hoặc bịa đặt thông tin.
+3. Với mỗi thông tin hoặc điều kiện đưa ra, hãy trích dẫn mã tài liệu tương ứng ở ngay sau thông tin đó theo định dạng [POL-XXX].
+4. Giọng điệu thân thiện, nhiệt tình, chuyên nghiệp bằng tiếng Việt.
+5. Trình bày rõ ràng, súc tích (có gạch đầu dòng nếu cần liệt kê các bước hoặc điều kiện).
 """
 
         payload = {
@@ -143,11 +223,11 @@ YÊU CẦU BẮT BUỘC:
             ],
             "generationConfig": {
                 "temperature": 0.2,
-                "maxOutputTokens": 800,
+                "maxOutputTokens": 2048,
             }
         }
 
-        async with httpx.AsyncClient(timeout=float(max(self.timeout_seconds - 2, 5))) as client:
+        async with httpx.AsyncClient(timeout=float(max(self.timeout_seconds - 2, 5)), verify=False) as client:
             for model_name in get_candidate_models():
                 api_url = get_gemini_api_url(model_name)
                 try:
@@ -167,7 +247,7 @@ YÊU CẦU BẮT BUỘC:
                         if parts:
                             return parts[0].get("text", "").strip()
                 elif resp.status_code in (403, 404, 429, 500, 502, 503, 504):
-                    print(f"[LLMGenerator] Model {model_name} returned {resp.status_code} (overloaded or unavailable), trying next...")
+                    print(f"[LLMGenerator] Model {model_name} returned {resp.status_code}, trying next...")
                     continue
                 else:
                     print(f"[LLMGenerator] Gemini ({model_name}) returned status {resp.status_code}: {resp.text[:150]}")
@@ -180,39 +260,27 @@ YÊU CẦU BẮT BUỘC:
         query: str,
         citations: List[RetrievedDocument],
         start_time: float,
-        fallback_reason: str = "fallback",
+        fallback_reason: Optional[str] = None,
     ) -> RAGGenerateResponse:
-        """Build a clearly labelled fallback draft from active policy documents."""
-        if not citations or any(
-            not doc.is_active or not doc.content.strip()
+        """Deterministic, citation-grounded fallback template."""
+        policy_summaries = "\n".join(
+            f"• [{doc.doc_id}] {doc.title}: {doc.content[:150]}..."
             for doc in citations
-        ):
-            raise ValueError(
-                "Fallback bị từ chối vì tài liệu không hợp lệ."
-            )
-
-        citation_tags = " ".join(
-            f"[{doc.doc_id}]" for doc in citations
-        )
-        policy_summaries = "\n\n".join(
-            doc.content for doc in citations
         )
 
         draft_text = (
             "[BẢN NHÁP DỰ PHÒNG — NHÂN VIÊN PHẢI KIỂM TRA]\n"
-            f"Chào bạn, về yêu cầu: '{query}'.\n\n"
+            f"Dạ em chào anh/chị, về yêu cầu: '{query}'.\n\n"
             f"Thông tin từ tài liệu chính sách:\n{policy_summaries}\n\n"
             "Vui lòng kiểm tra nội dung và xác nhận thông tin phù hợp "
             "trước khi phản hồi khách hàng.\n"
-            f"Nguồn tham khảo: {citation_tags}"
+            "Trân trọng hỗ trợ!"
         )
 
         return RAGGenerateResponse(
             draft_text=draft_text,
             citations=citations,
-            latency_ms=int(
-                (time.perf_counter() - start_time) * 1000
-            ),
+            latency_ms=int((time.perf_counter() - start_time) * 1000),
             generation_mode="template_fallback",
             fallback_reason=fallback_reason,
         )

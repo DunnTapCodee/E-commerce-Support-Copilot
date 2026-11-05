@@ -2,8 +2,6 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
-
-
 import uuid
 
 # -------------------------------------------------------------------
@@ -138,23 +136,89 @@ class GatewayResponse(BaseModel):
     citations: List[RetrievedDocument] = Field(default_factory=list, description="Policy citations")
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
+    tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tools invoked during processing")
     generation_mode: str = "not_generated"
+    suggested_reply: Optional[str] = Field(default=None, description="Suggested customer reply template")
+    agent_guidance: Optional[str] = Field(default=None, description="Internal guidance and warnings for support agent")
+    input_type: Optional[str] = Field(default=None, description="Input classification: question, fact_supplement, negation_reversal, chitchat")
+    active_facts: Dict[str, Any] = Field(default_factory=dict, description="Active dialogue facts (order_id, phone, etc.)")
+    is_live_chat: bool = Field(default=False, description="Whether session is in live human agent chat mode")
+    customer_acknowledgement: Optional[str] = Field(default=None, description="Immediate buffer response for customer (Phần 1)")
+    session_turns: List[Dict[str, Any]] = Field(default_factory=list, description="Recent conversation turns")
+    context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
+
 
 # -------------------------------------------------------------------
-# 7. Policy Filter & Creation Contracts
+# 7. Order & Tool Calling Contracts (Module 3)
 # -------------------------------------------------------------------
+class OrderCancelRequest(BaseModel):
+    """Request payload to cancel an order."""
+    reason: str = Field(default="Khách hàng yêu cầu hủy đơn", description="Reason for cancellation")
 
+
+class OrderCancelResponse(BaseModel):
+    """Response payload for order cancellation."""
+    success: bool = Field(..., description="Whether cancellation succeeded")
+    order_id: str = Field(..., description="Target order ID")
+    message: str = Field(..., description="Status message explaining cancellation result")
+    updated_status: Optional[str] = Field(default=None, description="New order status")
+
+
+class ToolCallRecord(BaseModel):
+    """Audit record for a tool called by the Agent/LLM."""
+    tool_name: str = Field(..., description="Name of the executed tool")
+    arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments passed to tool")
+    result: Any = Field(default=None, description="Output returned by tool")
+    latency_ms: float = Field(default=0.0, description="Execution latency in milliseconds")
+
+
+# -------------------------------------------------------------------
+# 8. Conversation Service State & Turn Contracts
+# -------------------------------------------------------------------
+class ChatMessageItem(BaseModel):
+    role: Literal["customer", "agent", "system"]
+    content: str
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationTurnItem(BaseModel):
+    turn_id: int
+    customer_query: str
+    agent_response: str
+    intent: Optional[str] = None
+    confidence: Optional[float] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+
+
+class ConversationSessionState(BaseModel):
+    session_id: str
+    customer_id: Optional[str] = None
+    active_intent: Optional[str] = None
+    active_order_id: Optional[str] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    is_live_chat: bool = False
+    turns: List[ConversationTurnItem] = Field(default_factory=list)
+    context_summary: Optional[str] = None
+    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
+# -------------------------------------------------------------------
+# 9. Policy Filter & Creation Contracts
+# -------------------------------------------------------------------
 class RawPolicyFilterRequest(BaseModel):
     """Payload containing raw policy text supplied by staff."""
     raw_text: str = Field(..., description="Unstructured policy text to be parsed")
     suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
     gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
 
+
 class PolicyFilterResult(BaseModel):
     """Result of automatic extraction, ready for human review/edit."""
     extracted_policy: RetrievedDocument
     warnings: List[str] = Field(default_factory=list, description="Extraction or validation warnings")
     confidence_score: float = Field(ge=0.0, le=1.0, description="Confidence of automatic parsing")
+
 
 class PolicyCreateRequest(BaseModel):
     """Final payload to persist a new policy after human confirmation."""
@@ -188,4 +252,3 @@ class PolicyRollbackRequest(BaseModel):
     log_id: str
     performed_by: Optional[str] = "Admin"
     reason: Optional[str] = None
-

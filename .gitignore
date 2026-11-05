@@ -7,6 +7,10 @@ Lec-*.pdf
 venv/
 .venv/
 
+~$*.docx
+scratch/
+package-lock.json
+
 # Module 1 generated data, private credentials and model weights
 data/raw/bitext/
 data/interim/**
