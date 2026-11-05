@@ -1,32 +1,37 @@
-.env
 __pycache__/
-*.pyc
-*.sqlite3*
-CHỦ ĐỀ 1.docx
-Lec-*.pdf
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+.venv
 venv/
-.venv/
-
-~$*.docx
-scratch/
-package-lock.json
-
-# Module 1 generated data, private credentials and model weights
-data/raw/bitext/
-data/interim/**
-data/processed/**
-!data/processed/.gitkeep
-artifacts/models/intent/**
-!artifacts/models/intent/.gitkeep
-kaggle/**/output/
-kaggle/output/
-kaggle/datasets/**/*.parquet
-kaggle.json
-results/module1/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
 artifacts/models/legacy_linearsvc_en/*.pkl
 
 kaggle/datasets/ecom-intent-data/*
 !kaggle/datasets/ecom-intent-data/dataset-metadata.json
+
+# Model comparison artifacts
+artifacts/models/intent_eval_en/
 
 # Runtime telemetry database
 /copilot_telemetry.sqlite3
