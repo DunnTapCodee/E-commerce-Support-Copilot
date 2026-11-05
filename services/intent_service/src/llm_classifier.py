@@ -78,16 +78,14 @@ class LLMIntentClassifier:
         self.timeout = timeout
 
     def predict(self, query: str) -> IntentPredictionResponse:
-        """Synchronously predict intent using LLM or rule-based fallback."""
+        """Synchronously predict intent using OpenAI-compatible GPT-OSS model with robust fallback."""
         start_time = time.perf_counter()
         clean_query = query.strip()
 
-        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
         openai_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
-        gemini_key = self.api_key or os.getenv("GEMINI_API_KEY", "")
 
-        # 1. Try OpenAI-compatible endpoint if configured (e.g. ckey.vn openai-gpt-oss-20b)
-        if provider == "openai_compatible" and openai_key:
+        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b)
+        if openai_key:
             try:
                 result = self._call_openai_compatible(clean_query, openai_key)
                 if result:
@@ -96,28 +94,6 @@ class LLMIntentClassifier:
                     return result
             except Exception as e:
                 print(f"[LLMIntentClassifier] OpenAI-compatible call failed: {e}")
-
-        # 2. Try Gemini API if key is configured
-        if gemini_key and gemini_key != "your_gemini_api_key_here":
-            try:
-                result = self._call_gemini(clean_query)
-                if result:
-                    latency = (time.perf_counter() - start_time) * 1000
-                    result.latency_ms = round(latency, 2)
-                    return result
-            except Exception as e:
-                print(f"[LLMIntentClassifier] Gemini API call failed: {e}. Using semantic fallback.")
-
-        # 3. Fallback to OpenAI if Gemini failed
-        if openai_key and provider != "openai_compatible":
-            try:
-                result = self._call_openai_compatible(clean_query, openai_key)
-                if result:
-                    latency = (time.perf_counter() - start_time) * 1000
-                    result.latency_ms = round(latency, 2)
-                    return result
-            except Exception as e:
-                print(f"[LLMIntentClassifier] OpenAI fallback failed: {e}")
 
         # High-precision semantic heuristic fallback
         fallback_resp = self._semantic_fallback(clean_query)
@@ -141,7 +117,8 @@ class LLMIntentClassifier:
         payload = {
             "model": model,
             "messages": messages,
-            "temperature": 0.1
+            "temperature": 0.1,
+            "max_tokens": 800,
         }
 
         resp = requests.post(url, json=payload, headers=headers, timeout=self.timeout, verify=False)
@@ -150,6 +127,8 @@ class LLMIntentClassifier:
             choices = data.get("choices", [])
             if choices:
                 raw_text = choices[0].get("message", {}).get("content", "")
+                if not raw_text.strip():
+                    raw_text = choices[0].get("message", {}).get("reasoning_content", "")
                 parsed = self._parse_json(raw_text)
                 if parsed and "intent" in parsed:
                     intent = parsed["intent"]

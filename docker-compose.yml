@@ -16,6 +16,7 @@ services:
       - PORT=8005
       - INTENT_MODEL_DIR=/app/artifacts/models/intent
       - INTENT_ROUTING_MODE=${INTENT_ROUTING_MODE:-router}
+      - INTENT_BACKEND=${INTENT_BACKEND:-hybrid}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}

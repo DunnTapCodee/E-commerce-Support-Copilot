@@ -271,7 +271,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         citations=citations,
         draft_text=agent_draft,
         order_data=order_data,
-        generation_mode="copilot_gemini" if "Dạ em chào" in agent_draft else gen_mode,
+        generation_mode="copilot_gpt_oss" if "Dạ em chào" in agent_draft else gen_mode,
         suggested_reply=agent_draft,
         customer_acknowledgement=customer_ack,
         agent_guidance=agent_guidance,

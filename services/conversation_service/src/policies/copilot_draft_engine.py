@@ -39,17 +39,20 @@ class CopilotDraftEngine:
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.2,
-            "max_tokens": 1024,
+            "max_tokens": 800,
         }
 
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
+            async with httpx.AsyncClient(timeout=10.0) as client:
                 resp = await client.post(url, json=payload, headers=headers)
                 if resp.status_code == 200:
                     data = resp.json()
                     choices = data.get("choices", [])
                     if choices:
-                        content = choices[0].get("message", {}).get("content", "").strip()
+                        msg = choices[0].get("message", {})
+                        content = msg.get("content", "").strip()
+                        if not content:
+                            content = msg.get("reasoning_content", "").strip()
                         if content:
                             return content
                 else:
@@ -209,29 +212,15 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
             citations=citations,
         )
 
-        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
         openai_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
-        gemini_key = os.getenv("GEMINI_API_KEY", "") or GEMINI_API_KEY
 
-        # If configured for OpenAI-compatible (e.g. ckey.vn openai-gpt-oss-20b)
-        if provider == "openai_compatible" and openai_key:
+        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b via api.xah.io)
+        if openai_key:
             draft = await cls._call_openai_compatible(prompt, openai_key)
             if draft:
                 return draft
 
-        # If configured for Gemini or fallback
-        if gemini_key and gemini_key != "your_gemini_api_key_here":
-            draft = await cls._call_gemini(prompt, gemini_key)
-            if draft:
-                return draft
-
-        # Secondary fallback: if Gemini was primary and failed, try OpenAI if key exists
-        if openai_key and provider != "openai_compatible":
-            draft = await cls._call_openai_compatible(prompt, openai_key)
-            if draft:
-                return draft
-
-        # Case 3: Semantic Fallback Draft when LLMs are unavailable
+        # Case 2: Grounded Semantic Fallback Draft when LLMs are unavailable
         return cls._build_semantic_fallback_draft(user_query, intent, facts, order_data, citations)
 
     @classmethod
