@@ -61,7 +61,7 @@ services:
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8002/health')"]
       interval: 10s

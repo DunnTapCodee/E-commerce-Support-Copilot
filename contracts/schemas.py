@@ -1,4 +1,5 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
+import uuid
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
@@ -10,7 +11,7 @@ from pydantic import BaseModel, Field
 class QueryRequest(BaseModel):
     """Client request sent to the API Gateway."""
     query: str = Field(..., description="Customer message or inquiry text")
-    session_id: str = Field(..., description="Unique conversation session ID")
+    session_id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique conversation session ID")
     customer_id: Optional[str] = Field(default=None, description="Optional customer account ID")
 
 
@@ -40,14 +41,27 @@ class IntentPredictionResponse(BaseModel):
 # 3. Knowledge Base & RAG Contracts
 # -------------------------------------------------------------------
 class RetrievedDocument(BaseModel):
-    """Policy or knowledge base document item."""
+    """Policy or knowledge base document item.
+
+    policy_type:
+      - "permanent"  : Standard operational policies with no fixed end date.
+                       expiration_date is null; only is_active=False blocks it.
+      - "temporary"  : Time-bound campaigns or promotions with start/end date.
+      - "superseded" : Old version of a policy, replaced by a newer one.
+                       Always treated as inactive regardless of dates.
+    """
     doc_id: str = Field(..., description="Unique document / policy ID")
+    category: Optional[str] = Field(default=None, description="Policy category (e.g. return_refund, shipping, payment, promotions, support, warranty)")
     title: str = Field(..., description="Document title")
     content: str = Field(..., description="Policy body / chunk content")
-    version: str = Field(..., description="Document version")
-    is_active: bool = Field(..., description="Active status of this document")
+    version: str = Field(default="1.0", description="Document version")
+    is_active: bool = Field(default=True, description="Active status of this document")
+    policy_type: str = Field(
+        default="permanent",
+        description="Policy type: 'permanent' | 'temporary' | 'superseded'",
+    )
     effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
-    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD). Null for permanent policies.")
     tags: List[str] = Field(default_factory=list, description="Associated policy tags")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
@@ -92,13 +106,13 @@ class GuardrailResult(BaseModel):
 # -------------------------------------------------------------------
 class AuditLogCreate(BaseModel):
     """Initial interaction telemetry log to persist."""
-    interaction_id: str = Field(..., description="Unique UUID trace ID")
-    customer_query: str = Field(..., description="Customer input text")
+    interaction_id: str = Field(..., description="Unique interaction trace ID")
+    customer_query: str = Field(..., description="Customer message")
     predicted_intent: str = Field(..., description="Predicted intent")
-    intent_confidence: float = Field(..., description="Confidence score")
-    guardrail_action: str = Field(..., description="Guardrail action chosen")
-    retrieved_doc_ids: str = Field(..., description="Comma-separated cited document IDs")
-    raw_draft_text: str = Field(..., description="Generated draft text")
+    intent_confidence: float = Field(..., description="Prediction confidence")
+    guardrail_action: str = Field(..., description="Applied guardrail action")
+    retrieved_doc_ids: str = Field(default="", description="Comma-separated IDs of retrieved docs")
+    raw_draft_text: str = Field(..., description="Unedited LLM draft text")
     latency_ms: int = Field(default=0, ge=0, description="End-to-end processing latency")
 
 
@@ -109,6 +123,14 @@ class HumanActionUpdate(BaseModel):
     final_text: Optional[str] = Field(default=None, description="Final sent text after agent edit")
     agent_notes: Optional[str] = Field(default=None, description="Agent notes")
     handling_time_ms: int = Field(default=0, ge=0, description="Time spent by agent in milliseconds")
+
+
+class TelemetryStats(BaseModel):
+    total_queries: int
+    auto_approved_rate: float
+    escalation_rate: float
+    avg_latency_ms: float
+    intent_distribution: Dict[str, int] = Field(default_factory=dict)
 
 
 # -------------------------------------------------------------------
@@ -159,7 +181,59 @@ class ToolCallRecord(BaseModel):
 
 
 # -------------------------------------------------------------------
-# 8. Conversation Service State & Turn Contracts
+# 8. Policy Filter & Management Contracts
+# -------------------------------------------------------------------
+class RawPolicyFilterRequest(BaseModel):
+    """Payload containing raw policy text supplied by staff."""
+    raw_text: str = Field(..., description="Unstructured policy text to be parsed")
+    suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
+    gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
+
+
+class PolicyFilterResult(BaseModel):
+    """Result of automatic extraction, ready for human review/edit."""
+    extracted_policy: RetrievedDocument
+    warnings: List[str] = Field(default_factory=list, description="Extraction or validation warnings")
+    confidence_score: float = Field(default=0.85, ge=0.0, le=1.0, description="Confidence of automatic parsing")
+
+
+class PolicyCreateRequest(BaseModel):
+    """Final payload to persist a new policy after human confirmation."""
+    policy: RetrievedDocument
+    admin_note: Optional[str] = None
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+class PolicyUpdateRequest(BaseModel):
+    """Payload to partially update an existing policy with audit tracking."""
+    updates: Dict[str, Any]
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+class PolicyAuditLogEntry(BaseModel):
+    """Audit log entry capturing policy lifecycle changes for traceability and rollback."""
+    log_id: str
+    timestamp: str
+    doc_id: str
+    doc_title: Optional[str] = None
+    action: str  # "CREATE", "UPDATE", "SUPERSEDE", "AUTO_EXPIRE", "AUTO_ACTIVATE", "ROLLBACK", "DELETE"
+    performed_by: str = "Admin"
+    reason: Optional[str] = None
+    before_snapshot: Optional[Dict[str, Any]] = None
+    after_snapshot: Optional[Dict[str, Any]] = None
+
+
+class PolicyRollbackRequest(BaseModel):
+    """Request to rollback a policy to a prior version/state based on an audit log ID."""
+    log_id: str
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+# -------------------------------------------------------------------
+# 9. Conversation Service State & Turn Contracts
 # -------------------------------------------------------------------
 class ChatMessageItem(BaseModel):
     role: Literal["customer", "agent", "system"]
@@ -187,4 +261,3 @@ class ConversationSessionState(BaseModel):
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
     updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
-

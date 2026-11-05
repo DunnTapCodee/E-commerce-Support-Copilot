@@ -16,7 +16,8 @@
       "nguyên tem"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-002",
@@ -33,7 +34,8 @@
       "app tiki"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-003",
@@ -51,7 +53,8 @@
       "thực phẩm tươi"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-004",
@@ -68,7 +71,8 @@
       "không vừa giày"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-005",
@@ -85,7 +89,8 @@
       "video mở hàng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-006",
@@ -101,7 +106,8 @@
       "1 đổi 1 trong 30 ngày"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-007",
@@ -117,7 +123,8 @@
       "bao lâu duyệt trả hàng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-RET-008",
@@ -133,7 +140,8 @@
       "hoàn tiền theo món"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-001",
@@ -149,7 +157,8 @@
       "quy định hoàn tiền"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-002",
@@ -166,7 +175,8 @@
       "tiki xu"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-003",
@@ -183,7 +193,8 @@
       "voucher hoàn lại"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-004",
@@ -199,7 +210,8 @@
       "lỗi chuyển khoản hoàn"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-005",
@@ -215,7 +227,8 @@
       "tiki xu"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-006",
@@ -231,7 +244,8 @@
       "hạn mức thẻ tín dụng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-REFUND-007",
@@ -247,7 +261,8 @@
       "lịch sử hoàn tiền"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-001",
@@ -264,7 +279,8 @@
       "tiến độ giao"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-002",
@@ -282,7 +298,8 @@
       "miễn phí vận chuyển"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-003",
@@ -299,7 +316,8 @@
       "quy định nhận hàng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-004",
@@ -316,7 +334,8 @@
       "đơn hàng bị giao sai"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-005",
@@ -333,7 +352,8 @@
       "nhỡ cuộc gọi shipper"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-006",
@@ -350,7 +370,8 @@
       "lắp đặt tại nhà"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-007",
@@ -367,7 +388,8 @@
       "thời gian giao liên tỉnh xa"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-SHIP-008",
@@ -383,7 +405,8 @@
       "cuối tuần có giao không"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-001",
@@ -400,7 +423,8 @@
       "trạng thái đơn"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-002",
@@ -417,7 +441,8 @@
       "từ chối nhận hàng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-003",
@@ -433,7 +458,8 @@
       "giao sai địa chỉ"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-004",
@@ -450,7 +476,8 @@
       "hóa đơn điện tử"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-005",
@@ -466,7 +493,8 @@
       "tại sao nhận thiếu kiện"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-006",
@@ -482,7 +510,8 @@
       "đền bù hủy đơn"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-ORD-007",
@@ -498,7 +527,8 @@
       "mua lại"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-001",
@@ -515,7 +545,8 @@
       "thanh toán thất bại"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-002",
@@ -532,7 +563,8 @@
       "tiki shinhan"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-003",
@@ -549,7 +581,8 @@
       "bảo vệ tài khoản"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-004",
@@ -565,7 +598,8 @@
       "hoàn tiền giao dịch trùng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-005",
@@ -582,7 +616,8 @@
       "kredivo"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-PAY-006",
@@ -598,7 +633,8 @@
       "thanh toán đơn đắt tiền"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-001",
@@ -615,7 +651,8 @@
       "bảo hành chính hãng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-002",
@@ -631,7 +668,8 @@
       "quét mã qr bảo hành"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-003",
@@ -648,7 +686,8 @@
       "sửa chữa có tính phí"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-004",
@@ -664,7 +703,8 @@
       "chờ linh kiện"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-005",
@@ -680,7 +720,8 @@
       "bảo hành pin"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-006",
@@ -696,7 +737,8 @@
       "bảo hành tivi máy giặt"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-CS-001",
@@ -714,7 +756,8 @@
       "19006035"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-CS-002",
@@ -731,7 +774,8 @@
       "bằng chứng mở hàng"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-CS-003",
@@ -748,7 +792,8 @@
       "bảo vệ người mua"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-CS-004",
@@ -764,7 +809,8 @@
       "đánh giá 1 sao"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-CS-005",
@@ -781,13 +827,14 @@
       "hạn dùng xu"
     ],
     "effective_date": "2024-01-01",
-    "expiration_date": "2030-12-31"
+    "expiration_date": null,
+    "policy_type": "permanent"
   },
   {
     "doc_id": "POL-WARRANTY-OLD",
     "category": "warranty",
     "title": "Chính sách bảo hành cũ áp dụng trước năm 2024",
-    "content": "Chính sách bảo hành phiên bản cũ áp dụng trước ngày 01/01/2024. Tài liệu này hiện đã hết hiệu lực pháp lý và không được sử dụng làm căn cứ tư vấn cho khách hàng. Mọi yêu cầu bảo hành mới bắt buộc áp dụng theo quy chế bảo hành phiên bản 2.0 (POL-WARRANTY-001).",
+    "content": "Chính sách bảo hành phiên bản cũ, có hiệu lực từ ngày 01/01/2020 đến ngày 31/12/2023 (đã hết hiệu lực). Tài liệu này không còn giá trị pháp lý kể từ ngày 01/01/2024 và đã bị thay thế hoàn toàn bởi chính sách bảo hành phiên bản 2.0 (POL-WARRANTY-001). Mọi yêu cầu bảo hành mới bắt buộc áp dụng theo quy chế hiện hành.",
     "version": "0.1",
     "is_active": false,
     "tags": [
@@ -797,13 +844,14 @@
       "hết hiệu lực"
     ],
     "effective_date": "2020-01-01",
-    "expiration_date": "2023-12-31"
+    "expiration_date": "2023-12-31",
+    "policy_type": "superseded"
   },
   {
     "doc_id": "POL-PROMO-OLD",
     "category": "promotions",
     "title": "Chương trình khuyến mãi và hoàn xu Tết Quý Mão 2023",
-    "content": "Chương trình khuyến mãi hoàn 50% xu cho đơn hàng thời trang dịp Tết 2023 trên Tiki. Chương trình này đã kết thúc thời gian áp dụng vào ngày 31/01/2023. Văn bản này đã hết hiệu lực và không còn giá trị tra cứu ưu đãi cho khách hàng ở thời điểm hiện tại.",
+    "content": "Chương trình khuyến mãi hoàn 50% xu cho đơn hàng thời trang dịp Tết Quý Mão 2023 trên Tiki. Chương trình chỉ áp dụng từ ngày 01/01/2023 đến hết ngày 31/01/2023 (đã kết thúc). Văn bản này đã hết hiệu lực kể từ ngày 01/02/2023 và không còn giá trị tra cứu ưu đãi cho khách hàng ở thời điểm hiện tại.",
     "version": "0.5",
     "is_active": false,
     "tags": [
@@ -813,13 +861,14 @@
       "ưu đãi cũ"
     ],
     "effective_date": "2023-01-01",
-    "expiration_date": "2023-01-31"
+    "expiration_date": "2023-01-31",
+    "policy_type": "temporary"
   },
   {
     "doc_id": "POL-RETURN-OLD",
     "category": "return_refund",
     "title": "Quy chế đổi trả hàng hóa phiên bản năm 2022",
-    "content": "Văn bản quy định thời hạn đổi trả 3 ngày áp dụng trong năm 2022 tại Tiki. Quy định này đã bị bãi bỏ và thay thế hoàn toàn bởi chính sách 7-30 ngày hiện hành. Hệ thống cấm sử dụng văn bản này làm cơ sở tư vấn giải quyết khiếu nại.",
+    "content": "Văn bản quy định thời hạn đổi trả 3 ngày, có hiệu lực từ ngày 01/01/2022 đến ngày 31/12/2022 (đã hết hiệu lực). Quy định này đã bị bãi bỏ và thay thế hoàn toàn bởi chính sách 7-30 ngày hiện hành kể từ ngày 01/01/2023. Hệ thống cấm sử dụng văn bản này làm cơ sở tư vấn giải quyết khiếu nại.",
     "version": "0.2",
     "is_active": false,
     "tags": [
@@ -829,6 +878,7 @@
       "bãi bỏ"
     ],
     "effective_date": "2022-01-01",
-    "expiration_date": "2022-12-31"
+    "expiration_date": "2022-12-31",
+    "policy_type": "superseded"
   }
 ]
