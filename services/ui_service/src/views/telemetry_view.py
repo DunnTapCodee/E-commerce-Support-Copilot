@@ -43,3 +43,4 @@ def render_telemetry_view(gateway_url: str):
             st.bar_chart(guard_dist)
         else:
             st.write("Chưa có dữ liệu chốt chặn an toàn.")
+

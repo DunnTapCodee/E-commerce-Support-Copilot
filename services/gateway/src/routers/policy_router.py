@@ -58,6 +58,24 @@ async def proxy_list_policies():
     return await _proxy_document_call(clients.list_policies())
 
 
+@router.get("/policies/audit-logs")
+async def proxy_list_policy_audit_logs():
+    """Proxy: List all policy lifecycle audit events and notifications."""
+    return await _proxy_document_call(clients.list_policy_audit_logs())
+
+
+@router.post("/policies/rollback")
+async def proxy_rollback_policy(request: PolicyRollbackRequest):
+    """Proxy: Rollback a policy to a prior version state."""
+    return await _proxy_document_call(clients.rollback_policy(request))
+
+
+@router.post("/policies/sync-active-status")
+async def proxy_sync_active_status():
+    """Proxy: Recompute and synchronize is_active status for all policies based on current date."""
+    return await _proxy_document_call(clients.sync_active_status())
+
+
 @router.get("/policies/{doc_id}")
 async def proxy_get_policy(doc_id: str):
     """Proxy: Get details of a single policy."""
@@ -79,21 +97,3 @@ async def proxy_delete_policy(
 ):
     """Proxy: Delete policy, record audit log, and re-index."""
     return await _proxy_document_call(clients.delete_policy(doc_id, performed_by=performed_by, reason=reason))
-
-
-@router.get("/policies/audit-logs")
-async def proxy_list_policy_audit_logs():
-    """Proxy: List all policy lifecycle audit events and notifications."""
-    return await _proxy_document_call(clients.list_policy_audit_logs())
-
-
-@router.post("/policies/rollback")
-async def proxy_rollback_policy(request: PolicyRollbackRequest):
-    """Proxy: Rollback a policy to a prior version state."""
-    return await _proxy_document_call(clients.rollback_policy(request))
-
-
-@router.post("/policies/sync-active-status")
-async def proxy_sync_active_status():
-    """Proxy: Recompute and synchronize is_active status for all policies based on current date."""
-    return await _proxy_document_call(clients.sync_active_status())

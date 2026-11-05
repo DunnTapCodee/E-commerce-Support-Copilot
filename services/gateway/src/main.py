@@ -89,7 +89,7 @@ async def process_copilot_query(
     # Delegate to Conversation Service (Primary Path)
     try:
         import httpx
-        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=5.0)) as http_client:
+        async with httpx.AsyncClient(timeout=httpx.Timeout(10.0, connect=2.0)) as http_client:
             resp = await http_client.post(
                 f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
                 json=request.model_dump(),

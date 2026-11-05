@@ -57,8 +57,8 @@ def render_chat_view(gateway_url: str):
         # Append customer message
         st.session_state.messages.append({"role": "customer", "content": customer_query})
 
+        has_error = False
         with st.spinner("Copilot đang phân tích ý định, kiểm tra an toàn và tra cứu dữ liệu..."):
-            start_t = time.perf_counter()
             try:
                 payload = {
                     "query": customer_query,
@@ -68,12 +68,31 @@ def render_chat_view(gateway_url: str):
                 if resp.status_code == 200:
                     data = resp.json()
                     st.session_state.current_response = data
-                else:
-                    st.error(f"Lỗi kết nối API Gateway: {resp.status_code} - {resp.text}")
-            except Exception as e:
-                st.error(f"Không thể kết nối API Gateway: {str(e)}")
 
-        st.rerun()
+                    # In Copilot AI mode (automatic), auto-deliver response into the conversation
+                    if not st.session_state.get("is_live_chat", False):
+                        ack = data.get("customer_acknowledgement")
+                        draft = data.get("draft_text", "")
+                        full_reply = f"{ack}\n\n{draft}" if ack else draft
+                        if full_reply.strip():
+                            st.session_state.messages.append({
+                                "role": "agent",
+                                "content": full_reply,
+                                "citations": data.get("citations", []),
+                            })
+                else:
+                    has_error = True
+                    st.error(f"⚠️ Lỗi từ API Gateway ({resp.status_code}): {resp.text}")
+            except Exception as e:
+                has_error = True
+                st.error(
+                    f"⚠️ Không thể kết nối API Gateway tại `{gateway_url}`: {str(e)}.\n\n"
+                    "💡 **Hướng dẫn:** Vui lòng đảm bảo các microservices đã được khởi động bằng lệnh:\n"
+                    "```powershell\npython run_dev.py\n```"
+                )
+
+        if not has_error:
+            st.rerun()
 
     # Copilot Guidance & Draft Panel for CS Agent
     curr = st.session_state.current_response
@@ -171,3 +190,4 @@ def render_chat_view(gateway_url: str):
                 if st.button("❌ Từ chối bản nháp", key="btn_reject_draft"):
                     st.session_state.current_response = None
                     st.rerun()
+

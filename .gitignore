@@ -35,3 +35,7 @@ kaggle/datasets/ecom-intent-data/*
 
 # Generated RAG vector index
 /artifacts/vector_store/policy_index.pkl
+
+# Frontend build & dependencies
+frontend/node_modules/
+frontend/dist/

@@ -262,3 +262,4 @@ def render_policy_view(gateway_url: str):
                                         st.error(f"Lỗi xóa: {resp.text}")
                                 except Exception as e:
                                     st.error(f"Lỗi: {str(e)}")
+

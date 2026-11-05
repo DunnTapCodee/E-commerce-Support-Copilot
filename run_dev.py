@@ -1,4 +1,4 @@
-"""Local multi-process launcher for all 5 services without Docker."""
+"""Local multi-process launcher for all microservices without Docker."""
 import os
 import signal
 import subprocess
@@ -54,6 +54,14 @@ COMMANDS = [
         "cmd": [sys.executable, "-m", "uvicorn", "services.telemetry_service.src.main:app", "--port", "8003", "--host", "127.0.0.1"],
     },
     {
+        "name": "document_service (8004)",
+        "cmd": [sys.executable, "-m", "uvicorn", "services.document_service.src.main:app", "--port", "8004", "--host", "127.0.0.1"],
+    },
+    {
+        "name": "conversation_service (8006)",
+        "cmd": [sys.executable, "-m", "uvicorn", "services.conversation_service.src.main:app", "--port", "8006", "--host", "127.0.0.1"],
+    },
+    {
         "name": "gateway (8000)",
         "cmd": [sys.executable, "-m", "uvicorn", "services.gateway.src.main:app", "--port", "8000", "--host", "127.0.0.1"],
     },
@@ -66,9 +74,9 @@ COMMANDS = [
 
 def main():
     processes = []
-    print("=" * 65)
-    print("🚀 KHỞI ĐỘNG HỆ THỐNG PHÂN TÁN MICROSERVICES (LOCAL DEV)")
-    print("=" * 65)
+    print("=" * 68)
+    print("🚀 KHỞI ĐỘNG HỆ THỐNG TOÀN DIỆN E-COMMERCE COPILOT (LOCAL DEV)")
+    print("=" * 68)
 
     def signal_handler(sig, frame):
         print("\n[Ctrl+C] Đang dừng tất cả các tiến trình con...")
@@ -91,32 +99,25 @@ def main():
     signal.signal(signal.SIGTERM, signal_handler)
 
     try:
-        # Start backend services first
-        for item in COMMANDS[:3]:
+        # Start all services sequentially
+        for item in COMMANDS:
             print(f"Khởi chạy {item['name']}...")
             p = subprocess.Popen(item["cmd"], cwd=ROOT_DIR, env=env)
             processes.append((p, item["name"]))
-            time.sleep(1.5)
+            time.sleep(1.2)
 
-        # Start Gateway
-        print(f"Khởi chạy {COMMANDS[3]['name']}...")
-        p_gw = subprocess.Popen(COMMANDS[3]["cmd"], cwd=ROOT_DIR, env=env)
-        processes.append((p_gw, COMMANDS[3]["name"]))
-        time.sleep(1.5)
-
-        # Start UI
-        print(f"Khởi chạy {COMMANDS[4]['name']}...")
-        p_ui = subprocess.Popen(COMMANDS[4]["cmd"], cwd=ROOT_DIR, env=env)
-        processes.append((p_ui, COMMANDS[4]["name"]))
-
-        print("\n" + "=" * 65)
+        print("\n" + "=" * 68)
         print("✨ TẤT CẢ DỊCH VỤ ĐÃ SẴN SÀNG:")
-        print("  - Gateway API:         http://127.0.0.1:8000/docs")
-        print("  - Intent Service:      http://127.0.0.1:8005/docs")
-        print("  - RAG Service:         http://127.0.0.1:8002/docs")
-        print("  - Telemetry Service:   http://127.0.0.1:8003/docs")
-        print("  - Streamlit UI:        http://127.0.0.1:8501")
-        print("=" * 65)
+        print("  1. Gateway API:            http://127.0.0.1:8000/docs")
+        print("  2. Conversation Service:   http://127.0.0.1:8006/docs")
+        print("  3. Document Service:       http://127.0.0.1:8004/docs")
+        print("  4. RAG Service:            http://127.0.0.1:8002/docs")
+        print("  5. Intent Service:         http://127.0.0.1:8005/docs")
+        print("  6. Telemetry Service:      http://127.0.0.1:8003/docs")
+        print("  -------------------------------------------------------------")
+        print("  📱 Giao diện Streamlit:    http://127.0.0.1:8501")
+        print("  ⚡ Giao diện React TSX:     http://localhost:5173 (chạy 'cd frontend; npm run dev')")
+        print("=" * 68)
         print("Bấm Ctrl + C để dừng toàn bộ hệ thống bất kỳ lúc nào.\n")
 
         while True:

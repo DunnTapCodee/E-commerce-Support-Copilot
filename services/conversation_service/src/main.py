@@ -289,3 +289,10 @@ async def toggle_live_chat_handover(session_id: str, enable_live_chat: bool = Tr
     state.is_live_chat = enable_live_chat
     state_store.save(state)
     return {"session_id": session_id, "is_live_chat": state.is_live_chat}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    from services.conversation_service.src.config import PORT
+    uvicorn.run("services.conversation_service.src.main:app", host="0.0.0.0", port=PORT, reload=False)
+

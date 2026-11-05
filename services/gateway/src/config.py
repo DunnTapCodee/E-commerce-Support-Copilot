@@ -4,7 +4,7 @@ import os
 INTENT_SERVICE_URL = os.getenv("INTENT_SERVICE_URL", "http://127.0.0.1:8005")
 RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://127.0.0.1:8002")
 TELEMETRY_SERVICE_URL = os.getenv("TELEMETRY_SERVICE_URL", "http://127.0.0.1:8003")
-CONVERSATION_SERVICE_URL = os.getenv("CONVERSATION_SERVICE_URL", "http://127.0.0.1:8001")
+CONVERSATION_SERVICE_URL = os.getenv("CONVERSATION_SERVICE_URL", "http://127.0.0.1:8006")
 DOCUMENT_SERVICE_URL = os.getenv("DOCUMENT_SERVICE_URL", "http://127.0.0.1:8004")
 
 # Legacy fallback only; deployment.env is generated from validation-selected thresholds.

@@ -130,3 +130,4 @@ def render_audit_notification_view(gateway_url: str):
                                 st.error(f"Lỗi: {str(e)}")
 
             st.markdown("---")
+
