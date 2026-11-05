@@ -16,11 +16,11 @@ INVALID = 'invalid_llm_output'
 class LLMIntentClassifier:
     def __init__(self, labels, model=None, api_base=None, api_key=None, workers=2, rpm=15, cache=Path('results/intent_eval_en/llm_cache.jsonl'), timeout=60., retries=6, examples=None):
         self.labels = list(labels)
-        self.model = model or os.getenv('LLM_MODEL', 'gpt-4o-mini')
-        self.api_base = (api_base or os.getenv('LLM_API_BASE', DEFAULT_BASE)).rstrip('/')
-        self.api_key = api_key or os.getenv('LLM_API_KEY', '')
+        self.model = model or os.getenv('LLM_MODEL') or os.getenv('OPENAI_MODEL', 'openai-gpt-oss-20b')
+        self.api_base = (api_base or os.getenv('LLM_API_BASE') or os.getenv('OPENAI_BASE_URL', DEFAULT_BASE)).rstrip('/')
+        self.api_key = api_key or os.getenv('LLM_API_KEY') or os.getenv('OPENAI_API_KEY', '')
         if not self.api_key:
-            raise ValueError('Set LLM_API_KEY (or pass api_key)')
+            raise ValueError('Set LLM_API_KEY or OPENAI_API_KEY (or pass api_key)')
         self.workers, self.retries, self.timeout = workers, retries, timeout
         # Global pacing: at most `rpm` requests per minute across all threads (free API tiers are strict).
         self.interval, self._next, self._rate_lock = (60. / rpm if rpm else 0.), 0., threading.Lock()
@@ -59,7 +59,7 @@ class LLMIntentClassifier:
         if wait > 0:time.sleep(wait)
 
     def _call(self, client, text):
-        body = {'model': self.model, 'temperature': 0, 'max_tokens': 512,
+        body = {'model': self.model, 'temperature': 0, 'max_tokens': 800,
                 'messages': [{'role': 'system', 'content': self.system}, {'role': 'user', 'content': text}]}
         error = None
         for attempt in range(self.retries):
@@ -67,7 +67,11 @@ class LLMIntentClassifier:
             try:
                 r = client.post(f'{self.api_base}/chat/completions', json=body, headers={'Authorization': f'Bearer {self.api_key}'})
                 r.raise_for_status()
-                return self._parse(r.json()['choices'][0]['message']['content'])
+                msg = r.json()['choices'][0]['message']
+                content = msg.get('content', '')
+                if not content.strip():
+                    content = msg.get('reasoning_content', '')
+                return self._parse(content)
             except (httpx.HTTPError, KeyError, ValueError) as exc:
                 error = exc
                 status = exc.response.status_code if isinstance(exc, httpx.HTTPStatusError) else None

@@ -1,0 +1,749 @@
+{
+  "timestamp": "2026-11-05 23:52:27",
+  "model_benchmark": {
+    "total_samples": 44,
+    "accuracy": 0.6364,
+    "macro_f1": 0.63,
+    "latency_stats": {
+      "mean_ms": 0.1,
+      "median_ms": 0.02,
+      "p90_ms": 0.06,
+      "p99_ms": 1.88,
+      "min_ms": 0.01,
+      "max_ms": 3.23
+    },
+    "per_intent_metrics": [
+      {
+        "intent": "cancel_order",
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 4
+      },
+      {
+        "intent": "delivery_issue",
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4,
+        "support": 4
+      },
+      {
+        "intent": "delivery_time",
+        "precision": 1.0,
+        "recall": 0.6,
+        "f1": 0.75,
+        "support": 5
+      },
+      {
+        "intent": "human_agent",
+        "precision": 1.0,
+        "recall": 0.6667,
+        "f1": 0.8,
+        "support": 3
+      },
+      {
+        "intent": "out_of_scope",
+        "precision": 0.1875,
+        "recall": 1.0,
+        "f1": 0.3158,
+        "support": 3
+      },
+      {
+        "intent": "payment_issue",
+        "precision": 0.6667,
+        "recall": 1.0,
+        "f1": 0.8,
+        "support": 2
+      },
+      {
+        "intent": "refund_policy",
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1": 0.0,
+        "support": 2
+      },
+      {
+        "intent": "refund_status",
+        "precision": 1.0,
+        "recall": 0.5,
+        "f1": 0.6667,
+        "support": 2
+      },
+      {
+        "intent": "request_refund",
+        "precision": 0.5,
+        "recall": 0.3333,
+        "f1": 0.4,
+        "support": 3
+      },
+      {
+        "intent": "return_policy",
+        "precision": 1.0,
+        "recall": 0.75,
+        "f1": 0.8571,
+        "support": 4
+      },
+      {
+        "intent": "return_product",
+        "precision": 1.0,
+        "recall": 0.25,
+        "f1": 0.4,
+        "support": 4
+      },
+      {
+        "intent": "shipping_costs",
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0,
+        "support": 3
+      },
+      {
+        "intent": "track_order",
+        "precision": 0.8,
+        "recall": 0.8,
+        "f1": 0.8,
+        "support": 5
+      }
+    ],
+    "slice_metrics": [
+      {
+        "slice": "clean",
+        "sample_count": 12,
+        "accuracy": 0.75,
+        "macro_f1": 0.6667,
+        "mean_latency_ms": 0.29
+      },
+      {
+        "slice": "typo_unaccented",
+        "sample_count": 12,
+        "accuracy": 0.3333,
+        "macro_f1": 0.2821,
+        "mean_latency_ms": 0.02
+      },
+      {
+        "slice": "polite",
+        "sample_count": 3,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "mean_latency_ms": 0.05
+      },
+      {
+        "slice": "short",
+        "sample_count": 8,
+        "accuracy": 0.5,
+        "macro_f1": 0.4444,
+        "mean_latency_ms": 0.02
+      },
+      {
+        "slice": "long_complex",
+        "sample_count": 3,
+        "accuracy": 0.6667,
+        "macro_f1": 0.5556,
+        "mean_latency_ms": 0.07
+      },
+      {
+        "slice": "out_of_scope",
+        "sample_count": 3,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "mean_latency_ms": 0.04
+      },
+      {
+        "slice": "adversarial",
+        "sample_count": 3,
+        "accuracy": 1.0,
+        "macro_f1": 1.0,
+        "mean_latency_ms": 0.03
+      }
+    ],
+    "labels": [
+      "cancel_order",
+      "delivery_issue",
+      "delivery_time",
+      "human_agent",
+      "out_of_scope",
+      "payment_issue",
+      "refund_policy",
+      "refund_status",
+      "request_refund",
+      "return_policy",
+      "return_product",
+      "shipping_costs",
+      "track_order"
+    ],
+    "confusion_matrix": [
+      [
+        4,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        1,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1
+      ],
+      [
+        0,
+        0,
+        3,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        2,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        2,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        1,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        3,
+        0,
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        3,
+        0
+      ],
+      [
+        0,
+        0,
+        0,
+        0,
+        1,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        0,
+        4
+      ]
+    ]
+  },
+  "behavioral_tests": {
+    "mft": {
+      "type": "MFT (Minimum Functionality Tests)",
+      "total": 12,
+      "passed": 10,
+      "pass_rate": 83.33,
+      "details": [
+        {
+          "test_name": "Order tracking inquiry",
+          "query": "Cho mình hỏi đơn hàng ORD-1100 đang ở đâu?",
+          "expected": "track_order",
+          "predicted": "track_order",
+          "confidence": 0.94,
+          "passed": true
+        },
+        {
+          "test_name": "Order cancellation",
+          "query": "Hủy đơn hàng này giúp tôi",
+          "expected": "cancel_order",
+          "predicted": "cancel_order",
+          "confidence": 0.95,
+          "passed": true
+        },
+        {
+          "test_name": "Delivery timeframe",
+          "query": "Bao giờ thì hàng được giao tới?",
+          "expected": "delivery_time",
+          "predicted": "out_of_scope",
+          "confidence": 0.9,
+          "passed": false
+        },
+        {
+          "test_name": "Shipper complaint",
+          "query": "Shipper không liên hệ mà bấm giao không thành công",
+          "expected": "delivery_issue",
+          "predicted": "delivery_issue",
+          "confidence": 0.94,
+          "passed": true
+        },
+        {
+          "test_name": "Shipping fee rules",
+          "query": "Phí vận chuyển tính như thế nào?",
+          "expected": "shipping_costs",
+          "predicted": "shipping_costs",
+          "confidence": 0.95,
+          "passed": true
+        },
+        {
+          "test_name": "Return policy guidelines",
+          "query": "Chính sách đổi trả hàng trong mấy ngày?",
+          "expected": "return_policy",
+          "predicted": "return_policy",
+          "confidence": 0.94,
+          "passed": true
+        },
+        {
+          "test_name": "Exchange defective item",
+          "query": "Áo giao bị rách muốn đổi cái khác",
+          "expected": "return_product",
+          "predicted": "out_of_scope",
+          "confidence": 0.9,
+          "passed": false
+        },
+        {
+          "test_name": "Refund demand",
+          "query": "Hoàn tiền lại cho tôi vào ví",
+          "expected": "request_refund",
+          "predicted": "request_refund",
+          "confidence": 0.95,
+          "passed": true
+        },
+        {
+          "test_name": "Refund progress tracking",
+          "query": "Bao giờ tiền hoàn về tài khoản ngân hàng?",
+          "expected": "refund_status",
+          "predicted": "refund_status",
+          "confidence": 0.94,
+          "passed": true
+        },
+        {
+          "test_name": "Payment deduction bug",
+          "query": "Tài khoản bị trừ tiền 2 lần khi thanh toán",
+          "expected": "payment_issue",
+          "predicted": "payment_issue",
+          "confidence": 0.95,
+          "passed": true
+        },
+        {
+          "test_name": "Human agent escalation",
+          "query": "Cho tôi gặp nhân viên tổng đài tư vấn",
+          "expected": "human_agent",
+          "predicted": "human_agent",
+          "confidence": 0.96,
+          "passed": true
+        },
+        {
+          "test_name": "Out of domain weather",
+          "query": "Thời tiết ngày mai mưa hay nắng",
+          "expected": "out_of_scope",
+          "predicted": "out_of_scope",
+          "confidence": 0.9,
+          "passed": true
+        }
+      ]
+    },
+    "inv": {
+      "type": "INV (Invariance Tests / Metamorphic)",
+      "total": 10,
+      "passed": 10,
+      "pass_rate": 100.0,
+      "details": [
+        {
+          "perturbation": "Politeness wrapping",
+          "original_query": "Kiểm tra đơn hàng ORD-1100",
+          "perturbed_query": "Dạ em chào shop ạ, shop cho em hỏi kiểm tra đơn hàng ord-1100 với nhé em cảm ơn",
+          "original_intent": "track_order",
+          "perturbed_intent": "track_order",
+          "invariant": true
+        },
+        {
+          "perturbation": "Uppercase & whitespace",
+          "original_query": "Kiểm tra đơn hàng ORD-1100",
+          "perturbed_query": "  KIỂM TRA ĐƠN HÀNG ORD-1100  ",
+          "original_intent": "track_order",
+          "perturbed_intent": "track_order",
+          "invariant": true
+        },
+        {
+          "perturbation": "Politeness wrapping",
+          "original_query": "Chính sách đổi trả sản phẩm thế nào",
+          "perturbed_query": "Dạ em chào shop ạ, shop cho em hỏi chính sách đổi trả sản phẩm thế nào với nhé em cảm ơn",
+          "original_intent": "return_policy",
+          "perturbed_intent": "return_policy",
+          "invariant": true
+        },
+        {
+          "perturbation": "Uppercase & whitespace",
+          "original_query": "Chính sách đổi trả sản phẩm thế nào",
+          "perturbed_query": "  CHÍNH SÁCH ĐỔI TRẢ SẢN PHẨM THẾ NÀO  ",
+          "original_intent": "return_policy",
+          "perturbed_intent": "return_policy",
+          "invariant": true
+        },
+        {
+          "perturbation": "Politeness wrapping",
+          "original_query": "Bao lâu thì giao hàng tới nơi",
+          "perturbed_query": "Dạ em chào shop ạ, shop cho em hỏi bao lâu thì giao hàng tới nơi với nhé em cảm ơn",
+          "original_intent": "delivery_time",
+          "perturbed_intent": "delivery_time",
+          "invariant": true
+        },
+        {
+          "perturbation": "Uppercase & whitespace",
+          "original_query": "Bao lâu thì giao hàng tới nơi",
+          "perturbed_query": "  BAO LÂU THÌ GIAO HÀNG TỚI NƠI  ",
+          "original_intent": "delivery_time",
+          "perturbed_intent": "delivery_time",
+          "invariant": true
+        },
+        {
+          "perturbation": "Politeness wrapping",
+          "original_query": "Phí ship về Hải Phòng là bao nhiêu",
+          "perturbed_query": "Dạ em chào shop ạ, shop cho em hỏi phí ship về hải phòng là bao nhiêu với nhé em cảm ơn",
+          "original_intent": "shipping_costs",
+          "perturbed_intent": "shipping_costs",
+          "invariant": true
+        },
+        {
+          "perturbation": "Uppercase & whitespace",
+          "original_query": "Phí ship về Hải Phòng là bao nhiêu",
+          "perturbed_query": "  PHÍ SHIP VỀ HẢI PHÒNG LÀ BAO NHIÊU  ",
+          "original_intent": "shipping_costs",
+          "perturbed_intent": "shipping_costs",
+          "invariant": true
+        },
+        {
+          "perturbation": "Politeness wrapping",
+          "original_query": "Cho tôi gặp nhân viên tư vấn",
+          "perturbed_query": "Dạ em chào shop ạ, shop cho em hỏi cho tôi gặp nhân viên tư vấn với nhé em cảm ơn",
+          "original_intent": "human_agent",
+          "perturbed_intent": "human_agent",
+          "invariant": true
+        },
+        {
+          "perturbation": "Uppercase & whitespace",
+          "original_query": "Cho tôi gặp nhân viên tư vấn",
+          "perturbed_query": "  CHO TÔI GẶP NHÂN VIÊN TƯ VẤN  ",
+          "original_intent": "human_agent",
+          "perturbed_intent": "human_agent",
+          "invariant": true
+        }
+      ]
+    },
+    "dir": {
+      "type": "DIR (Directional Expectation Tests)",
+      "total": 3,
+      "passed": 3,
+      "pass_rate": 100.0,
+      "details": [
+        {
+          "description": "Negation reversal (cancel_order -> delivery_time)",
+          "input_1": "Tôi muốn hủy đơn hàng ORD-1100",
+          "predicted_1": "cancel_order",
+          "expected_1": "cancel_order",
+          "input_2": "Tôi định hủy đơn nhưng thôi không hủy nữa, xem bao giờ giao hộ tôi",
+          "predicted_2": "delivery_time",
+          "expected_2": "delivery_time",
+          "passed": true
+        },
+        {
+          "description": "Domain shift (track_order -> out_of_scope)",
+          "input_1": "Kiểm tra đơn hàng ORD-1100",
+          "predicted_1": "track_order",
+          "expected_1": "track_order",
+          "input_2": "Kiểm tra giúp tôi bài toán 2x + 5 = 15",
+          "predicted_2": "out_of_scope",
+          "expected_2": "out_of_scope",
+          "passed": true
+        },
+        {
+          "description": "Escalation to direct action (refund_policy -> request_refund)",
+          "input_1": "Quy định hoàn tiền của sàn thế nào?",
+          "predicted_1": "refund_policy",
+          "expected_1": "refund_policy",
+          "input_2": "Tôi yêu cầu hoàn tiền lại ngay cho tôi vào tài khoản",
+          "predicted_2": "request_refund",
+          "expected_2": "request_refund",
+          "passed": true
+        }
+      ]
+    }
+  },
+  "guardrails": {
+    "financial_guard": {
+      "test_name": "Financial Guard Interception",
+      "total": 5,
+      "passed": 5,
+      "pass_rate": 100.0,
+      "details": [
+        {
+          "intent": "request_refund",
+          "should_block": true,
+          "blocked": true,
+          "action_type": "DIRECT_REFUND_FORM",
+          "passed": true
+        },
+        {
+          "intent": "payment_issue",
+          "should_block": true,
+          "blocked": true,
+          "action_type": "DIRECT_REFUND_FORM",
+          "passed": true
+        },
+        {
+          "intent": "track_order",
+          "should_block": false,
+          "blocked": false,
+          "action_type": "PROCEED",
+          "passed": true
+        },
+        {
+          "intent": "return_policy",
+          "should_block": false,
+          "blocked": false,
+          "action_type": "PROCEED",
+          "passed": true
+        },
+        {
+          "intent": "delivery_time",
+          "should_block": false,
+          "blocked": false,
+          "action_type": "PROCEED",
+          "passed": true
+        }
+      ]
+    },
+    "temporal_policy_guard": {
+      "test_name": "Temporal & Expired Policy Guard",
+      "total": 3,
+      "passed": 3,
+      "pass_rate": 100.0,
+      "details": [
+        {
+          "scenario": "All Active Policies",
+          "expected_allow": true,
+          "actual_allow": true,
+          "expected_action": "PROCEED_TO_LLM",
+          "actual_action": "PROCEED_TO_LLM",
+          "reason": "Tất cả tài liệu trích dẫn đều đầy đủ và đang trong thời hạn hiệu lực.",
+          "passed": true
+        },
+        {
+          "scenario": "Contains Inactive Expired Policy",
+          "expected_allow": false,
+          "actual_allow": false,
+          "expected_action": "ESCALATE_HUMAN",
+          "actual_action": "ESCALATE_HUMAN",
+          "reason": "Phát hiện tài liệu hết hiệu lực (Temporal Policy Guard): POL-EXP-001 (Chính sách [POL-EXP-001] đã bị vô hiệu hóa (is_active=False).). Hệ thống tự động kích hoạt Fail-Safe ngăn ngừa tư vấn sai chính sách cũ.",
+          "passed": true
+        },
+        {
+          "scenario": "Contains Superseded Policy Trap",
+          "expected_allow": false,
+          "actual_allow": false,
+          "expected_action": "ESCALATE_HUMAN",
+          "actual_action": "ESCALATE_HUMAN",
+          "reason": "Phát hiện tài liệu đã bị thay thế (Superseded Policy Guard): POL-OLD-001 (Chính sách [POL-OLD-001] đã bị thay thế bởi phiên bản mới hơn và không còn hiệu lực pháp lý (policy_type=superseded).). Hệ thống từ chối sử dụng tài liệu lỗi thời làm căn cứ tư vấn.",
+          "passed": true
+        }
+      ]
+    },
+    "faithfulness_guard": {
+      "test_name": "Response Faithfulness & Hallucination Guard",
+      "total": 2,
+      "passed": 2,
+      "pass_rate": 100.0,
+      "details": [
+        {
+          "draft_type": "Grounded Valid Draft",
+          "allow_llm": true,
+          "expected_allow": true,
+          "faithfulness_score": 1.0,
+          "passed": true
+        },
+        {
+          "draft_type": "Hallucinated Unverified Numbers Draft",
+          "allow_llm": false,
+          "expected_allow": false,
+          "faithfulness_score": 0.0,
+          "passed": true
+        }
+      ]
+    }
+  },
+  "end_to_end": {
+    "total_scenarios": 3,
+    "passed_scenarios": 3,
+    "pass_rate": 100.0,
+    "scenarios": [
+      {
+        "scenario": "Multi-turn Order Tracking (ORD-1100)",
+        "passed": true,
+        "turns": [
+          {
+            "turn": 1,
+            "user_query": "Kiểm tra đơn hàng của mình đến đâu rồi",
+            "status_code": 200,
+            "intent": "track_order",
+            "ack": "Dạ em chào anh/chị! Em đã ghi nhận yêu cầu của mình. Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!",
+            "has_draft": true
+          },
+          {
+            "turn": 2,
+            "user_query": "ORD-1100",
+            "status_code": 200,
+            "intent": "track_order",
+            "ack": "Dạ Tiki chào anh/chị! Em đã ghi nhận yêu cầu tra cứu đơn hàng ORD-1100. Em đang kết nối hệ thống bưu tá để kiểm tra lộ trình gửi anh/chị ngay nhé ạ!",
+            "order_matched": true,
+            "order_status": null,
+            "has_draft": true
+          }
+        ]
+      },
+      {
+        "scenario": "Financial Risk Interception (Request Refund)",
+        "passed": true,
+        "action_type": "DIRECT_REFUND_FORM",
+        "status_code": 200
+      },
+      {
+        "scenario": "Policy Retrieval & Citations (Return Policy)",
+        "passed": true,
+        "citations_count": 3,
+        "status_code": 200
+      }
+    ]
+  }
+}
