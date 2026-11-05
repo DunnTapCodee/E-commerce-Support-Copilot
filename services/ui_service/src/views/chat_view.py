@@ -44,11 +44,17 @@ def render_chat_view(gateway_url: str):
                 with st.chat_message("user", avatar="👤"):
                     st.write(content)
             elif role == "agent":
-                with st.chat_message("assistant", avatar="🎧"):
-                    st.write(content)
-                    if msg.get("citations"):
-                        cits = ", ".join([f"**[{c.get('doc_id')}]** {c.get('title')}" for c in msg.get("citations")])
-                        st.caption(f"📚 Căn cứ chính sách: {cits}")
+                if msg.get("is_acknowledgement"):
+                    with st.chat_message("assistant", avatar="⚡"):
+                        st.caption("⚡ *Phản hồi đệm tức thì từ Copilot:*")
+                        st.write(content)
+                else:
+                    with st.chat_message("assistant", avatar="🎧"):
+                        st.caption("👤 *Nhân viên CSKH (Đã duyệt):*")
+                        st.write(content)
+                        if msg.get("citations"):
+                            cits = ", ".join([f"**[{c.get('doc_id')}]** {c.get('title')}" for c in msg.get("citations")])
+                            st.caption(f"📚 Căn cứ chính sách: {cits}")
 
     # Input Box
     customer_query = st.chat_input("Nhập tin nhắn của khách hàng (ví dụ: 'Kiểm tra đơn ORD-2024-001 giúp mình')...")
@@ -69,17 +75,15 @@ def render_chat_view(gateway_url: str):
                     data = resp.json()
                     st.session_state.current_response = data
 
-                    # In Copilot AI mode (automatic), auto-deliver response into the conversation
-                    if not st.session_state.get("is_live_chat", False):
-                        ack = data.get("customer_acknowledgement")
-                        draft = data.get("draft_text", "")
-                        full_reply = f"{ack}\n\n{draft}" if ack else draft
-                        if full_reply.strip():
-                            st.session_state.messages.append({
-                                "role": "agent",
-                                "content": full_reply,
-                                "citations": data.get("citations", []),
-                            })
+                    # Deliver ONLY the instant buffer acknowledgement to conversation
+                    # The official draft is placed in the CS Agent panel for human review & approval
+                    ack = data.get("customer_acknowledgement")
+                    if ack and ack.strip():
+                        st.session_state.messages.append({
+                            "role": "agent",
+                            "content": ack,
+                            "is_acknowledgement": True,
+                        })
                 else:
                     has_error = True
                     st.error(f"⚠️ Lỗi từ API Gateway ({resp.status_code}): {resp.text}")
@@ -157,12 +161,12 @@ def render_chat_view(gateway_url: str):
             col_btn1, col_btn2, col_btn3 = st.columns(3)
             with col_btn1:
                 if st.button("🚀 Phê duyệt & Gửi", key="btn_approve_send", type="primary"):
-                    # Append agent response to chat
-                    full_reply = f"{ack_text}\n\n{edited_draft}" if ack_text else edited_draft
+                    # Append approved agent response to chat
                     st.session_state.messages.append({
                         "role": "agent",
-                        "content": full_reply,
+                        "content": edited_draft,
                         "citations": curr.get("citations", []),
+                        "is_acknowledgement": False,
                     })
                     # Send telemetry feedback
                     try:
@@ -171,8 +175,8 @@ def render_chat_view(gateway_url: str):
                             json={
                                 "interaction_id": curr.get("interaction_id", ""),
                                 "action": "EDIT" if edited_draft != draft_text else "APPROVE",
-                                "final_text": full_reply,
-                                "agent_notes": "Sent via Streamlit UI",
+                                "final_text": edited_draft,
+                                "agent_notes": "Sent via Streamlit UI after CS review",
                                 "handling_time_ms": 1500,
                             },
                             timeout=5.0,

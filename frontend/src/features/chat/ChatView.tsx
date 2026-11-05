@@ -34,19 +34,18 @@ export const ChatView: React.FC = () => {
       setCopilotResponse(resp);
       setEditedDraft(resp.draft_text || '');
 
-      // Auto-deliver agent reply to conversation in AI mode
-      const fullReply = resp.customer_acknowledgement
-        ? `${resp.customer_acknowledgement}\n\n${resp.draft_text}`
-        : resp.draft_text;
-      if (fullReply) {
+      // Deliver ONLY the instant buffer acknowledgement to customer dialogue
+      // The official draft is held in the right panel for CS Agent approval
+      const ackText = resp.customer_acknowledgement;
+      if (ackText) {
         setMessages((prev) => [
           ...prev,
           {
             id: Math.random().toString(),
             role: 'agent',
-            content: fullReply,
+            content: ackText,
             timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
-            citations: resp.citations,
+            isAcknowledgement: true,
           },
         ]);
       }
@@ -59,16 +58,16 @@ export const ChatView: React.FC = () => {
 
   const handleApproveDraft = async () => {
     if (!copilotResponse) return;
-    const fullReply = copilotResponse.customer_acknowledgement
-      ? `${copilotResponse.customer_acknowledgement}\n\n${editedDraft}`
-      : editedDraft;
+    const finalContent = editedDraft.trim();
+    if (!finalContent) return;
 
     const agentMsg: ChatMessage = {
       id: Math.random().toString(),
       role: 'agent',
-      content: fullReply,
+      content: finalContent,
       timestamp: new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' }),
       citations: copilotResponse.citations,
+      isAcknowledgement: false,
     };
 
     setMessages((prev) => [...prev, agentMsg]);
@@ -77,8 +76,8 @@ export const ChatView: React.FC = () => {
       await apiClient.recordAction({
         interaction_id: copilotResponse.interaction_id,
         action: editedDraft !== copilotResponse.draft_text ? 'EDIT' : 'APPROVE',
-        final_text: fullReply,
-        agent_notes: 'Sent via React TSX frontend',
+        final_text: finalContent,
+        agent_notes: 'Sent via React TSX frontend after CS review',
         handling_time_ms: 1200,
       });
     } catch (err) {
@@ -127,16 +126,31 @@ export const ChatView: React.FC = () => {
                 className={`flex gap-3 ${m.role === 'customer' ? 'justify-end' : 'justify-start'}`}
               >
                 {m.role === 'agent' && (
-                  <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center flex-shrink-0 text-sm">
-                    <Bot className="w-4 h-4" />
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
+                    m.isAcknowledgement ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
+                  }`}>
+                    {m.isAcknowledgement ? <Bot className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
                   </div>
                 )}
                 <div
-                  className={`max-w-[80%] rounded-2xl p-4 text-sm whitespace-pre-wrap leading-relaxed ${m.role === 'customer'
+                  className={`max-w-[80%] rounded-2xl p-4 text-sm whitespace-pre-wrap leading-relaxed ${
+                    m.role === 'customer'
                       ? 'bg-blue-600 text-white rounded-tr-sm'
-                      : 'bg-slate-100 text-slate-800 rounded-tl-sm'
-                    }`}
+                      : m.isAcknowledgement
+                        ? 'bg-amber-50/90 text-amber-950 border border-amber-200/60 rounded-tl-sm'
+                        : 'bg-slate-100 text-slate-800 rounded-tl-sm border border-slate-200/60'
+                  }`}
                 >
+                  {m.isAcknowledgement && (
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 mb-1.5 pb-1 border-b border-amber-200/50">
+                      <span>⚡ Phản hồi đệm tức thì (Copilot)</span>
+                    </div>
+                  )}
+                  {!m.isAcknowledgement && m.role === 'agent' && (
+                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 mb-1.5 pb-1 border-b border-slate-200">
+                      <span>👤 Nhân viên CSKH (Đã duyệt)</span>
+                    </div>
+                  )}
                   <p>{m.content}</p>
                   {m.citations && m.citations.length > 0 && (
                     <div className="mt-3 pt-2 border-t border-slate-200/60 text-xs text-slate-500">
@@ -145,8 +159,13 @@ export const ChatView: React.FC = () => {
                     </div>
                   )}
                   <span
-                    className={`block text-[10px] mt-1.5 text-right ${m.role === 'customer' ? 'text-blue-200' : 'text-slate-400'
-                      }`}
+                    className={`block text-[10px] mt-1.5 text-right ${
+                      m.role === 'customer'
+                        ? 'text-blue-200'
+                        : m.isAcknowledgement
+                          ? 'text-amber-600/70'
+                          : 'text-slate-400'
+                    }`}
                   >
                     {m.timestamp}
                   </span>

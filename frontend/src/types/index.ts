@@ -73,5 +73,6 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
   citations?: RetrievedDocument[];
+  isAcknowledgement?: boolean;
 }
 
