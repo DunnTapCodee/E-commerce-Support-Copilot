@@ -23,7 +23,7 @@ export const App: React.FC = () => {
               <h1 className="text-base font-bold text-slate-900 leading-tight">
                 E-Commerce Support Copilot
               </h1>
-              <p className="text-[11px] text-slate-500">Hệ thống Trợ lý CSKH & Tri thức Thông minh (Questin Design)</p>
+              <p className="text-[11px] text-slate-500">Hệ thống Trợ lý CSKH & Tri thức Thông minh </p>
             </div>
           </div>
 
@@ -32,8 +32,8 @@ export const App: React.FC = () => {
             <button
               onClick={() => setActiveTab('chat')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'chat'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <MessageSquare className="w-3.5 h-3.5" />
@@ -43,8 +43,8 @@ export const App: React.FC = () => {
             <button
               onClick={() => setActiveTab('policies')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'policies'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <FileText className="w-3.5 h-3.5" />
@@ -54,8 +54,8 @@ export const App: React.FC = () => {
             <button
               onClick={() => setActiveTab('notifications')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'notifications'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <Bell className="w-3.5 h-3.5" />
@@ -65,8 +65,8 @@ export const App: React.FC = () => {
             <button
               onClick={() => setActiveTab('telemetry')}
               className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'telemetry'
-                  ? 'bg-white text-blue-600 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
                 }`}
             >
               <BarChart3 className="w-3.5 h-3.5" />

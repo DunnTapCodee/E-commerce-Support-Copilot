@@ -178,6 +178,7 @@ services:
       dockerfile: services/gateway/Dockerfile
     container_name: gateway
     ports:
+      - "8000:8000"
       - "18000:8000"
     environment:
       - PORT=8000
