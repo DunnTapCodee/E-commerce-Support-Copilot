@@ -217,22 +217,42 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
     )
 
     # Step 8: Generate Phần 3 - Full-Context Copilot Draft for Agent (Bản thảo câu trả lời cho nhân viên duyệt)
-    recent_turns_ctx = turn_buffer.format_as_context(state.turns)
-    current_context_summary = state.context_summary or ContextSummaryManager.build_summary(state, order_data)
-
-    agent_draft = await CopilotDraftEngine.generate_draft(
-        user_query=customer_query,
-        intent=effective_intent,
-        facts=state.facts,
-        order_data=order_data,
-        context_summary=current_context_summary,
-        recent_turns_text=recent_turns_ctx,
-        citations=citations,
-        is_live_chat=state.is_live_chat,
-    )
-
-    if not agent_draft.strip():
+    if not guard.allow_llm:
         agent_draft = suggested_macro or draft_fallback
+    else:
+        recent_turns_ctx = turn_buffer.format_as_context(state.turns)
+        current_context_summary = state.context_summary or ContextSummaryManager.build_summary(state, order_data)
+
+        agent_draft = await CopilotDraftEngine.generate_draft(
+            user_query=customer_query,
+            intent=effective_intent,
+            facts=state.facts,
+            order_data=order_data,
+            context_summary=current_context_summary,
+            recent_turns_text=recent_turns_ctx,
+            citations=citations,
+            is_live_chat=state.is_live_chat,
+        )
+
+        if not agent_draft.strip():
+            agent_draft = suggested_macro or draft_fallback
+
+        # Step 8b: Runtime Safety Envelope Verification (Chặn cam kết hoàn tiền trái phép / rò rỉ dữ liệu)
+        from services.gateway.src.guardrails import evaluate_runtime_safety_envelope
+        runtime_guard = evaluate_runtime_safety_envelope(
+            customer_query=customer_query,
+            draft_text=agent_draft,
+            order_data=order_data,
+            citations=citations,
+        )
+        if not runtime_guard.allow_llm:
+            guard = runtime_guard
+            agent_draft = (
+                f"[CAN THIEP AN TOAN HE THONG: {runtime_guard.reason}. "
+                "Bản nháp tự động đã bị chặn để bảo vệ quyền lợi và an toàn tài chính. "
+                "Vui lòng kiểm tra và xử lý thủ công.]"
+            )
+            gen_mode = "blocked_safety_envelope"
 
     # Step 9: Background Tasks (Non-blocking async memory & audit persistence)
     background_tasks.add_task(
@@ -264,6 +284,13 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         for t in turn_buffer.get_recent_turns(state.turns)
     ]
 
+    # Evaluate Semantic Retrieval Contract status
+    retrieval_status = "SUFFICIENT"
+    if not citations:
+        retrieval_status = "EMPTY_RETRIEVAL"
+    elif all((getattr(doc, "score", 0.0) or 0.0) < 0.50 for doc in citations):
+        retrieval_status = "INSUFFICIENT_EVIDENCE"
+
     return GatewayResponse(
         interaction_id=interaction_id,
         intent=final_intent_resp,
@@ -280,6 +307,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         is_live_chat=state.is_live_chat,
         session_turns=ui_turns,
         context_summary=current_context_summary,
+        retrieval_status=retrieval_status,
     )
 
 

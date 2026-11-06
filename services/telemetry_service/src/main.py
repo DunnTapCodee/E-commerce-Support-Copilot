@@ -97,6 +97,16 @@ def get_audit_stats():
     return repo_instance.get_stats()
 
 
+@app.get("/audit/continual_learning/pool")
+def get_continual_learning_pool(limit: int = 50):
+    """Fetch high-value approved interaction samples for continual learning loops."""
+    return {
+        "status": "success",
+        "count": len(repo_instance.get_continual_learning_pool(limit)),
+        "samples": repo_instance.get_continual_learning_pool(limit),
+    }
+
+
 # -------------------------------------------------------------------
 # Module 3: Dynamic Order Query & Tool Calling Endpoints
 # -------------------------------------------------------------------

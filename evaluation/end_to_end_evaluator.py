@@ -135,3 +135,4 @@ class EndToEndEvaluator:
             "pass_rate": round((passed / total) * 100, 2),
             "scenarios": [sc_a, sc_b, sc_c],
         }
+

@@ -32,9 +32,28 @@ def init_db(db_path: Path, mock_orders_path: Optional[Path] = None) -> None:
             human_action TEXT NULL,
             final_sent_text TEXT NULL,
             agent_notes TEXT NULL,
+            handling_time_ms INTEGER NOT NULL DEFAULT 0,
+            edit_distance REAL NULL,
+            is_rubber_stamping INTEGER NOT NULL DEFAULT 0,
+            is_continual_learning INTEGER NOT NULL DEFAULT 0,
             latency_ms INTEGER NOT NULL DEFAULT 0
         );
         """)
+
+        # Safely ensure new columns exist for existing databases
+        columns_to_add = [
+            ("handling_time_ms", "INTEGER NOT NULL DEFAULT 0"),
+            ("edit_distance", "REAL NULL"),
+            ("is_rubber_stamping", "INTEGER NOT NULL DEFAULT 0"),
+            ("is_continual_learning", "INTEGER NOT NULL DEFAULT 0"),
+        ]
+        existing_cols = {col[1] for col in conn.execute("PRAGMA table_info(telemetry_logs);").fetchall()}
+        for col_name, col_type in columns_to_add:
+            if col_name not in existing_cols:
+                try:
+                    conn.execute(f"ALTER TABLE telemetry_logs ADD COLUMN {col_name} {col_type};")
+                except Exception:
+                    pass
 
         # 2. Orders table for Module 3 Database Migration
         conn.execute("""

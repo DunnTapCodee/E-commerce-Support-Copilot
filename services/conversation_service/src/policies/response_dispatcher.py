@@ -38,6 +38,20 @@ class ResponsePolicyDispatcher:
         intent_name = intent_resp.intent
         confidence = intent_resp.confidence
 
+        # Case -1: Prompt Injection & Adversarial Attack Hard Block
+        from services.gateway.src.guardrails import evaluate_prompt_injection
+        is_injection, injection_msg = evaluate_prompt_injection(user_query)
+        if is_injection:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason=injection_msg,
+                is_hard_fail=True,
+                violations=[injection_msg],
+            )
+            draft = "[CẢNH BÁO AN NINH: Phát hiện tấn công Prompt Injection / Jailbreak. Chuyển cho nhân viên bảo mật xử lý.]"
+            return guard, draft, None, "🔴 CẢNH BÁO AN NINH: Nghi vấn người dùng cố tình bẻ khóa chỉ dẫn hệ thống.", "blocked_security_guard"
+
         # Case 0: Chitchat greeting or thanks
         if input_type == "chitchat":
             q_lower = user_query.lower()

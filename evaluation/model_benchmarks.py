@@ -93,3 +93,4 @@ class ModelBenchmarkRunner:
             "labels": labels,
             "confusion_matrix": cm.tolist(),
         }
+

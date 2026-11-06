@@ -7,6 +7,11 @@ from typing import Any, Dict, List, Optional
 from contracts.schemas import AuditLogCreate, HumanActionUpdate
 from services.telemetry_service.src.cache import OrderLRUCache, normalize_phone
 from services.telemetry_service.src.database import get_db_connection
+from services.telemetry_service.src.metrics import (
+    compute_normalized_levenshtein,
+    detect_rubber_stamping,
+    is_continual_learning_candidate,
+)
 
 
 class TelemetryRepository:
@@ -68,16 +73,41 @@ class TelemetryRepository:
         )
 
         with get_db_connection(self.db_path) as conn:
+            # Look up initial raw draft text to compute edit metrics
+            row = conn.execute(
+                "SELECT raw_draft_text FROM telemetry_logs WHERE interaction_id = ?;",
+                (update.interaction_id,),
+            ).fetchone()
+            raw_draft = row["raw_draft_text"] if row else ""
+
+            edit_distance = compute_normalized_levenshtein(raw_draft, final_text or "")
+            is_rubber = 1 if detect_rubber_stamping(update.handling_time_ms, raw_draft, action) else 0
+            is_cl = 1 if is_continual_learning_candidate(raw_draft, final_text or "", action, edit_distance) else 0
+
             cursor = conn.execute(
                 """
                 UPDATE telemetry_logs
                 SET human_action = ?,
                     final_sent_text = ?,
                     agent_notes = ?,
+                    handling_time_ms = ?,
+                    edit_distance = ?,
+                    is_rubber_stamping = ?,
+                    is_continual_learning = ?,
                     latency_ms = latency_ms + ?
                 WHERE interaction_id = ?;
                 """,
-                (action, final_text, update.agent_notes, update.handling_time_ms, update.interaction_id,),
+                (
+                    action,
+                    final_text,
+                    update.agent_notes,
+                    update.handling_time_ms,
+                    edit_distance,
+                    is_rubber,
+                    is_cl,
+                    update.handling_time_ms,
+                    update.interaction_id,
+                ),
             )
             conn.commit()
             return cursor.rowcount > 0
@@ -120,6 +150,19 @@ class TelemetryRepository:
                 "SELECT AVG(latency_ms) FROM telemetry_logs;"
             ).fetchone()[0] or 0.0
 
+            # MLIP Chapter 19 Telemetry Metrics
+            avg_edit_dist = conn.execute(
+                "SELECT AVG(edit_distance) FROM telemetry_logs WHERE edit_distance IS NOT NULL;"
+            ).fetchone()[0] or 0.0
+
+            rubber_stamping_count = conn.execute(
+                "SELECT COUNT(*) FROM telemetry_logs WHERE is_rubber_stamping = 1;"
+            ).fetchone()[0] or 0
+
+            cl_count = conn.execute(
+                "SELECT COUNT(*) FROM telemetry_logs WHERE is_continual_learning = 1;"
+            ).fetchone()[0] or 0
+
             records = conn.execute(
                 "SELECT * FROM telemetry_logs ORDER BY timestamp DESC LIMIT 50;"
             ).fetchall()
@@ -129,6 +172,7 @@ class TelemetryRepository:
 
         safety_block_rate = round((safety_blocks / total_count * 100), 1) if total_count > 0 else 100.0
         false_escalation_rate = round((false_escalations / total_count * 100), 1) if total_count > 0 else 0.0
+        rubber_rate = round((rubber_stamping_count / total_count * 100), 1) if total_count > 0 else 0.0
 
         return {
             "total_interactions": total_count,
@@ -136,10 +180,30 @@ class TelemetryRepository:
             "guardrail_breakdown": guardrail_map,
             "safety_block_rate": safety_block_rate,
             "false_escalation_rate": false_escalation_rate,
+            "rubber_stamping_count": rubber_stamping_count,
+            "rubber_stamping_rate": rubber_rate,
+            "mean_edit_distance": round(float(avg_edit_dist), 4),
+            "continual_learning_pool_count": cl_count,
             "average_latency_ms": round(float(avg_latency), 2),
             "recent_records": [dict(r) for r in records],
             "cache_stats": self.cache.stats(),
         }
+
+    def get_continual_learning_pool(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Fetch verified, agent-approved interaction pairs for continual learning few-shot prompting."""
+        with get_db_connection(self.db_path) as conn:
+            rows = conn.execute(
+                """
+                SELECT interaction_id, customer_query, predicted_intent,
+                       raw_draft_text, final_sent_text, edit_distance, timestamp
+                FROM telemetry_logs
+                WHERE is_continual_learning = 1
+                ORDER BY timestamp DESC
+                LIMIT ?;
+                """,
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
 
     # -------------------------------------------------------------------
     # Module 3: High-Performance Indexed SQLite + LRU Cached Order Lookups

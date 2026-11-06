@@ -10,6 +10,7 @@ from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.llm_classifier import LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
 from services.intent_service.src.preprocessing import preprocess, segment_vi
+from services.intent_service.src.normalizer import normalize_vietnamese_query
 from services.intent_service.src.router import LanguageRouter
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -184,10 +185,12 @@ class IntentPredictor:
         return (self.intent_backend in {"llm", "hybrid"}) or bool(self.backends) or (self.legacy_model is not None)
 
     def _predict_ml(self, query: str) -> IntentPredictionResponse:
-        """Execute legacy/module 1 ML model pipeline."""
+        """Execute legacy/module 1 ML model pipeline with unaccented normalizer."""
         start = time.perf_counter()
-        text = preprocess(query) if callable(globals().get("preprocess")) else query.strip()
-        language = self.router.detect(text)
+        raw_text = query.strip()
+        norm_text, was_norm = normalize_vietnamese_query(raw_text)
+        text = preprocess(norm_text) if callable(globals().get("preprocess")) else norm_text
+        language = self.router.detect(raw_text)
 
         # 1. Module 1 Multi-backend inference
         if not self.is_legacy and self.backends:

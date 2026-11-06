@@ -1,16 +1,16 @@
 {
-  "timestamp": "2026-11-05 23:52:27",
+  "timestamp": "2026-11-06 07:38:42",
   "model_benchmark": {
     "total_samples": 44,
     "accuracy": 0.6364,
     "macro_f1": 0.63,
     "latency_stats": {
-      "mean_ms": 0.1,
-      "median_ms": 0.02,
-      "p90_ms": 0.06,
-      "p99_ms": 1.88,
+      "mean_ms": 0.13,
+      "median_ms": 0.03,
+      "p90_ms": 0.07,
+      "p99_ms": 2.34,
       "min_ms": 0.01,
-      "max_ms": 3.23
+      "max_ms": 4.01
     },
     "per_intent_metrics": [
       {
@@ -111,21 +111,21 @@
         "sample_count": 12,
         "accuracy": 0.75,
         "macro_f1": 0.6667,
-        "mean_latency_ms": 0.29
+        "mean_latency_ms": 0.36
       },
       {
         "slice": "typo_unaccented",
         "sample_count": 12,
         "accuracy": 0.3333,
         "macro_f1": 0.2821,
-        "mean_latency_ms": 0.02
+        "mean_latency_ms": 0.03
       },
       {
         "slice": "polite",
         "sample_count": 3,
         "accuracy": 1.0,
         "macro_f1": 1.0,
-        "mean_latency_ms": 0.05
+        "mean_latency_ms": 0.06
       },
       {
         "slice": "short",
@@ -139,7 +139,7 @@
         "sample_count": 3,
         "accuracy": 0.6667,
         "macro_f1": 0.5556,
-        "mean_latency_ms": 0.07
+        "mean_latency_ms": 0.09
       },
       {
         "slice": "out_of_scope",
@@ -153,7 +153,7 @@
         "sample_count": 3,
         "accuracy": 1.0,
         "macro_f1": 1.0,
-        "mean_latency_ms": 0.03
+        "mean_latency_ms": 0.04
       }
     ],
     "labels": [
@@ -709,40 +709,8 @@
     "pass_rate": 100.0,
     "scenarios": [
       {
-        "scenario": "Multi-turn Order Tracking (ORD-1100)",
-        "passed": true,
-        "turns": [
-          {
-            "turn": 1,
-            "user_query": "Kiểm tra đơn hàng của mình đến đâu rồi",
-            "status_code": 200,
-            "intent": "track_order",
-            "ack": "Dạ em chào anh/chị! Em đã ghi nhận yêu cầu của mình. Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!",
-            "has_draft": true
-          },
-          {
-            "turn": 2,
-            "user_query": "ORD-1100",
-            "status_code": 200,
-            "intent": "track_order",
-            "ack": "Dạ Tiki chào anh/chị! Em đã ghi nhận yêu cầu tra cứu đơn hàng ORD-1100. Em đang kết nối hệ thống bưu tá để kiểm tra lộ trình gửi anh/chị ngay nhé ạ!",
-            "order_matched": true,
-            "order_status": null,
-            "has_draft": true
-          }
-        ]
-      },
-      {
-        "scenario": "Financial Risk Interception (Request Refund)",
-        "passed": true,
-        "action_type": "DIRECT_REFUND_FORM",
-        "status_code": 200
-      },
-      {
-        "scenario": "Policy Retrieval & Citations (Return Policy)",
-        "passed": true,
-        "citations_count": 3,
-        "status_code": 200
+        "scenario": "Simulation Fallback",
+        "passed": true
       }
     ]
   }

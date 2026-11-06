@@ -38,3 +38,48 @@ class TestMLIPBehavioralAndSafety(unittest.TestCase):
         """Fabricated facts and numbers must be 100% blocked."""
         res = self.guard_eval.test_response_faithfulness_guard()
         self.assertEqual(res["pass_rate"], 100.0, "Hallucinated draft passed through guardrail!")
+
+    def test_chaos_and_safeguard_resilience(self):
+        """Chaos tests (LLM timeout circuit breaker, prompt injection, empty RAG fallback) must pass."""
+        from evaluation.chaos_safeguard_tests import ChaosSafeguardTester
+        res = ChaosSafeguardTester().run_all()
+        self.assertTrue(res["all_passed"], f"Chaos safeguard failed: {res}")
+
+    def test_test_oracle_hard_constraints_and_rubric(self):
+        """Test Oracle must accurately verify constraints and evaluate rubrics."""
+        from evaluation.oracle_evaluator import TestOracleEvaluator
+        # Hard constraints
+        hard_res = TestOracleEvaluator.verify_hard_constraints(
+            draft_text="Dạ em chào anh/chị, đơn hàng ORD-1100 đang được giao ạ [POL-ORD-001].",
+            expected_entities={"order_id": "ORD-1100"},
+            require_citation=True,
+        )
+        self.assertTrue(hard_res["passed"], "Valid draft failed hard constraints!")
+
+        # Rubric evaluation
+        rubric_res = TestOracleEvaluator.evaluate_rubric(
+            draft_text="Dạ em chào anh/chị! Em đã kiểm tra đơn hàng ORD-1100 cho mình rồi ạ. Anh/chị vui lòng chú ý điện thoại để nhận hàng nhé ạ!",
+            customer_query="đơn hàng khi nào giao",
+            intent="track_order",
+        )
+        self.assertGreaterEqual(rubric_res["rubric_score_percent"], 75, "Rubric score too low for high-quality draft!")
+
+    def test_telemetry_metrics_and_rubber_stamping(self):
+        """Telemetry must correctly compute Levenshtein distance and flag rubber-stamping."""
+        from services.telemetry_service.src.metrics import (
+            compute_normalized_levenshtein,
+            detect_rubber_stamping,
+        )
+        # Identical text
+        self.assertEqual(compute_normalized_levenshtein("Xin chào", "Xin chào"), 0.0)
+        # Completely different text
+        dist = compute_normalized_levenshtein("Xin chào", "Tạm biệt bạn nhé")
+        self.assertGreater(dist, 0.5)
+
+        # Rubber-stamping detection: long draft approved in 500ms
+        long_draft = "Dạ em chào quý khách, Tiki xin thông báo đơn hàng của quý khách đã được đóng gói và chuẩn bị giao cho đơn vị vận chuyển."
+        self.assertTrue(detect_rubber_stamping(500, long_draft, "APPROVE"))
+        # Thorough human review taking 8000ms
+        self.assertFalse(detect_rubber_stamping(8000, long_draft, "APPROVE"))
+
+

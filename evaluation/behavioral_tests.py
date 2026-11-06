@@ -168,3 +168,4 @@ class BehavioralTestSuite:
             "inv": self.run_inv(),
             "dir": self.run_dir(),
         }
+

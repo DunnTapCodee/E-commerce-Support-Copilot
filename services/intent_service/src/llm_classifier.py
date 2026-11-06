@@ -13,6 +13,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import requests
 from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
+from services.intent_service.src.normalizer import normalize_vietnamese_query
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -224,8 +225,9 @@ class LLMIntentClassifier:
         return None
 
     def _semantic_fallback(self, query: str) -> IntentPredictionResponse:
-        """Accurate fallback classifier for testing and offline environments."""
-        q_lower = query.lower()
+        """Accurate fallback classifier for testing and offline environments with unaccented normalization."""
+        norm_query, _ = normalize_vietnamese_query(query)
+        q_lower = norm_query.lower()
 
         # Handle context tags from conversation service
         prev_intent = None
@@ -272,7 +274,7 @@ class LLMIntentClassifier:
             return self._build_resp("return_policy", 0.94, query)
 
         # 10. Return product (action on a specific item)
-        if re.search(r"\b(đổi.*size|đổi.*áo|trả lại hàng|trả hàng|hàng.*lỗi.*đổi|đổi cái mới|đổi sang|defective.*return|exchange|damaged.*product|hàng không đúng mô tả|đổi trả món đồ|muốn trả lại hàng|yêu cầu trả sản phẩm|return this product)\b", q_lower):
+        if re.search(r"\b(đổi.*size|đổi.*áo|trả lại hàng|trả hàng|hàng.*lỗi.*đổi|đổi cái mới|đổi sang|defective.*return|exchange|damaged.*product|hàng không đúng mô tả|đổi trả món đồ|muốn trả lại|yêu cầu trả lại|yêu cầu trả sản phẩm|trả lại cái|return this product)\b", q_lower):
             return self._build_resp("return_product", 0.93, query)
 
         # 11. Shipping costs
@@ -284,7 +286,7 @@ class LLMIntentClassifier:
             return self._build_resp("delivery_issue", 0.94, query)
 
         # 13. Delivery time (asking when parcel will arrive)
-        if re.search(r"\b(bao giờ.*nhận|khi nào.*giao|mấy ngày.*(giao|có|nhận)|thời gian.*(giao|vận chuyển)|when.*arrive|how long.*(delivery|shipping)|estimated delivery|khi nào.*shipper|ngày mai có giao kịp|giao hàng tới)\b", q_lower):
+        if re.search(r"\b(bao giờ.*(nhận|giao|tới)|khi nào.*(giao|tới|nhận)|mấy ngày.*(giao|có|nhận)|thời gian.*(giao|vận chuyển)|when.*arrive|how long.*(delivery|shipping)|estimated delivery|khi nào.*shipper|ngày mai có giao kịp|giao hàng tới|giao tới)\b", q_lower):
             return self._build_resp("delivery_time", 0.94, query)
 
         # 14. Track order

@@ -416,3 +416,4 @@ def get_all_slice_types() -> List[str]:
 
 def get_all_target_intents() -> List[str]:
     return sorted(list({c.ground_truth_intent for c in BENCHMARK_DATASET}))
+

@@ -99,6 +99,8 @@ class GuardrailResult(BaseModel):
     faithfulness_score: Optional[float] = Field(default=None, description="Response faithfulness / NLI entailment score (0.0 to 1.0)")
     hallucination_detected: Optional[bool] = Field(default=None, description="Whether hallucination was detected in response")
     temporal_status: Optional[str] = Field(default=None, description="Temporal status: ACTIVE, EXPIRED, NOT_YET_EFFECTIVE")
+    is_hard_fail: bool = Field(default=False, description="Whether this is a release/operation blocking hard fail")
+    violations: List[str] = Field(default_factory=list, description="Specific safety/contract violations detected")
 
 
 # -------------------------------------------------------------------
@@ -154,6 +156,8 @@ class GatewayResponse(BaseModel):
     customer_acknowledgement: Optional[str] = Field(default=None, description="Immediate buffer response for customer (Phần 1)")
     session_turns: List[Dict[str, Any]] = Field(default_factory=list, description="Recent conversation turns")
     context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
+    retrieval_status: str = Field(default="SUFFICIENT", description="Semantic retrieval quality: SUFFICIENT, INSUFFICIENT_EVIDENCE, EMPTY_RETRIEVAL")
+    circuit_breaker_tripped: bool = Field(default=False, description="Whether fallback was invoked due to circuit breaker trip")
 
 
 # -------------------------------------------------------------------
