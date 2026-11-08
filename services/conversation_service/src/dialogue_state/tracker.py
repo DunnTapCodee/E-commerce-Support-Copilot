@@ -125,7 +125,7 @@ class IntentTracker:
         for nuanced transitions, and regex fallback upon timeout/error.
         """
         # Case A: Instant deterministic cases (no need to call LLM)
-        if input_type in ("chitchat", "fact_supplement") or not state.active_intent:
+        if input_type in ("chitchat", "fact_supplement", "negation_reversal") or not state.active_intent:
             return cls._fallback_regex_transition(user_text, input_type, extracted_facts, ml_intent_resp, state)
 
         # Case B: If ML classifier is extremely confident (>= 0.90) and clearly different topic
