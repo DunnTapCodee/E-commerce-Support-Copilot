@@ -2483,7 +2483,7 @@
   },
   {
     "order_id": "ORD-1100",
-    "customer_id": "demo-customer",
+    "customer_id": "CUST-1100",
     "customer_name": "Lê Văn Sơn",
     "phone": "0998.708.581",
     "order_status": "Delivered",

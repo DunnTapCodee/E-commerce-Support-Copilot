@@ -7,6 +7,7 @@ from typing import List, Optional
 import httpx
 
 from contracts.schemas import RAGGenerateResponse, RetrievedDocument
+from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
 
 # Auto-load .env if not in environment
 _env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
@@ -21,7 +22,6 @@ if _env_file.exists():
                         os.environ[_k.strip()] = _v.strip().strip('"').strip("'")
     except Exception:
         pass
-
 
 def get_gemini_api_key() -> str:
     key = os.getenv("GEMINI_API_KEY", "").strip()
@@ -55,6 +55,10 @@ def get_candidate_models() -> List[str]:
 def get_gemini_api_url(model: str = "gemini-flash-lite-latest") -> str:
     return f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
 
+
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
+GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or ""
@@ -91,7 +95,6 @@ class LLMGenerator:
                 timeout=float(self.timeout_seconds),
             )
         except asyncio.TimeoutError:
-            print("[LLMGenerator] Generation timed out, falling back to template.")
             return self._build_template_draft(
                 query,
                 citations,
@@ -110,8 +113,8 @@ class LLMGenerator:
         openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or OPENAI_API_KEY
         gemini_key = get_gemini_api_key() or os.getenv("GEMINI_API_KEY", "")
 
-        # Strategy 1: OpenAI-compatible (ckey.vn / openai-gpt-oss-20b)
-        if (provider in ("openai_compatible", "openai", "auto")) and openai_key:
+        # Strategy 1: OpenAI-compatible (ckey.vn / xah.io) with multi-key failover
+        if (provider in ("openai_compatible", "openai", "auto")) and (get_available_api_keys() or openai_key):
             try:
                 draft_text = await self._call_openai_compatible(query, citations, openai_key)
                 if draft_text:
@@ -140,6 +143,21 @@ class LLMGenerator:
             except Exception as exc:
                 print(f"[LLMGenerator] Gemini call failed: {exc}. Trying fallback...")
 
+        # Secondary fallback if OpenAI key exists
+        if (openai_key or get_available_api_keys()) and provider == "gemini":
+            try:
+                draft_text = await self._call_openai_compatible(query, citations, openai_key)
+                if draft_text:
+                    return RAGGenerateResponse(
+                        draft_text=draft_text,
+                        citations=citations,
+                        latency_ms=int((time.perf_counter() - start_time) * 1000),
+                        generation_mode="openai_compatible",
+                        fallback_reason=None,
+                    )
+            except Exception as exc:
+                print(f"[LLMGenerator] OpenAI fallback failed: {exc}")
+
         # Strategy 3: Template-based fallback
         return self._build_template_draft(
             query,
@@ -149,13 +167,10 @@ class LLMGenerator:
         )
 
     async def _call_openai_compatible(
-        self, query: str, citations: List[RetrievedDocument], api_key: str
+        self, query: str, citations: List[RetrievedDocument], api_key: str = ""
     ) -> str:
-        """Call OpenAI-compatible chat completion."""
-        base_url = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or OPENAI_BASE_URL).rstrip("/")
+        """Call OpenAI-compatible chat completion with automatic multi-key failover."""
         model = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or OPENAI_MODEL
-        url = f"{base_url}/chat/completions"
-
         docs_context = "\n\n".join(
             f"--- Tài liệu [{doc.doc_id}] ({doc.title}) ---\n{doc.content}"
             for doc in citations
@@ -169,24 +184,22 @@ class LLMGenerator:
             "YÊU CẦU: Trích dẫn mã tài liệu [POL-XXX] sau mỗi thông tin/điều kiện đưa ra. Viết súc tích, lịch sự."
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": "Bạn là trợ lý AI Copilot CSKH Tiki. Hãy suy nghĩ ngắn gọn và trả lời trực tiếp bằng tiếng Việt chuẩn mực CSKH."},
+                {"role": "user", "content": prompt}
+            ],
             "temperature": 0.2,
-            "max_tokens": 1024,
+            "max_tokens": 4096,
         }
 
-        async with httpx.AsyncClient(timeout=float(self.timeout_seconds - 1), verify=False) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "").strip()
+        try:
+            res_data = await call_chat_completion_with_failover(payload, timeout=25.0)
+            if res_data and "choices" in res_data and res_data["choices"]:
+                return res_data["choices"][0].get("message", {}).get("content", "").strip()
+        except Exception as exc:
+            print(f"[LLMGenerator] OpenAI-compatible call error: {exc}")
         return ""
 
     async def _call_gemini(

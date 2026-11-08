@@ -18,6 +18,7 @@ from services.conversation_service.src.config import (
     OPENAI_BASE_URL,
     OPENAI_MODEL,
 )
+from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
 from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
 
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -29,18 +30,24 @@ InputCategory = Literal["chitchat", "fact_supplement", "negation_reversal", "new
 # Fast lexicons for Tier 1
 _CHITCHAT_EXACT = frozenset({
     "ok", "oke", "okie", "da", "dạ", "vang", "vâng", "vâng ạ", "vang a", "da vang", "dạ vâng",
-    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn",
-    "chao shop", "chào shop", "alo", "ad oi", "ad ơi", "hi", "hello", "hi shop", "hello shop",
-    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh"
+    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn", "cảm ơn b", "cam on b",
+    "chao shop", "chào shop", "chao b", "chào b", "chao ban", "chào bạn", "chao", "chào", "chào nha", "chao nha",
+    "alo", "alo b", "ad oi", "ad ơi", "hi", "hi b", "hello", "hello b", "hi shop", "hello shop",
+    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh", "helllllo", "helo",
+    "the a", "thế à", "the ha", "thế hả", "vay a", "vậy à", "vay ha", "vậy hả", "vay sao", "vậy sao", "the sao", "thế sao", "o vay a", "ồ vậy à"
 })
 
 _NEGATION_PATTERNS = [
     re.compile(r"\b(?:thôi\s+không|thoi\s+khong|đổi\s+ý|doi\s+y|không\s+muốn\s+hủy|khong\s+muon\s+huy|không\s+hủy\s+nữa|khoan\s+đã|thôi\s+khỏi)\b", re.IGNORECASE),
 ]
 
+_QUESTION_PATTERNS = [
+    re.compile(r"(?:\?|gì|sao|thế nào|như nào|ở đâu|khi nào|bao giờ|bao lâu|mấy ngày|kiểm tra|tra cứu|hỏi|xem|đơn hàng|đơn|hàng|hủy|đổi|trả|hoàn tiền|ship|phí|bảo hành|voucher|mã|thanh toán|tiền|giao|nhận|mua|chính sách|quy định)", re.IGNORECASE),
+]
+
 
 class InputClassifier:
-    """Hybrid Classifier combining instant regex (< 1ms) with LLM Structured Classifier (openai-gpt-oss-20b / Gemini)."""
+    """Ultra-fast Hybrid Classifier combining instant rules (< 0.1ms) with LLM Classifier (openai-gpt-oss-20b)."""
 
     def __init__(self, gemini_api_key: Optional[str] = None):
         self.api_key = gemini_api_key or GEMINI_API_KEY
@@ -48,7 +55,7 @@ class InputClassifier:
         self.provider = LLM_PROVIDER
 
     def classify_fast_tier(self, text: str, facts: Dict[str, Any]) -> Optional[InputCategory]:
-        """Tier 1: Fast Rule / Lexicon evaluation."""
+        """Tier 1: Fast Rule / Lexicon evaluation (< 0.1ms)."""
         cleaned = text.strip().lower()
         cleaned = re.sub(r"[^\w\s-]", "", cleaned).strip()
 
@@ -60,8 +67,8 @@ class InputClassifier:
         if len(cleaned.split()) <= 6:
             courtesy_tokens = {
                 "da", "dạ", "vang", "vâng", "a", "ạ", "cam", "on", "cảm", "ơn",
-                "shop", "ban", "bạn", "nhe", "nhé", "ok", "oke", "okie", "thanks",
-                "thank", "you", "chao", "chào", "ad", "oi", "ơi"
+                "shop", "ban", "bạn", "b", "c", "e", "nha", "nhe", "nhé", "ok", "oke", "okie", "thanks",
+                "thank", "you", "chao", "chào", "ad", "oi", "ơi", "hi", "hello"
             }
             tokens = set(cleaned.split())
             if tokens and tokens.issubset(courtesy_tokens):
@@ -69,13 +76,21 @@ class InputClassifier:
 
         # 2. Pure fact input
         words = text.strip().split()
-        if len(words) <= 3 and ("order_id" in facts or "phone" in facts):
+        if len(words) <= 4 and ("order_id" in facts or "phone" in facts or "phone_number" in facts):
             return "fact_supplement"
 
         # 3. Negation reversal cues
         for pat in _NEGATION_PATTERNS:
             if pat.search(text):
                 return "negation_reversal"
+
+        # 4. Fast Question / Inquiry heuristic detection (< 0.1ms)
+        for pat in _QUESTION_PATTERNS:
+            if pat.search(text):
+                return "new_question"
+
+        if len(words) >= 4:
+            return "new_question"
 
         return None
 
@@ -94,23 +109,14 @@ class InputClassifier:
         # Tier 2: LLM Structured Output
         prompt = self._build_prompt(text, active_intent, context_summary)
 
-        # 1. Try OpenAI-compatible (openai-gpt-oss-20b)
-        if self.provider == "openai_compatible" and self.openai_key:
+        # 1. Try OpenAI-compatible with multi-key failover
+        if get_available_api_keys():
             try:
                 res = await self._classify_with_openai_compatible(prompt)
                 if res:
                     category, llm_facts, conf = res
                     extracted.update(llm_facts)
                     return category, extracted, conf
-            except Exception:
-                pass
-
-        # 2. Fallback to Gemini if configured
-        if self.api_key and self.api_key != "your_gemini_api_key_here":
-            try:
-                category, llm_facts, conf = await self._classify_with_gemini(prompt)
-                extracted.update(llm_facts)
-                return category, extracted, conf
             except Exception:
                 pass
 
@@ -139,48 +145,34 @@ Chỉ trả về JSON thuần túy, không thêm markdown.
     async def _classify_with_openai_compatible(
         self, prompt: str
     ) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
-        url = f"{OPENAI_BASE_URL}/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.openai_key}",
-        }
         payload = {
             "model": OPENAI_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": "Bạn là chuyên gia phân loại câu hội thoại CSKH Tiki. Trả về DUY NHẤT một JSON hợp lệ theo định dạng yêu cầu."},
+                {"role": "user", "content": prompt}
+            ],
             "temperature": 0.0,
-            "max_tokens": 200,
+            "max_tokens": 1000,
         }
-        async with httpx.AsyncClient(timeout=4.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                raw_text = resp.json()["choices"][0]["message"]["content"].strip()
-                return self._parse_json_result(raw_text)
+        res_data = await call_chat_completion_with_failover(payload, timeout=12.0)
+        if res_data and "choices" in res_data and res_data["choices"]:
+            msg = res_data["choices"][0].get("message", {})
+            raw_text = msg.get("content", "").strip()
+            if not raw_text:
+                raw_text = msg.get("reasoning_content", "").strip()
+            return self._parse_json_result(raw_text)
         return None
 
-    async def _classify_with_gemini(
-        self, prompt: str
-    ) -> Tuple[InputCategory, Dict[str, Any], float]:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={self.api_key}"
-        payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.0,
-                "maxOutputTokens": 300,
-            },
-        }
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code == 200:
-                raw_text = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                res = self._parse_json_result(raw_text)
-                if res:
-                    return res
-        return "new_question", {}, 0.80
-
     def _parse_json_result(self, raw_text: str) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
-        raw_text = re.sub(r"^```(?:json)?", "", raw_text).strip()
-        raw_text = re.sub(r"```$", "", raw_text).strip()
-        parsed = json.loads(raw_text)
+        if not raw_text:
+            return None
+        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+        except Exception:
+            return None
         category = parsed.get("input_type", "new_question")
         if category not in {"chitchat", "fact_supplement", "negation_reversal", "new_question"}:
             category = "new_question"

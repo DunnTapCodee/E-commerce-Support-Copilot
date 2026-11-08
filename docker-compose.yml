@@ -16,8 +16,11 @@ services:
       - PORT=8005
       - INTENT_MODEL_DIR=/app/artifacts/models/intent
       - INTENT_ROUTING_MODE=${INTENT_ROUTING_MODE:-router}
+      - INTENT_BACKEND=${INTENT_BACKEND:-hybrid}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -58,6 +61,8 @@ services:
       - HF_HOME=/models/huggingface
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -98,7 +103,41 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 4. Conversation & Dialogue Orchestrator (Port 8001)
+  # 4. Document & Policy Lifecycle Service (Port 8004)
+  # -------------------------------------------------------------
+  document_service:
+    build:
+      context: .
+      dockerfile: services/document_service/Dockerfile
+    container_name: document_service
+    ports:
+      - "18004:8004"
+    volumes:
+      - ./data:/app/data
+    environment:
+      - PORT=8004
+      - POLICIES_PATH=/app/data/knowledge_base/policies.json
+      - AUDIT_LOGS_PATH=/app/data/knowledge_base/policy_audit_logs.json
+      - RAG_SERVICE_URL=http://rag_service:8002
+      - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
+      - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8004/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - copilot-net
+
+  # -------------------------------------------------------------
+  # 5. Conversation & Dialogue Orchestrator (Port 8006)
   # -------------------------------------------------------------
   conversation_service:
     build:
@@ -106,17 +145,21 @@ services:
       dockerfile: services/conversation_service/Dockerfile
     container_name: conversation_service
     ports:
-      - "18001:8001"
+      - "18006:8006"
     volumes:
       - ./data:/app/data:ro
+      - ./copilot_conversations.sqlite3:/app/copilot_conversations.sqlite3
     environment:
-      - PORT=8001
+      - PORT=8006
+      - CONVERSATIONS_DB_PATH=/app/copilot_conversations.sqlite3
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
       - MOCK_ORDERS_PATH=/app/data/mock_orders.json
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -129,7 +172,7 @@ services:
       telemetry_service:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8006/health')"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -138,7 +181,7 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 5. API Gateway & Ingress Router (Port 8000)
+  # 6. API Gateway & Ingress Router (Port 8000)
   # -------------------------------------------------------------
   gateway:
     build:
@@ -146,6 +189,7 @@ services:
       dockerfile: services/gateway/Dockerfile
     container_name: gateway
     ports:
+      - "8000:8000"
       - "18000:8000"
     environment:
       - PORT=8000
@@ -153,13 +197,16 @@ services:
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
-      - CONVERSATION_SERVICE_URL=http://conversation_service:8001
+      - DOCUMENT_SERVICE_URL=http://document_service:8004
+      - CONVERSATION_SERVICE_URL=http://conversation_service:8006
     depends_on:
       intent_service:
         condition: service_healthy
       rag_service:
         condition: service_healthy
       telemetry_service:
+        condition: service_healthy
+      document_service:
         condition: service_healthy
       conversation_service:
         condition: service_healthy
@@ -173,7 +220,7 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 6. CSKH Workbench UI (Port 8501)
+  # 7. CSKH Workbench UI (Port 8501)
   # -------------------------------------------------------------
   ui_service:
     build:

@@ -1,11 +1,15 @@
 """Dialogue state management for multi-turn sessions."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 from contracts.schemas import ConversationTurnItem
+
+
+def get_system_now_str() -> str:
+    return (datetime.now() + timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S")
 
 
 class ConversationState(BaseModel):
@@ -19,7 +23,7 @@ class ConversationState(BaseModel):
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
     awaiting_slot: Optional[str] = None  # e.g., 'order_id', 'confirmation'
-    last_updated: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    last_updated: str = Field(default_factory=get_system_now_str)
 
     def add_turn(
         self,
@@ -49,7 +53,7 @@ class ConversationState(BaseModel):
                 facts=merged_facts,
             )
         )
-        self.last_updated = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        self.last_updated = get_system_now_str()
 
 
 class StateStore:
@@ -75,5 +79,6 @@ class StateStore:
         return list(self._sessions.keys())
 
 
-# Global singleton store
-state_store = StateStore()
+# Global singleton store backed by persistent SQLite database
+from services.conversation_service.src.dialogue_state.sqlite_state_store import PersistentStateStore, DB_PATH
+state_store = PersistentStateStore(DB_PATH)

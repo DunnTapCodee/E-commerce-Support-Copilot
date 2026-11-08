@@ -4,10 +4,17 @@ and generates a polite, grounded agent draft response ready for staff review and
 """
 from __future__ import annotations
 
+import json
 import os
 import re
-from typing import Any, Dict, List, Optional
+from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
+
+from contracts.llm_failover import (
+    call_chat_completion_with_failover,
+    stream_chat_completion_with_failover,
+    get_available_api_keys,
+)
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -23,40 +30,55 @@ class CopilotDraftEngine:
     """Full-Context Draft Engine generating ready-to-approve agent responses."""
 
     @classmethod
-    async def _call_openai_compatible(cls, prompt: str, api_key: str) -> Optional[str]:
-        """Generate response via OpenAI-compatible API endpoint (e.g. ckey.vn / xah.io)."""
-        base_url = os.getenv("OPENAI_BASE_URL", OPENAI_BASE_URL).rstrip("/")
+    async def _call_openai_compatible(cls, prompt: str, api_key: str = "") -> Optional[str]:
+        """Generate response via OpenAI-compatible API endpoint with automatic multi-key failover."""
         model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
-        url = f"{base_url}/chat/completions"
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
         payload = {
             "model": model,
             "messages": [
+                {
+                    "role": "system",
+                    "content": "Bạn là trợ lý AI Copilot CSKH Tiki. Hãy suy nghĩ ngắn gọn và trả lời trực tiếp bằng tiếng Việt chuẩn mực CSKH."
+                },
                 {"role": "user", "content": prompt}
             ],
             "temperature": 0.2,
-            "max_tokens": 1024,
+            "max_tokens": 4096,
         }
 
         try:
-            async with httpx.AsyncClient(timeout=12.0) as client:
-                resp = await client.post(url, json=payload, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    choices = data.get("choices", [])
-                    if choices:
-                        content = choices[0].get("message", {}).get("content", "").strip()
-                        if content:
-                            return content
-                else:
-                    print(f"[CopilotDraftEngine] OpenAI-compatible call returned status {resp.status_code}: {resp.text[:200]}")
+            res_data = await call_chat_completion_with_failover(payload, timeout=25.0)
+            if res_data and "choices" in res_data and res_data["choices"]:
+                msg = res_data["choices"][0].get("message", {})
+                content = (msg.get("content") or "").strip()
+                if content:
+                    return content
         except Exception as exc:
             print(f"[CopilotDraftEngine] OpenAI-compatible call error: {exc}")
         return None
+
+    @classmethod
+    async def _stream_openai_compatible(cls, prompt: str, api_key: str = "") -> AsyncGenerator[str, None]:
+        """Stream response tokens via OpenAI-compatible API endpoint with automatic multi-key failover."""
+        model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
+        payload = {
+            "model": model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Bạn là trợ lý AI Copilot CSKH Tiki. Hãy suy nghĩ ngắn gọn và trả lời trực tiếp bằng tiếng Việt chuẩn mực CSKH.",
+                },
+                {"role": "user", "content": prompt},
+            ],
+            "temperature": 0.2,
+            "max_tokens": 4096,
+        }
+
+        try:
+            async for token in stream_chat_completion_with_failover(payload, timeout=30.0):
+                yield token
+        except Exception as exc:
+            print(f"[CopilotDraftEngine] Stream error: {exc}")
 
     @classmethod
     async def _call_gemini(cls, prompt: str, api_key: str) -> Optional[str]:
@@ -156,11 +178,13 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
 
 === YÊU CẦU BẮT BUỘC ĐỐI VỚI BẢN THẢO CSKH ===
 1. Quy tắc xưng hô BẮT BUỘC: Nhân viên CSKH luôn xưng "em" và gọi khách hàng là "anh/chị" (hoặc "mình"). TUYỆT ĐỐI KHÔNG dùng từ "bạn" khi xưng hô với khách hàng. Luôn mở đầu tự nhiên bằng "Dạ em chào anh/chị...".
-2. Giải quyết trúng đích: Tận dụng trực tiếp dữ liệu đơn hàng ở mục 4 (tên khách hàng, SĐT, trạng thái, bưu cục/dự kiến giao) và lịch sử trao đổi để giải đáp cụ thể. ĐÃ CÓ ĐẦY ĐỦ THÔNG TIN ĐƠN HÀNG, TUYỆT ĐỐI KHÔNG hỏi lại những thông tin đã có (như SĐT, email, mã đơn...).
-3. Nếu khách hàng hỏi về tiến độ đơn hàng mà chưa có mã đơn hoặc thông tin đơn trong hồ sơ, hãy lịch sự đề nghị: "Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé."
+2. TẬN DỤNG TRỰC TIẾP DỮ LIỆU ĐƠN HÀNG: Khi hồ sơ ở mục 4 đã có thông tin đơn hàng cụ thể (tên khách hàng, mã đơn, sản phẩm, trạng thái giao hàng), BẠN BẮT BUỘC PHẢI TRẢ LỜI CỤ THỂ CHI TIẾT ĐƠN ĐÓ (tên sản phẩm, số tiền, ngày giao/trạng thái). TUYỆT ĐỐI KHÔNG hướng dẫn khách "vào mục Đơn hàng của tôi trên App để tra cứu", vì khách đang yêu cầu nhân viên tra cứu trực tiếp!
+3. Nếu khách hàng hỏi về tiến độ đơn hàng mà hệ thống chưa có bất kỳ mã đơn hoặc thông tin đơn nào trong hồ sơ, hãy lịch sự đề nghị: "Dạ anh/chị cho em xin mã đơn hàng hoặc số điện thoại đặt hàng để em tra cứu ngay giúp mình nhé ạ."
 4. Căn cứ chính sách: Mỗi khi đưa ra điều kiện, thời hạn hoặc quy định, hãy trích dẫn mã tài liệu tương ứng ở ngay phía sau câu đó theo định dạng [POL-XXX].
-5. Độ dài chuẩn mực: Viết ngắn gọn, súc tích trong khoảng 3 - 5 câu (hoặc gạch đầu dòng rõ ràng nếu hướng dẫn các bước), sẵn sàng để nhân viên chỉ cần đọc lướt và nhấn nút gửi cho khách.
-6. Tuyệt đối không bịa đặt những điều không có trong tài liệu hoặc dữ liệu đơn hàng.
+5. Nếu khách hàng chỉ chào hỏi xã giao hoặc cảm ơn/xác nhận ("ok", "oce", "cảm ơn"), hãy đáp lễ lịch sự, thân thiện và sẵn sàng hỗ trợ thêm nếu khách cần.
+6. Độ dài chuẩn mực: Viết ngắn gọn, súc tích trong khoảng 3 - 5 câu (hoặc gạch đầu dòng rõ ràng nếu hướng dẫn các bước), sẵn sàng để nhân viên chỉ cần đọc lướt và nhấn nút gửi cho khách.
+7. XỬ LÝ CÂU HỎI NGOÀI PHẠM VI (Out of Scope): Nếu câu hỏi của khách hàng không liên quan đến thương mại điện tử, đơn hàng hay mua sắm (ví dụ hỏi thời tiết, toán học, người nổi tiếng, thể thao...), BẠN TUYỆT ĐỐI KHÔNG tìm cách suy diễn hay lôi đơn hàng vào câu trả lời. Hãy soạn một câu từ chối khéo léo, lịch sự, thân thiện và hỏi xem khách có cần hỗ trợ gì về đơn hàng hay chính sách Tiki không.
+8. NẾU KHÁCH HỎI VỀ ƯU ĐÃI / KHUYẾN MÃI / VOUCHER: Hãy giải đáp trực tiếp về các chương trình ưu đãi, mã giảm giá, voucher freeship áp dụng cho đơn hàng/sản phẩm của khách (tham chiếu chính sách [POL-PROMO-001] hoặc chính sách liên quan). TUYỆT ĐỐI KHÔNG trả lời lạc đề sang lộ trình vận chuyển hay bưu tá khi khách đang hỏi về khuyến mãi, ưu đãi!
 """
         return prompt
 
@@ -186,6 +210,21 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
                 "Anh/chị chia sẻ chi tiết giúp em vấn đề để em xử lý ngay cho mình nhé ạ!"
             )
 
+        # Case 0: Short conversational acknowledgements / thanks / closings
+        q_clean = user_query.strip().lower()
+        if q_clean in {"oce", "ok", "oke", "oki", "dạ", "vâng", "cảm ơn", "cam on", "thanks", "thank you", "được rồi", "hiểu rồi"}:
+            return (
+                "Dạ em cảm ơn anh/chị! Nếu mình có bất kỳ thắc mắc hay cần hỗ trợ gì thêm trong quá trình mua sắm tại Tiki, "
+                "anh/chị cứ nhắn tin để em hỗ trợ ngay nhé. Chúc anh/chị một ngày nhiều niềm vui ạ!"
+            )
+
+        # Case 0b: Out-of-scope / off-topic question gentle refusal
+        if intent == "out_of_scope" or any(k in q_clean for k in ["ronaldo", "messi", "thời tiết", "phương trình", "toán học", "bóng đá", "thơ ca"]):
+            return (
+                "Dạ em chào anh/chị! Câu hỏi này hiện nằm ngoài phạm vi hỗ trợ thông tin đơn hàng và mua sắm của Tiki rồi ạ 😊. "
+                "Anh/chị có cần em hỗ trợ thêm thông tin gì về đơn hàng, vận chuyển hay các chính sách mua sắm trên sàn Tiki không ạ?"
+            )
+
         # Case 1: Financial risk (Refund / Payment Issue) - Smart Macro for 100% legal & audit compliance
         if intent in ("request_refund", "payment_issue") and order_data:
             order_id = order_data.get("order_id", "của mình")
@@ -209,30 +248,82 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
             citations=citations,
         )
 
-        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
-        openai_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
-        gemini_key = os.getenv("GEMINI_API_KEY", "") or GEMINI_API_KEY
+        gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
 
-        # If configured for OpenAI-compatible (e.g. ckey.vn openai-gpt-oss-20b)
-        if provider == "openai_compatible" and openai_key:
-            draft = await cls._call_openai_compatible(prompt, openai_key)
+        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b via api.xah.io with failover)
+        if get_available_api_keys():
+            draft = await cls._call_openai_compatible(prompt)
             if draft:
                 return draft
 
-        # If configured for Gemini or fallback
-        if gemini_key and gemini_key != "your_gemini_api_key_here":
+        # 2. Secondary: Gemini API if OpenAI is degraded / quota exceeded
+        if gemini_key:
             draft = await cls._call_gemini(prompt, gemini_key)
             if draft:
                 return draft
 
-        # Secondary fallback: if Gemini was primary and failed, try OpenAI if key exists
-        if openai_key and provider != "openai_compatible":
-            draft = await cls._call_openai_compatible(prompt, openai_key)
-            if draft:
-                return draft
-
-        # Case 3: Semantic Fallback Draft when LLMs are unavailable
+        # 3. Grounded Semantic Fallback Draft when LLMs are unavailable
         return cls._build_semantic_fallback_draft(user_query, intent, facts, order_data, citations)
+
+    @classmethod
+    async def generate_draft_stream(
+        cls,
+        user_query: str,
+        intent: str,
+        facts: Dict[str, Any],
+        order_data: Optional[Dict[str, Any]],
+        context_summary: Optional[str],
+        recent_turns_text: str,
+        citations: List[Any],
+        is_live_chat: bool = False,
+    ) -> AsyncGenerator[str, None]:
+        """Stream drafted response tokens in real-time (~0.8s TTFT)."""
+        # Case 0: Live chat handover
+        if intent == "human_agent" or is_live_chat:
+            yield (
+                "Dạ em chào anh/chị, em là nhân viên CSKH Tiki trực tuyến đây ạ. "
+                "Em đã tiếp nhận yêu cầu của mình và sẵn sàng hỗ trợ trực tiếp ngay bây giờ ạ!"
+            )
+            return
+
+        # Case 1: Trivial closing/gratitude
+        if intent in ("chitchat_greeting", "chitchat_farewell", "chitchat"):
+            closing_res = (
+                "Dạ em cảm ơn anh/chị! Nếu mình có bất kỳ thắc mắc hoặc cần hỗ trợ thêm thông tin nào khác về đơn hàng, "
+                "anh/chị cứ nhắn lại cho em bất cứ lúc nào nhé. Chúc anh/chị một ngày mua sắm vui vẻ cùng Tiki ạ!"
+            )
+            yield closing_res
+            return
+
+        prompt = cls.build_full_context_prompt(
+            user_query=user_query,
+            intent=intent,
+            facts=facts,
+            order_data=order_data,
+            context_summary=context_summary,
+            recent_turns_text=recent_turns_text,
+            citations=citations,
+        )
+
+        yielded_any = False
+        if get_available_api_keys():
+            async for token in cls._stream_openai_compatible(prompt):
+                yielded_any = True
+                yield token
+
+        if not yielded_any:
+            # Fallback to static drafted text
+            static_draft = await cls.generate_draft(
+                user_query=user_query,
+                intent=intent,
+                facts=facts,
+                order_data=order_data,
+                context_summary=context_summary,
+                recent_turns_text=recent_turns_text,
+                citations=citations,
+                is_live_chat=is_live_chat,
+            )
+            yield static_draft
 
     @classmethod
     def _build_semantic_fallback_draft(
@@ -249,6 +340,14 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
 
         if intent in ("track_order", "delivery_time"):
             if order_data:
+                amount_str = f"{order_data.get('total_amount', 0):,} VNĐ" if order_data.get("total_amount") else "N/A"
+                if any(w in user_query.lower() for w in ["bao nhiêu tiền", "hết bao nhiêu", "tổng tiền", "giá bao nhiêu", "thanh toán bao nhiêu", "bao tien"]):
+                    return (
+                        f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
+                        f"Tổng giá trị thanh toán cho đơn hàng là {amount_str} (bao gồm đầy đủ thuế và phụ phí) {citation_tags} ạ. "
+                        f"Nếu anh/chị cần em hỗ trợ kiểm tra thêm chi tiết các món trong đơn, cứ nhắn lại cho em nhé!"
+                    )
+
                 shipper = order_data.get("shipper_name") or "bưu tá"
                 phone = f" ({order_data.get('shipper_phone')})" if order_data.get("shipper_phone") else ""
                 status = order_data.get("status", "đang được vận chuyển")
@@ -275,6 +374,13 @@ Nhiệm vụ của bạn là soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HO
                 f"Dạ em chào anh/chị, về cước phí vận chuyển, Tiki áp dụng biểu phí giao hàng tiêu chuẩn "
                 f"và hỗ trợ miễn phí vận chuyển cho các đơn hàng đạt giá trị tối thiểu theo quy định {citation_tags} ạ. "
                 f"Anh/chị có thể áp dụng thêm mã Freeship tại bước thanh toán để được giảm phí ship tối đa nhé!"
+            )
+
+        if intent in ("get_discounts", "promotion_policy"):
+            return (
+                f"Dạ em chào anh/chị, về chính sách ưu đãi cho đơn hàng {order_id or ''}, Tiki hiện hỗ trợ áp dụng đồng thời "
+                f"nhiều loại mã ưu đãi bao gồm mã giảm giá từ sàn/nhà bán, mã miễn phí vận chuyển Freeship và điểm tích lũy Tiki Xu {citation_tags} ạ. "
+                f"Nếu đơn hàng đã chuyển sang trạng thái vận chuyển, các mã giảm giá đã áp dụng sẽ được giữ nguyên theo đơn hàng anh/chị nhé!"
             )
 
         return (
