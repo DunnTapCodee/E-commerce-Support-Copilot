@@ -123,23 +123,27 @@ class InputClassifier:
         return "new_question", extracted, 0.85
 
     def _build_prompt(self, text: str, active_intent: Optional[str], context_summary: Optional[str]) -> str:
-        return f"""Bạn là bộ phân loại câu hội thoại cho trợ lý CSKH E-commerce.
+        return f"""Bạn là bộ phân loại câu hội thoại NLU thông minh cho trợ lý CSKH E-commerce Tiki.
 Hãy phân tích tin nhắn của khách hàng và phân loại vào ĐÚNG 1 TRONG 4 LOẠI:
-- "chitchat": Câu chào hỏi, cảm ơn, xã giao (ví dụ: "chào bạn", "cảm ơn nhiều nhé").
-- "fact_supplement": Câu bổ sung mã đơn hàng, số điện thoại, chi tiết sản phẩm cho ý định trước đó mà không có ý định mới.
-- "negation_reversal": Khách quay xe, đổi ý, phủ định ý định cũ (ví dụ: "thôi không hủy đơn nữa, xem bao giờ giao hộ tôi").
-- "new_question": Khách hỏi một câu hỏi hoặc khiếu nại mới hoàn toàn.
+1. "chitchat": Chỉ đơn thuần là lời chào, cảm ơn, xác nhận hoặc tạm biệt xã giao (không chứa câu hỏi hay yêu cầu nghiệp vụ nào khác).
+   - Ví dụ: "Chào bạn", "Cảm ơn shop nhiều", "Dạ vâng em hiểu rồi ạ", "Ok shop".
+2. "fact_supplement": Khách hàng chỉ bổ sung thông tin còn thiếu (như mã đơn hàng, số điện thoại, tên người nhận, màu sắc sản phẩm) cho câu hỏi hoặc yêu cầu đang trao đổi trước đó.
+   - Ví dụ: "Mã đơn là ORD-1003 nhé", "0912345678", "Màu đen size L".
+3. "negation_reversal": Khách hàng thay đổi ý định, phủ định hoặc hủy bỏ yêu cầu vừa đưa ra trước đó để chuyển sang yêu cầu khác.
+   - Ví dụ: "Thôi không hủy đơn nữa, xem bao giờ giao hộ tôi", "Khoan hãy đổi hàng, cho tôi hỏi chính sách trước".
+4. "new_question": Khách hàng hỏi một câu hỏi mới, tra cứu chính sách, hỏi về đơn hàng, khiếu nại hoặc yêu cầu hỗ trợ mới.
+   - LƯU Ý ĐẶC BIỆT: Nếu khách vừa chào hỏi vừa đặt câu hỏi (ví dụ: "Chào shop, kiểm tra giúp mình đơn ORD-1002"), BẮT BUỘC phân loại là "new_question" để không bỏ sót câu hỏi của khách!
 
-NGỮ CẢNH TRƯỚC:
-- Intent đang xử lý: {active_intent or 'Chưa có'}
+NGỮ CẢNH TRƯỚC ĐÓ:
+- Ý định đang xử lý: {active_intent or 'Chưa có'}
 - Tóm tắt bối cảnh: {context_summary or 'Chưa có'}
 
 CÂU NÓI HIỆN TẠI CỦA KHÁCH:
 "{text}"
 
-YÊU CẦU: Trả về JSON hợp lệ theo định dạng:
-{{"input_type": "...", "order_id": "...", "confidence": 0.95}}
-Chỉ trả về JSON thuần túy, không thêm markdown.
+YÊU CẦU: Trả về DUY NHẤT một JSON hợp lệ:
+{{"input_type": "chitchat" | "fact_supplement" | "negation_reversal" | "new_question", "order_id": "ORD-XXXX hoặc null", "confidence": 0.95}}
+Tuyệt đối không thêm markdown hay giải thích ngoài.
 """
 
     async def _classify_with_openai_compatible(

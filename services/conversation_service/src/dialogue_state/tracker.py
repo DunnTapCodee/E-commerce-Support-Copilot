@@ -125,7 +125,7 @@ class IntentTracker:
         for nuanced transitions, and regex fallback upon timeout/error.
         """
         # Case A: Instant deterministic cases (no need to call LLM)
-        if input_type in ("chitchat", "fact_supplement") or not state.active_intent:
+        if input_type in ("chitchat", "fact_supplement", "negation_reversal") or not state.active_intent:
             return cls._fallback_regex_transition(user_text, input_type, extracted_facts, ml_intent_resp, state)
 
         # Case B: If ML classifier is extremely confident (>= 0.90) and clearly different topic
@@ -136,23 +136,31 @@ class IntentTracker:
         if use_llm and state.active_intent:
             try:
                 system_prompt = (
-                    "Bạn là chuyên gia phân loại chuyển tiếp ý định (Dialogue State Tracker) cho CSKH E-commerce Tiki.\n"
-                    "Nhiệm vụ: Phân tích xem câu hỏi mới của khách hàng đang tiếp tục chủ đề cũ (CONTINUE) hay chuyển sang ý định mới (SWITCH).\n"
+                    "Bạn là chuyên gia phân loại chuyển tiếp ý định hội thoại (Dialogue State Tracker) cho CSKH Tiki.\n"
+                    "Nhiệm vụ: Phân tích xem câu hỏi mới của khách hàng đang TIẾP TỤC CHỦ ĐỀ CŨ (CONTINUE) hay CHUYỂN SANG Ý ĐỊNH MỚI (SWITCH).\n\n"
+                    "QUY TẮC PHÂN XỬ:\n"
+                    "1. Chọn 'CONTINUE' khi: Khách hỏi tiếp về cùng một đối tượng/vấn đề đang bàn (ví dụ đang tra đơn mà hỏi thêm 'thế giao sáng hay chiều', 'shipper có gọi trước không', 'bao nhiêu tiền').\n"
+                    "2. Chọn 'SWITCH' khi: Khách chuyển hẳn sang một nghiệp vụ khác (ví dụ từ tra đơn sang hỏi mã giảm giá 'tiki có voucher gì không', từ khiếu nại sang hỏi đổi trả 'chính sách đổi hàng thế nào').\n\n"
                     "12 Intent chuẩn E-commerce Tiki:\n"
-                    "- track_order: Tra cứu tình trạng, vị trí đơn hàng.\n"
+                    "- track_order: Tra cứu tình trạng, vị trí, giá tiền đơn hàng.\n"
                     "- cancel_order: Hủy đơn hàng.\n"
-                    "- return_product: Đổi trả hàng do lỗi hoặc không vừa ý.\n"
-                    "- delivery_time: Hỏi thời gian giao hàng, khi nào nhận được.\n"
-                    "- payment_issue: Sự cố thanh toán, chuyển khoản, tiền COD.\n"
-                    "- change_shipping_address: Thay đổi địa chỉ nhận hàng, số điện thoại.\n"
-                    "- get_discounts: Tìm kiếm, tra cứu mã giảm giá, khuyến mãi, Tiki Xu.\n"
-                    "- return_policy: Hỏi chính sách, quy định đổi trả chung.\n"
-                    "- refund_policy: Hỏi chính sách hoàn tiền, thời gian tiền về.\n"
-                    "- promotion_policy: Hỏi thể lệ khuyến mãi, điều kiện voucher.\n"
-                    "- complaint: Khiếu nại dịch vụ, thái độ phục vụ.\n"
+                    "- return_product: Đổi trả sản phẩm cụ thể do lỗi/hỏng.\n"
+                    "- delivery_time: Hỏi thời gian giao hàng, ngày nhận.\n"
+                    "- payment_issue: Phương thức thanh toán, tiền COD, sự cố thẻ.\n"
+                    "- change_shipping_address: Thay đổi địa chỉ, số điện thoại nhận hàng.\n"
+                    "- get_discounts: Tìm kiếm mã giảm giá, khuyến mãi, Tiki Xu.\n"
+                    "- return_policy: Quy định, điều kiện đổi trả chung hoặc bảo hành.\n"
+                    "- refund_policy: Quy định hoàn tiền, thời gian tiền về.\n"
+                    "- promotion_policy: Thể lệ chương trình khuyến mãi.\n"
+                    "- complaint: Khiếu nại thái độ, dịch vụ giao nhận.\n"
                     "- human_agent: Yêu cầu gặp nhân viên trực tiếp.\n"
                     "- out_of_scope: Ngoài phạm vi mua sắm thương mại điện tử Tiki.\n\n"
-                    "Chỉ trả về JSON duy nhất:\n"
+                    "VÍ DỤ PHÂN XỬ:\n"
+                    "- Trước là track_order, câu mới 'thế có được freeship không' -> SWITCH sang get_discounts\n"
+                    "- Trước là track_order, câu mới 'khoảng mấy giờ thì tới' -> CONTINUE (hoặc delivery_time)\n"
+                    "- Trước là get_discounts, câu mới 'voucher này dùng cho đơn ORD-1002 được không' -> CONTINUE hoặc promotion_policy\n"
+                    "- Trước là cancel_order, câu mới 'chuyển máy cho người thật đi' -> SWITCH sang human_agent\n\n"
+                    "Chỉ trả về JSON duy nhất (không kèm markdown thừa):\n"
                     '{"action": "CONTINUE"|"SWITCH", "intent": "<intent_hợp_lý_nhất>", "confidence": 0.85, "reason": "<giải thích ngắn>"}'
                 )
 

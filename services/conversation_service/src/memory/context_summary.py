@@ -37,6 +37,12 @@ class ContextSummaryManager:
         if state.active_intent:
             parts.append(f"Ý định chính: {state.active_intent}")
 
+        if len(state.recent_order_ids) > 1:
+            parts.append(f"Các đơn liên quan: {', '.join(state.recent_order_ids)}")
+
+        if state.awaiting_slot:
+            parts.append(f"Đang chờ: {state.awaiting_slot}")
+
         if state.is_live_chat:
             parts.append("Chế độ: Đã chuyển Live Chat")
 
