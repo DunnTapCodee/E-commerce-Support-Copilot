@@ -121,6 +121,8 @@ class CustomerAcknowledgementEngine:
             chosen = cls._pick_variant(RETURN_REFUND_BUFFERS, last_ack)
         elif has_order_price or (intent == "track_order" and "bao nhiêu tiền" in q_lower):
             chosen = cls._pick_variant(PRICE_BUFFERS, last_ack)
+        elif (intent in ("track_order", "delivery_time") or has_order_tracking) and not facts.get("order_id") and not bool(re.search(r"\bORD-[A-Za-z0-9-]+\b", q_lower)):
+            return "Dạ em chào anh/chị! Em đã ghi nhận yêu cầu của mình. Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
         elif has_order_tracking or (intent in ("track_order", "delivery_time") and facts.get("order_id")):
             chosen = cls._pick_variant(ORDER_BUFFERS, last_ack)
         elif has_out_of_scope or intent == "out_of_scope":

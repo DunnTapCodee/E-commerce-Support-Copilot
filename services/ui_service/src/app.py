@@ -3,6 +3,7 @@ Thin Orchestrator routing to modular views in services/ui_service/src/views/.
 """
 import os
 import sys
+import uuid
 from pathlib import Path
 import streamlit as st
 
@@ -24,6 +25,12 @@ st.set_page_config(
 )
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://127.0.0.1:8000").rstrip("/")
+
+# -----------------------------------------------------------------------------
+# Session State Initialization
+# -----------------------------------------------------------------------------
+if "session_id" not in st.session_state:
+    st.session_state.session_id = f"SES-{uuid.uuid4().hex[:8].upper()}"
 
 # Custom CSS Styling
 st.markdown(
@@ -66,6 +73,18 @@ with st.sidebar:
         ],
         index=0,
     )
+
+    with st.expander("🔑 Cấu hình Gemini API Key (cho tính năng LLM)", expanded=False):
+        user_key = st.text_input(
+            "Google Gemini API Key",
+            value=st.session_state.get("custom_gemini_key", ""),
+            type="password",
+            placeholder="Nhập Gemini API Key (AQ... hoặc AIzaSy...)",
+            help="Nhập Gemini API Key của bạn để sử dụng mô hình LLM trích xuất chính sách tự động.",
+            key="custom_gemini_key_input",
+        )
+        if user_key:
+            st.session_state["custom_gemini_key"] = user_key.strip()
 
     st.divider()
     st.caption(f"Gateway URL: `{GATEWAY_URL}`")
