@@ -20,11 +20,10 @@ from contracts.schemas import (
 )
 from services.gateway.src.config import (
     CONVERSATION_SERVICE_URL,
+    DOCUMENT_SERVICE_URL,
     INTENT_SERVICE_URL,
     RAG_SERVICE_URL,
     TELEMETRY_SERVICE_URL,
-    CONVERSATION_SERVICE_URL,
-    DOCUMENT_SERVICE_URL,
 )
 
 
