@@ -51,14 +51,32 @@ QUY TẮC PHÂN LOẠI & PHẠM VI (SCOPE BOUNDARY):
 2. TẤT CẢ câu hỏi liên quan đến mua sắm, đặt hàng, thanh toán, vận chuyển, đổi trả, bảo hành, voucher, CSKH trên sàn TMĐT ĐỀU LÀ IN-SCOPE và BẮT BUỘC gán vào 1 trong 12 intent nghiệp vụ ở trên:
    - Thắc mắc phương thức thanh toán (tiền mặt COD, thẻ, ví điện tử) -> gán `payment_issue`.
    - Hỏi về bảo hành, sửa chữa sản phẩm -> gán `return_policy`.
-   - Hỏi kiểm tra lại thông tin đơn, xuất hóa đơn VAT -> gán `track_order`.
+   - Hỏi kiểm tra lại thông tin đơn, xuất hóa đơn VAT, giá đơn hàng -> gán `track_order`.
+   - Yêu cầu gặp nhân viên, chuyển máy hỗ trợ -> BẮT BUỘC gán `human_agent`.
 3. TUYỆT ĐỐI CHỈ DÙNG `out_of_scope` khi câu hỏi hoàn toàn không thuộc về mua sắm hay TMĐT (như thời tiết, toán học, ronaldo, bóng đá, thơ ca).
 4. XỬ LÝ NGỮ CẢNH HỘI THOẠI:
    - Nếu câu hỏi bắt đầu bằng các thẻ ngữ cảnh hội thoại như `[PREV_INTENT: ...]`, `[ORDER: ...]`, `[AWAITING: ...]`, bạn PHẢI cân nhắc ngữ cảnh này.
    - Ví dụ: `[PREV_INTENT:track_order] [AWAITING:order_id] ORD-1003` -> Đây là câu bổ sung thông tin cho `track_order`.
    - Nếu khách đảo ý định: `[PREV_INTENT:cancel_order] thôi không hủy nữa, xem bao giờ giao` -> Intent chuyển sang `delivery_time`.
-5. ĐỊNH DẠNG ĐẦU RA:
-   Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài):
+
+VÍ DỤ TIÊU BIỂU (FEW-SHOT EXAMPLES):
+- "Chuyển máy cho nhân viên hỗ trợ" -> intent: "human_agent"
+- "Gặp trực tiếp tư vấn viên" -> intent: "human_agent"
+- "Đơn hàng của mình bao giờ tới nơi" -> intent: "delivery_time"
+- "Khi nào giao vậy shop" -> intent: "delivery_time"
+- "Đơn hàng của mình hết bao nhiêu tiền" -> intent: "track_order"
+- "Kiểm tra lại đơn ORD-1002 giúp tôi" -> intent: "track_order"
+- "Hiện tại Tiki có ưu đãi hay voucher gì không" -> intent: "get_discounts"
+- "Tiki xu dùng để làm gì" -> intent: "get_discounts"
+- "Chính sách đổi trả trong vòng bao nhiêu ngày" -> intent: "return_policy"
+- "Hàng này có được bảo hành chính hãng không" -> intent: "return_policy"
+- "Áo này bị rách chỉ tôi muốn đổi cái khác" -> intent: "return_product"
+- "Cho tôi hủy đơn hàng vừa đặt" -> intent: "cancel_order"
+- "Tôi muốn lấy lại tiền đã thanh toán" -> intent: "request_refund"
+- "Hôm nay trời có mưa không" -> intent: "out_of_scope"
+
+ĐỊNH DẠNG ĐẦU RA:
+Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài):
 {{
   "intent": "<tên intent thuộc danh sách trên>",
   "confidence": <số thực từ 0.70 đến 0.99>,

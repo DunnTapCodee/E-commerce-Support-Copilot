@@ -128,8 +128,8 @@ class QueryRewriter:
 
         # SCOPE 3: POLICY GENERAL -> STRICTLY HIDE ORDER DATA
         if scope == cls.SCOPE_POLICY_GENERAL:
-            prompt = f"""Bạn là bộ phận tiền xử lý truy vấn tìm kiếm chính sách (Policy Query Rewriter) cho CSKH Tiki.
-Nhiệm vụ: Viết lại câu hỏi của khách hàng thành MỘT CÂU truy vấn tra cứu tài liệu/chính sách hoàn chỉnh bằng tiếng Việt, sửa lỗi chính tả hoặc từ viết tắt.
+            prompt = f"""Bạn là chuyên gia tiền xử lý truy vấn tìm kiếm tri thức & chính sách sàn Tiki (Policy Query Rewriter).
+Nhiệm vụ: Viết lại câu hỏi của khách hàng thành MỘT CÂU truy vấn tra cứu tài liệu/chính sách chuẩn xác bằng tiếng Việt, sửa lỗi chính tả và chuẩn hóa thuật ngữ sàn TMĐT.
 
 LỊCH SỬ TRAO ĐỔI GẦN ĐÂY:
 {history_str}
@@ -138,15 +138,27 @@ CÂU HỎI HIỆN TẠI CỦA KHÁCH:
 "{clean_query}"
 
 QUY TẮC BẮT BUỘC:
-- Đây là câu hỏi về CHÍNH SÁCH / ƯU ĐÃI / DỊCH VỤ CHUNG của sàn Tiki.
+- Đây là câu hỏi về CHÍNH SÁCH / ƯU ĐÃI / THỂ LỆ CHUNG của sàn Tiki.
 - TUYỆT ĐỐI KHÔNG tự tiện bịa hoặc ghép bất kỳ mã đơn hàng (ORD-...) hay tên sản phẩm cá nhân nào vào câu truy vấn.
-- Trả về DUY NHẤT 1 câu truy vấn tra cứu chuẩn mực, không thêm dấu ngoặc kép, không thêm lời giải thích."""
+- Trả về DUY NHẤT 1 câu truy vấn tra cứu, không thêm dấu ngoặc kép hay lời giải thích.
+
+VÍ DỤ VIẾT LẠI:
+- Khách hỏi: "tiki đang có ưu đãi gì" -> "Các chương trình khuyến mãi, mã giảm giá và voucher ưu đãi hiện có trên Tiki"
+- Khách hỏi: "đổi hàng mất mấy ngày" -> "Quy định về thời hạn và điều kiện đổi trả hàng trên Tiki"
+- Khách hỏi: "làm sao để thanh toán tiền mặt" -> "Hướng dẫn phương thức thanh toán tiền mặt khi nhận hàng COD trên Tiki"
+"""
             return await cls._call_llm_rewriter(prompt, clean_query, scope, state, order_data, api_key, "llm_policy_rewriter")
 
-        # SCOPE 2 & 4: Prepare Order Context
-        order_ctx = "Chưa có thông tin đơn hàng."
+        # SCOPE 2 & 4: Prepare Order Context & Support Multi-Order Disambiguation
         order_id = state.active_order_id or (order_data.get("order_id") if order_data else None)
-        if order_data:
+        # Check if customer is referring to an alternative/previous order in session
+        if any(w in clean_query.lower() for w in ["đơn kia", "đơn trước", "đơn khác", "đơn thứ 2", "đơn còn lại"]):
+            alt_order = state.get_alternative_order_id()
+            if alt_order:
+                order_id = alt_order
+
+        order_ctx = "Chưa có thông tin đơn hàng."
+        if order_data and (not order_id or order_id == order_data.get("order_id")):
             customer_name = order_data.get("customer_name", state.customer_id)
             items = ", ".join(f"{it.get('name')} (x{it.get('quantity', 1)})" for it in order_data.get("items", [])) or "Sản phẩm"
             status = order_data.get("order_status") or order_data.get("status", "N/A")
@@ -170,12 +182,17 @@ CÂU HỎI HIỆN TẠI CỦA KHÁCH:
 
 QUY TẮC BẮT BUỘC:
 - Kết hợp rõ ràng mã đơn hàng ({order_id or 'đơn hàng đã đặt'}), trạng thái đơn và chính sách khách hàng đang muốn đối soát.
-- Trả về DUY NHẤT 1 câu truy vấn bằng tiếng Việt, không kèm giải thích, không kèm markdown."""
+- Trả về DUY NHẤT 1 câu truy vấn bằng tiếng Việt, không kèm giải thích, không kèm markdown.
+
+VÍ DỤ:
+- "đơn này có được freeship không" -> "Đơn hàng {order_id or 'ORD-1002'} có đủ điều kiện áp dụng mã miễn phí vận chuyển Freeship không?"
+- "món này có đổi trả được không" -> "Sản phẩm trong đơn hàng {order_id or 'ORD-1002'} có đủ điều kiện áp dụng chính sách đổi trả hàng không?"
+"""
             return await cls._call_llm_rewriter(prompt, clean_query, scope, state, order_data, api_key, "llm_hybrid_rewriter")
 
         # SCOPE 2: ORDER SPECIFIC -> Tracking, price, delivery time, cancellation
-        prompt = f"""Bạn là bộ phận tiền xử lý truy vấn thông tin đơn hàng (Order Query Rewriter) cho CSKH Tiki.
-Nhiệm vụ: Viết lại câu hỏi tỉnh lược của khách hàng thành MỘT CÂU truy vấn hoàn chỉnh, giải quyết các đại từ (nó, đơn của mình, khi nào tới, bao nhiêu tiền...), bổ sung mã đơn hàng ({order_id or 'ORD-1001'}) và tên sản phẩm/khách hàng.
+        prompt = f"""Bạn là chuyên gia tiền xử lý truy vấn đơn hàng (Order Query Rewriter) cho CSKH Tiki.
+Nhiệm vụ: Viết lại câu hỏi tỉnh lược của khách hàng thành MỘT CÂU truy vấn hoàn chỉnh, giải quyết các đại từ xưng hô và chỉ định (nó, đơn của mình, khi nào tới, bao nhiêu tiền...), bổ sung mã đơn hàng ({order_id or 'ORD-1001'}).
 
 HỒ SƠ ĐƠN HÀNG:
 {order_ctx}
@@ -188,7 +205,14 @@ CÂU NÓI HIỆN TẠI CỦA KHÁCH:
 
 QUY TẮC BẮT BUỘC:
 - Trả về DUY NHẤT 1 câu truy vấn hoàn chỉnh bằng tiếng Việt để tra cứu hành trình hoặc xử lý đơn hàng.
-- Tuyệt đối không thêm giải thích, không thêm dấu ngoặc kép hay markdown."""
+- Tuyệt đối không thêm giải thích, không thêm dấu ngoặc kép hay markdown.
+
+VÍ DỤ:
+- Khách: "bao giờ nhận được hàng" -> "Thời gian giao hàng dự kiến của đơn hàng {order_id or 'ORD-1002'} là khi nào?"
+- Khách: "hết bao nhiêu tiền nhỉ" -> "Tổng số tiền thanh toán của đơn hàng {order_id or 'ORD-1002'} là bao nhiêu?"
+- Khách: "nó đang ở đâu rồi" -> "Vị trí và trạng thái vận chuyển hiện tại của đơn hàng {order_id or 'ORD-1002'} là gì?"
+- Khách: "tôi không muốn lấy nữa" -> "Yêu cầu hủy đơn hàng {order_id or 'ORD-1002'} của khách hàng"
+"""
         return await cls._call_llm_rewriter(prompt, clean_query, scope, state, order_data, api_key, "llm_order_rewriter")
 
     @classmethod
