@@ -47,6 +47,8 @@ export interface GatewayResponse {
   customer_acknowledgement?: string;
   session_turns?: Array<Record<string, any>>;
   context_summary?: string;
+  components_used?: Record<string, string>;
+  rewritten_query?: string;
 }
 
 export interface PolicyAuditLogEntry {

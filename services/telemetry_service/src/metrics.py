@@ -86,3 +86,4 @@ def is_continual_learning_candidate(
     if action == "APPROVE" or (action == "EDIT" and 0.10 <= edit_dist <= 0.85):
         return True
     return False
+

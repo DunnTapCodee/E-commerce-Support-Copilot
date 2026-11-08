@@ -4,17 +4,37 @@ Evaluates:
   2. Invariance Tests (INV) - Metamorphic perturbations that should NOT change output
   3. Directional Expectation Tests (DIR) - Semantic changes that MUST shift output
 """
+import os
 import time
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 from contracts.schemas import IntentPredictionResponse
-from services.intent_service.src.predictor import IntentPredictor
+
+class HttpIntentPredictorAdapter:
+    """Adapter to query Intent Service over HTTP when local sklearn artifacts are not in container."""
+    def __init__(self, base_url: str):
+        self.base_url = base_url.rstrip("/")
+
+    def predict(self, query: str) -> IntentPredictionResponse:
+        import httpx
+        with httpx.Client(timeout=5.0) as client:
+            resp = client.post(f"{self.base_url}/predict", json={"query": query})
+            resp.raise_for_status()
+            return IntentPredictionResponse(**resp.json())
 
 
 class BehavioralTestSuite:
     """CheckList-style behavioral test runner for intent classification & dialogue."""
 
-    def __init__(self, predictor: IntentPredictor = None):
-        self.predictor = predictor or IntentPredictor()
+    def __init__(self, predictor: Any = None):
+        if predictor is not None:
+            self.predictor = predictor
+        else:
+            try:
+                from services.intent_service.src.predictor import IntentPredictor
+                self.predictor = IntentPredictor()
+            except Exception:
+                intent_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:8005")
+                self.predictor = HttpIntentPredictorAdapter(intent_url)
 
     def run_mft(self) -> Dict[str, Any]:
         """Minimum Functionality Tests (MFT): Clear, simple, critical queries."""

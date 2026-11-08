@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { MessageSquare, FileText, Bell, BarChart3, Bot, ShoppingBag } from 'lucide-react';
+import { MessageSquare, FileText, Bell, BarChart3, Bot, ShoppingBag, FlaskConical } from 'lucide-react';
 import { ChatView } from './features/chat/ChatView';
 import { PolicyListView } from './features/policies/PolicyListView';
 import { AuditNotificationView } from './features/notifications/AuditNotificationView';
 import { TelemetryDashboardView } from './features/telemetry/TelemetryDashboardView';
+import { EvaluationDashboardView } from './features/evaluation/EvaluationDashboardView';
 
-type TabType = 'chat' | 'policies' | 'notifications' | 'telemetry';
+type TabType = 'chat' | 'policies' | 'notifications' | 'telemetry' | 'evaluation';
 
 export const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabType>('chat');
@@ -14,7 +15,7 @@ export const App: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-slate-50">
       {/* Top Navbar */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div className="w-full max-w-[1920px] mx-auto px-3 sm:px-5 lg:px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/20">
               <Bot className="w-5 h-5" />
@@ -72,16 +73,38 @@ export const App: React.FC = () => {
               <BarChart3 className="w-3.5 h-3.5" />
               <span>Telemetry</span>
             </button>
+
+            <button
+              onClick={() => setActiveTab('evaluation')}
+              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${activeTab === 'evaluation'
+                ? 'bg-white text-blue-600 shadow-sm'
+                : 'text-slate-600 hover:text-slate-900'
+                }`}
+            >
+              <FlaskConical className="w-3.5 h-3.5" />
+              <span>Kiểm định Hệ thống</span>
+            </button>
           </nav>
         </div>
       </header>
 
-      {/* Main View Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-        {activeTab === 'chat' && <ChatView />}
-        {activeTab === 'policies' && <PolicyListView />}
-        {activeTab === 'notifications' && <AuditNotificationView />}
-        {activeTab === 'telemetry' && <TelemetryDashboardView />}
+      {/* Main View Area - Kept mounted in DOM so tab switching preserves full conversation state */}
+      <main className="flex-1 w-full max-w-[1920px] mx-auto px-2 sm:px-4 py-2 sm:py-3">
+        <div className={activeTab === 'chat' ? 'block' : 'hidden'}>
+          <ChatView />
+        </div>
+        <div className={activeTab === 'policies' ? 'block' : 'hidden'}>
+          <PolicyListView />
+        </div>
+        <div className={activeTab === 'notifications' ? 'block' : 'hidden'}>
+          <AuditNotificationView />
+        </div>
+        <div className={activeTab === 'telemetry' ? 'block' : 'hidden'}>
+          <TelemetryDashboardView />
+        </div>
+        <div className={activeTab === 'evaluation' ? 'block' : 'hidden'}>
+          {activeTab === 'evaluation' && <EvaluationDashboardView />}
+        </div>
       </main>
     </div>
   );

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, RefreshCw, Edit2, Trash2, Search, FileText, CheckCircle2, XCircle } from 'lucide-react';
+import { Plus, RefreshCw, Edit2, Trash2, Search, FileText, CheckCircle2, XCircle, Eye, Copy, Check } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { RetrievedDocument } from '../../types';
 import { Badge } from '../../components/ui/Badge';
@@ -13,6 +13,10 @@ export const PolicyListView: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+
+  // View state
+  const [viewingPolicy, setViewingPolicy] = useState<RetrievedDocument | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Edit state
   const [editingPolicy, setEditingPolicy] = useState<RetrievedDocument | null>(null);
@@ -176,7 +180,7 @@ export const PolicyListView: React.FC = () => {
                 <th className="px-5 py-3.5">Loại văn bản</th>
                 <th className="px-5 py-3.5">Ngày hiệu lực / Hết hạn</th>
                 <th className="px-5 py-3.5">Trạng thái tự động</th>
-                <th className="px-5 py-3.5 text-right">Thao tác</th>
+                <th className="px-5 py-3.5 text-center">Thao tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
@@ -210,17 +214,27 @@ export const PolicyListView: React.FC = () => {
                         <Badge variant="danger">Inactive</Badge>
                       )}
                     </td>
-                    <td className="px-5 py-3.5 text-right space-x-2">
+                    <td className="px-5 py-3.5 text-center space-x-2">
+                      <button
+                        onClick={() => {
+                          setViewingPolicy(p);
+                          setCopied(false);
+                        }}
+                        className="p-1.5 hover:bg-blue-50 rounded-lg text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
+                        title="Xem toàn văn bản chính sách"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => handleOpenEdit(p)}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-blue-600 transition-colors cursor-pointer"
                         title="Chỉnh sửa ngày / loại"
                       >
                         <Edit2 className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => handleDelete(p.doc_id)}
-                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-rose-600 transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-600 hover:text-rose-600 transition-colors cursor-pointer"
                         title="Xóa chính sách"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -305,6 +319,78 @@ export const PolicyListView: React.FC = () => {
                 className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold shadow-sm"
               >
                 Lưu thay đổi & Cập nhật
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* View Full Policy Modal */}
+      {viewingPolicy && (
+        <Modal
+          isOpen={true}
+          onClose={() => setViewingPolicy(null)}
+          title={`📄 Chi tiết Chính sách [${viewingPolicy.doc_id}]`}
+        >
+          <div className="space-y-4 text-xs">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-mono text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded border border-blue-200">
+                  {viewingPolicy.doc_id}
+                </span>
+                <span className="text-[10px] text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded">
+                  {viewingPolicy.category || 'support'}
+                </span>
+                {viewingPolicy.policy_type === 'superseded' ? (
+                  <Badge variant="neutral">Superseded</Badge>
+                ) : viewingPolicy.is_active ? (
+                  <Badge variant="success">Active</Badge>
+                ) : (
+                  <Badge variant="danger">Inactive</Badge>
+                )}
+              </div>
+              <h3 className="text-sm font-bold text-slate-800">{viewingPolicy.title}</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80 font-mono text-[11px]">
+              <div>
+                <span className="text-slate-400 block mb-0.5">Hiệu lực từ:</span>
+                <span className="font-semibold text-slate-700">{viewingPolicy.effective_date || 'N/A (Áp dụng ngay)'}</span>
+              </div>
+              <div>
+                <span className="text-slate-400 block mb-0.5">Ngày hết hạn:</span>
+                <span className="font-semibold text-slate-700">{viewingPolicy.expiration_date || 'Vô hạn (Thường trực)'}</span>
+              </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-slate-700 font-bold">Toàn văn quy định chính sách:</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(viewingPolicy.content);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-700 font-semibold cursor-pointer"
+                >
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copied ? 'Đã sao chép' : 'Sao chép văn bản'}</span>
+                </button>
+              </div>
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-slate-800 leading-relaxed font-sans text-xs whitespace-pre-wrap max-h-72 overflow-y-auto">
+                {viewingPolicy.content}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setViewingPolicy(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors cursor-pointer text-xs"
+              >
+                Đóng
               </button>
             </div>
           </div>

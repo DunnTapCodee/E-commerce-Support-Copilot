@@ -128,3 +128,4 @@ class TestOracleEvaluator:
             "reason": res.reason,
             "passed": not res.hallucination_detected,
         }
+

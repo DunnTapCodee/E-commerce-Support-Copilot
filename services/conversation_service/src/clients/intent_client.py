@@ -11,7 +11,7 @@ class IntentServiceClient:
         self.base_url = base_url.rstrip("/")
 
     async def predict_intent(self, query: str) -> IntentPredictionResponse:
-        async with httpx.AsyncClient(timeout=4.0) as client:
+        async with httpx.AsyncClient(timeout=18.0) as client:
             resp = await client.post(
                 f"{self.base_url}/predict",
                 json={"query": query},

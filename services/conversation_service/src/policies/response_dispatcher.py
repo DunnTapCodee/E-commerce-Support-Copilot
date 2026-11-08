@@ -39,7 +39,7 @@ class ResponsePolicyDispatcher:
         confidence = intent_resp.confidence
 
         # Case -1: Prompt Injection & Adversarial Attack Hard Block
-        from services.gateway.src.guardrails import evaluate_prompt_injection
+        from services.conversation_service.src.policies.safety_guard import evaluate_prompt_injection
         is_injection, injection_msg = evaluate_prompt_injection(user_query)
         if is_injection:
             guard = GuardrailResult(
@@ -53,11 +53,11 @@ class ResponsePolicyDispatcher:
             return guard, draft, None, "🔴 CẢNH BÁO AN NINH: Nghi vấn người dùng cố tình bẻ khóa chỉ dẫn hệ thống.", "blocked_security_guard"
 
         # Case 0: Chitchat greeting or thanks
-        if input_type == "chitchat":
+        if input_type == "chitchat" or intent_name.startswith("chitchat_") or intent_name == "greeting":
             q_lower = user_query.lower()
-            if any(k in q_lower for k in ["cam on", "cảm ơn", "thanks", "thank you"]):
+            if any(k in q_lower for k in ["cam on", "cảm ơn", "thanks", "thank you"]) or intent_name == "chitchat_thanks":
                 reply = MACRO_TEMPLATES["chitchat_thanks"]
-            elif any(k in q_lower for k in ["ok", "vâng", "vang", "đúng", "dung"]):
+            elif any(k in q_lower for k in ["ok", "oke", "vâng", "vang", "đúng", "dung"]) or intent_name == "chitchat_confirm":
                 reply = MACRO_TEMPLATES["chitchat_confirm"]
             else:
                 reply = MACRO_TEMPLATES["chitchat_greeting"]
@@ -103,14 +103,49 @@ class ResponsePolicyDispatcher:
             )
             return guard, draft, suggested, AGENT_GUIDANCE["financial_risk"], "blocked_financial"
 
-        # Case 3: Confidence thấp (< 60%) hoặc Ngoài phạm vi
+        # Case 2b: Câu hỏi Ngoài phạm vi nghiệp vụ (Out of Scope / Off-topic)
+        q_clean = user_query.lower()
+        is_off_topic = (
+            intent_name == "out_of_scope"
+            or any(k in q_clean for k in ["ronaldo", "messi", "thời tiết", "phương trình", "toán học", "bóng đá", "thơ ca"])
+        )
+        if is_off_topic:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason="Câu hỏi nằm ngoài phạm vi hỗ trợ thông tin đơn hàng và mua sắm (Out of Scope).",
+            )
+            draft = (
+                "Dạ em chào anh/chị! Câu hỏi này hiện nằm ngoài phạm vi hỗ trợ thông tin đơn hàng và mua sắm của Tiki rồi ạ 😊. "
+                "Anh/chị có cần em hỗ trợ thêm thông tin gì về đơn hàng, vận chuyển hay các chính sách mua sắm trên sàn Tiki không ạ?"
+            )
+            return (
+                guard,
+                draft,
+                draft,
+                "🟡 NGOÀI PHẠM VI HỖ TRỢ: Câu hỏi không thuộc nghiệp vụ sàn. Đã soạn sẵn lời từ chối lịch sự và điều hướng lại cuộc trò chuyện.",
+                "out_of_scope_abstain",
+            )
+
+        # Case 3: Confidence thấp hoặc Ngoài phạm vi
         if not DISABLE_CONFIDENCE_GUARD and (confidence < INTENT_CONFIDENCE_THRESHOLD or not intent_resp.is_in_scope):
             guard = GuardrailResult(
                 allow_llm=False,
                 action_type="ESCALATE_HUMAN",
-                reason=f"Độ tin cậy thấp ({confidence:.1%}) hoặc ngoài phạm vi hỗ trợ; cần nhân viên xem lại ngữ cảnh.",
+                reason="Yêu cầu nằm ngoài phạm vi chính sách mặc định hoặc cần đối soát ngữ cảnh.",
             )
-            draft = "[CẦN NHÂN VIÊN XỬ LÝ: Vui lòng đọc lại ngữ cảnh đoạn chat và tự soạn phản hồi cho khách.]"
+            if any(k in user_query.lower() for k in ["mã giảm", "voucher", "khuyến mãi", "coupon", "ưu đãi", "giảm giá"]):
+                draft = (
+                    "Dạ em chào anh/chị! Hiện tại Tiki có rất nhiều chương trình ưu đãi và mã giảm giá áp dụng trực tiếp tại mục 'Mã Giảm Giá' trên ứng dụng và website. "
+                    "Anh/chị có thể vào mục Mã Giảm Giá tại trang chủ hoặc ngay bước thanh toán giỏ hàng để chọn áp dụng mã cho đơn hàng của mình nhé ạ. "
+                    "Nếu anh/chị cần em hỗ trợ kiểm tra mã cụ thể nào, vui lòng nhắn lại để em kiểm tra ngay giúp mình nhé!"
+                )
+            else:
+                draft = (
+                    "Dạ em chào anh/chị! Em đã tiếp nhận thông tin yêu cầu của mình. "
+                    "Em đang kiểm tra chi tiết trên hệ thống để hỗ trợ giải đáp cho anh/chị ngay đây ạ. "
+                    "Anh/chị vui lòng đợi em trong giây lát nhé!"
+                )
             return guard, draft, None, AGENT_GUIDANCE["low_confidence"], "low_confidence_abstain"
 
         # Case 4: Dính chính sách cũ hết hạn (Temporal Policy Trap)
@@ -121,7 +156,10 @@ class ResponsePolicyDispatcher:
                 reason="Tài liệu chính sách trích xuất đã hết hiệu lực theo mốc thời gian (Temporal Policy Guard).",
                 temporal_status="EXPIRED",
             )
-            draft = "[Cần nhân viên xử lý: Chính sách cũ đã hết hạn, sử dụng câu đệm an toàn để phản hồi.]"
+            draft = (
+                "Dạ em chào anh/chị, về vấn đề này hiện Tiki đang cập nhật quy định điều khoản mới nhất. "
+                "Em xin phép kiểm tra lại và thông tin chính xác đến anh/chị ngay nhé ạ!"
+            )
             return (
                 guard,
                 draft,

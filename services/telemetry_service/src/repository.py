@@ -163,21 +163,39 @@ class TelemetryRepository:
                 "SELECT COUNT(*) FROM telemetry_logs WHERE is_continual_learning = 1;"
             ).fetchone()[0] or 0
 
+            intent_counts = conn.execute(
+                """
+                SELECT predicted_intent, COUNT(*) as count
+                FROM telemetry_logs
+                GROUP BY predicted_intent
+                ORDER BY count DESC;
+                """
+            ).fetchall()
+
             records = conn.execute(
                 "SELECT * FROM telemetry_logs ORDER BY timestamp DESC LIMIT 50;"
             ).fetchall()
 
         actions_map = {row["human_action"]: row["count"] for row in action_counts}
         guardrail_map = {row["guardrail_action"]: row["count"] for row in guardrail_counts}
+        intent_map = {row["predicted_intent"]: row["count"] for row in intent_counts if row["predicted_intent"]}
 
-        safety_block_rate = round((safety_blocks / total_count * 100), 1) if total_count > 0 else 100.0
+        safety_block_rate = round((safety_blocks / total_count * 100), 1) if total_count > 0 else 0.0
         false_escalation_rate = round((false_escalations / total_count * 100), 1) if total_count > 0 else 0.0
         rubber_rate = round((rubber_stamping_count / total_count * 100), 1) if total_count > 0 else 0.0
 
+        auto_approved_rate = round((actions_map.get("APPROVE", 0) / total_count), 2) if total_count > 0 else 0.0
+        escalation_rate = round((safety_blocks / total_count), 2) if total_count > 0 else 0.0
+
         return {
             "total_interactions": total_count,
+            "total_queries": total_count,
             "actions_breakdown": actions_map,
             "guardrail_breakdown": guardrail_map,
+            "guardrail_actions": guardrail_map,
+            "intent_distribution": intent_map,
+            "auto_approved_rate": auto_approved_rate,
+            "escalation_rate": escalation_rate,
             "safety_block_rate": safety_block_rate,
             "false_escalation_rate": false_escalation_rate,
             "rubber_stamping_count": rubber_stamping_count,
@@ -185,6 +203,7 @@ class TelemetryRepository:
             "mean_edit_distance": round(float(avg_edit_dist), 4),
             "continual_learning_pool_count": cl_count,
             "average_latency_ms": round(float(avg_latency), 2),
+            "avg_latency_ms": round(float(avg_latency), 2),
             "recent_records": [dict(r) for r in records],
             "cache_stats": self.cache.stats(),
         }
@@ -279,11 +298,18 @@ class TelemetryRepository:
                     (clean_id.upper(),),
                 ).fetchone()
 
-            # Check customer_id
+            # Check customer_id (and CUST-XXXX to ORD-XXXX mapping)
             if not row:
                 row = conn.execute(
                     "SELECT * FROM orders WHERE customer_id = ? COLLATE NOCASE ORDER BY order_id DESC LIMIT 1;",
                     (clean_id,),
+                ).fetchone()
+
+            if not row and clean_id.upper().startswith("CUST-"):
+                num_part = clean_id.split("-")[-1]
+                row = conn.execute(
+                    "SELECT * FROM orders WHERE order_id = ? COLLATE NOCASE OR customer_id = ? COLLATE NOCASE LIMIT 1;",
+                    (f"ORD-{num_part}", f"cust-{num_part}"),
                 ).fetchone()
 
         if row:

@@ -182,7 +182,25 @@ def render_chat_view(gateway_url: str):
                 title_snip = customer_query.strip()[:24]
                 active_session["title"] = title_snip if len(customer_query) <= 24 else f"{title_snip}..."
 
+            # 1. Optimistically append Customer Query
             active_session["messages"].append({"role": "customer", "content": customer_query})
+
+            # 2. Immediately determine Contextual Instant Buffer Acknowledgement ("CÂU CHỜ")
+            initial_ack = "Dạ em đã ghi nhận thông tin của anh/chị và đang kiểm tra hỗ trợ ngay đây ạ! Quý khách đợi em trong giây lát nhé..."
+            q_low = customer_query.lower()
+            if any(k in q_low for k in ["hủy", "huy", "cancel"]):
+                initial_ack = "Dạ em đã nhận được yêu cầu hủy đơn hàng của mình. Em đang kiểm tra trạng thái đóng gói đơn hàng để xử lý ngay đây ạ..."
+            elif any(k in q_low for k in ["đổi", "doi", "trả", "tra", "hoàn", "hoan"]):
+                initial_ack = "Dạ Tiki đã ghi nhận yêu cầu về chính sách đổi trả / hoàn tiền. Em đang tra cứu quy định và dữ liệu đơn hàng cho mình ngay đây ạ..."
+            elif any(k in q_low for k in ["giao", "ship", "ord-", "đơn", "khi nào", "bao giờ"]):
+                initial_ack = "Dạ em đã ghi nhận câu hỏi về tình trạng đơn hàng của anh/chị. Em đang kết nối tra cứu lộ trình vận chuyển ngay đây ạ!"
+
+            ack_entry = {
+                "role": "agent",
+                "content": initial_ack,
+                "is_acknowledgement": True,
+            }
+            active_session["messages"].append(ack_entry)
 
             with st.spinner("Copilot đang phân tích và chuẩn bị câu trả lời..."):
                 try:
@@ -196,14 +214,10 @@ def render_chat_view(gateway_url: str):
                         data = resp.json()
                         active_session["current_response"] = data
 
-                        # Deliver ONLY the instant buffer acknowledgement to dialogue
+                        # Update buffer acknowledgement with tailored backend message if present
                         ack = data.get("customer_acknowledgement")
                         if ack and ack.strip():
-                            active_session["messages"].append({
-                                "role": "agent",
-                                "content": ack,
-                                "is_acknowledgement": True,
-                            })
+                            ack_entry["content"] = ack
                     else:
                         st.error(f"⚠️ Lỗi từ Gateway ({resp.status_code}): {resp.text}")
                 except Exception as e:

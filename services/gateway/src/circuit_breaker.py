@@ -68,3 +68,4 @@ class CircuitBreaker:
             "total_trips": self.total_trips,
             "is_available": self.can_execute(),
         }
+

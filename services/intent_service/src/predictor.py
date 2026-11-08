@@ -276,8 +276,26 @@ class IntentPredictor:
             return self._predict_ml(query)
 
         # Hybrid: run ML first; if low confidence or out-of-scope, fallback to LLM
-        ml_resp = self._predict_ml(query)
         q_low = query.lower()
+
+        # Priority keyword routing directly to LLM for promotion / discount / voucher / refund / cancel:
+        # This prevents LinearSVC/TF-IDF baseline from being biased by "đơn hàng" or order numbers
+        PROMO_DISCOUNT_KEYWORDS = [
+            "ưu đãi", "khuyến mãi", "khuyến mại", "voucher", "mã giảm", "coupon",
+            "freeship", "giảm giá", "chiết khấu", "quà tặng", "chính sách ưu đãi",
+            "chương trình ưu đãi", "áp dụng mã", "tiki xu"
+        ]
+        REFUND_KEYWORDS = [
+            "hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund", "trả hàng", "đổi trả"
+        ]
+        CANCEL_KEYWORDS = [
+            "hủy đơn", "huỷ đơn", "không lấy nữa", "hủy hàng", "huỷ hàng", "hủy mua"
+        ]
+
+        if any(k in q_low for k in PROMO_DISCOUNT_KEYWORDS + REFUND_KEYWORDS + CANCEL_KEYWORDS):
+            return self.llm_classifier.predict(query)
+
+        ml_resp = self._predict_ml(query)
         if ml_resp.intent == "track_order" and any(k in q_low for k in ["hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund"]):
             return self.llm_classifier.predict(query)
         if ml_resp.is_in_scope and ml_resp.confidence >= 0.75:

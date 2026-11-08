@@ -2,7 +2,7 @@
 import json
 import os
 import uuid
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import httpx
@@ -148,7 +148,7 @@ class PolicyManager:
         """Create and append an audit log entry."""
         entry = PolicyAuditLogEntry(
             log_id=f"LOG-{uuid.uuid4().hex[:10].upper()}",
-            timestamp=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            timestamp=(datetime.now() + timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S"),
             doc_id=doc_id,
             doc_title=doc_title,
             action=action,

@@ -33,10 +33,13 @@ kaggle/datasets/ecom-intent-data/*
 # Model comparison artifacts
 artifacts/models/intent_eval_en/
 
-# Runtime telemetry database
+# Runtime telemetry and conversation databases
 /copilot_telemetry.sqlite3
 /copilot_telemetry.sqlite3-shm
 /copilot_telemetry.sqlite3-wal
+/copilot_conversations.sqlite3
+/copilot_conversations.sqlite3-shm
+/copilot_conversations.sqlite3-wal
 
 # Generated RAG vector index
 /artifacts/vector_store/policy_index.pkl

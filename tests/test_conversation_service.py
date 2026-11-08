@@ -1,4 +1,5 @@
 """Unit tests for Conversation Service modules."""
+import asyncio
 import unittest
 
 from contracts.schemas import (
@@ -60,13 +61,13 @@ class TestDialogueTracker(unittest.TestCase):
         self.state.awaiting_slot = "order_id"
         self.state.facts["order_id"] = "ORD-1001"
 
-        new_intent, confidence, switched = self.tracker.resolve_intent_transition(
+        new_intent, confidence, switched = asyncio.run(self.tracker.resolve_intent_transition(
             user_text="dạ vâng cảm ơn shop",
             input_type="chitchat",
             extracted_facts={},
             ml_intent_resp=None,
             state=self.state,
-        )
+        ))
         self.assertEqual(new_intent, "check_order_status")
         self.assertFalse(switched)
 
@@ -74,13 +75,13 @@ class TestDialogueTracker(unittest.TestCase):
         self.state.active_intent = "check_order_status"
         self.state.awaiting_slot = "order_id"
 
-        new_intent, confidence, switched = self.tracker.resolve_intent_transition(
+        new_intent, confidence, switched = asyncio.run(self.tracker.resolve_intent_transition(
             user_text="ORD-1003",
             input_type="fact_supplement",
             extracted_facts={"order_id": "ORD-1003"},
             ml_intent_resp=None,
             state=self.state,
-        )
+        ))
         self.assertEqual(new_intent, "check_order_status")
         self.assertFalse(switched)
 
@@ -88,13 +89,13 @@ class TestDialogueTracker(unittest.TestCase):
         self.state.active_intent = "cancel_order"
         self.state.awaiting_slot = "order_id"
 
-        new_intent, confidence, switched = self.tracker.resolve_intent_transition(
+        new_intent, confidence, switched = asyncio.run(self.tracker.resolve_intent_transition(
             user_text="thôi không hủy nữa đâu",
             input_type="negation_reversal",
             extracted_facts={},
             ml_intent_resp=None,
             state=self.state,
-        )
+        ))
         self.assertEqual(new_intent, "delivery_time")
         self.assertTrue(switched)
 

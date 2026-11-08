@@ -1,8 +1,13 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
+
+
+def get_system_now(fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
+    """System time shifted by +12 hours as required."""
+    return (datetime.now() + timedelta(hours=12)).strftime(fmt)
 
 
 # -------------------------------------------------------------------
@@ -158,6 +163,8 @@ class GatewayResponse(BaseModel):
     context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
     retrieval_status: str = Field(default="SUFFICIENT", description="Semantic retrieval quality: SUFFICIENT, INSUFFICIENT_EVIDENCE, EMPTY_RETRIEVAL")
     circuit_breaker_tripped: bool = Field(default=False, description="Whether fallback was invoked due to circuit breaker trip")
+    components_used: Dict[str, str] = Field(default_factory=dict, description="Active system components and models invoked during this request")
+    rewritten_query: Optional[str] = Field(default=None, description="Context-rewritten user query")
 
 
 # -------------------------------------------------------------------
@@ -242,7 +249,7 @@ class PolicyRollbackRequest(BaseModel):
 class ChatMessageItem(BaseModel):
     role: Literal["customer", "agent", "system"]
     content: str
-    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    timestamp: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M"))
 
 
 class ConversationTurnItem(BaseModel):
@@ -252,7 +259,7 @@ class ConversationTurnItem(BaseModel):
     intent: Optional[str] = None
     confidence: Optional[float] = None
     facts: Dict[str, Any] = Field(default_factory=dict)
-    timestamp: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M"))
+    timestamp: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M"))
 
 
 class ConversationSessionState(BaseModel):
@@ -264,4 +271,4 @@ class ConversationSessionState(BaseModel):
     is_live_chat: bool = False
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
-    updated_at: str = Field(default_factory=lambda: datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M:%S"))

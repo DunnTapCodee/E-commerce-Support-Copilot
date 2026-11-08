@@ -18,6 +18,7 @@ from services.conversation_service.src.config import (
     OPENAI_BASE_URL,
     OPENAI_MODEL,
 )
+from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
 from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
 
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -29,9 +30,11 @@ InputCategory = Literal["chitchat", "fact_supplement", "negation_reversal", "new
 # Fast lexicons for Tier 1
 _CHITCHAT_EXACT = frozenset({
     "ok", "oke", "okie", "da", "dạ", "vang", "vâng", "vâng ạ", "vang a", "da vang", "dạ vâng",
-    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn",
-    "chao shop", "chào shop", "alo", "ad oi", "ad ơi", "hi", "hello", "hi shop", "hello shop",
-    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh", "helllllo", "helo"
+    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn", "cảm ơn b", "cam on b",
+    "chao shop", "chào shop", "chao b", "chào b", "chao ban", "chào bạn", "chao", "chào", "chào nha", "chao nha",
+    "alo", "alo b", "ad oi", "ad ơi", "hi", "hi b", "hello", "hello b", "hi shop", "hello shop",
+    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh", "helllllo", "helo",
+    "the a", "thế à", "the ha", "thế hả", "vay a", "vậy à", "vay ha", "vậy hả", "vay sao", "vậy sao", "the sao", "thế sao", "o vay a", "ồ vậy à"
 })
 
 _NEGATION_PATTERNS = [
@@ -64,7 +67,7 @@ class InputClassifier:
         if len(cleaned.split()) <= 6:
             courtesy_tokens = {
                 "da", "dạ", "vang", "vâng", "a", "ạ", "cam", "on", "cảm", "ơn",
-                "shop", "ban", "bạn", "nhe", "nhé", "ok", "oke", "okie", "thanks",
+                "shop", "ban", "bạn", "b", "c", "e", "nha", "nhe", "nhé", "ok", "oke", "okie", "thanks",
                 "thank", "you", "chao", "chào", "ad", "oi", "ơi", "hi", "hello"
             }
             tokens = set(cleaned.split())
@@ -106,8 +109,8 @@ class InputClassifier:
         # Tier 2: LLM Structured Output
         prompt = self._build_prompt(text, active_intent, context_summary)
 
-        # 1. Try OpenAI-compatible (openai-gpt-oss-20b)
-        if self.openai_key:
+        # 1. Try OpenAI-compatible with multi-key failover
+        if get_available_api_keys():
             try:
                 res = await self._classify_with_openai_compatible(prompt)
                 if res:
@@ -142,34 +145,32 @@ Chỉ trả về JSON thuần túy, không thêm markdown.
     async def _classify_with_openai_compatible(
         self, prompt: str
     ) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
-        url = f"{OPENAI_BASE_URL}/chat/completions"
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.openai_key}",
-        }
         payload = {
             "model": OPENAI_MODEL,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": "Bạn là chuyên gia phân loại câu hội thoại CSKH Tiki. Trả về DUY NHẤT một JSON hợp lệ theo định dạng yêu cầu."},
+                {"role": "user", "content": prompt}
+            ],
             "temperature": 0.0,
-            "max_tokens": 600,
+            "max_tokens": 1000,
         }
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                msg = resp.json()["choices"][0]["message"]
-                raw_text = msg.get("content", "").strip()
-                if not raw_text:
-                    raw_text = msg.get("reasoning_content", "").strip()
-                return self._parse_json_result(raw_text)
+        res_data = await call_chat_completion_with_failover(payload, timeout=12.0)
+        if res_data and "choices" in res_data and res_data["choices"]:
+            msg = res_data["choices"][0].get("message", {})
+            raw_text = msg.get("content", "").strip()
+            if not raw_text:
+                raw_text = msg.get("reasoning_content", "").strip()
+            return self._parse_json_result(raw_text)
         return None
 
     def _parse_json_result(self, raw_text: str) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
         if not raw_text:
             return None
-        raw_text = re.sub(r"^```(?:json)?", "", raw_text).strip()
-        raw_text = re.sub(r"```$", "", raw_text).strip()
+        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if not match:
+            return None
         try:
-            parsed = json.loads(raw_text)
+            parsed = json.loads(match.group(0))
         except Exception:
             return None
         category = parsed.get("input_type", "new_question")

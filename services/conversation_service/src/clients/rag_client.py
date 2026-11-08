@@ -14,7 +14,7 @@ class RAGServiceClient:
     async def retrieve_policies(
         self, query: str, intent: Optional[str] = None, top_k: int = 3
     ) -> List[RetrievedDocument]:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        async with httpx.AsyncClient(timeout=15.0) as client:
             resp = await client.post(
                 f"{self.base_url}/retrieve",
                 json={"query": query, "intent": intent, "top_k": top_k},

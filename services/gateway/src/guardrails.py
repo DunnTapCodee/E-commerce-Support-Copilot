@@ -301,11 +301,42 @@ def evaluate_policy_guard(
 # =====================================================================
 # 4. Response Faithfulness & Hallucination Guardrails
 # =====================================================================
+# Courteous / pleasantry phrases that are common in Vietnamese CS chitchat
+# These should never be flagged as ungrounded factual claims or hallucinations unless containing numbers
+PURE_COURTESY_PATTERNS = [
+    r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào)\s*(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
+    r"^(?:cảm ơn|cam on)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
+    r"^(?:em\s+)?(?:luôn\s+)?sẵn sàng hỗ trợ\s*(?:anh/chị|anh|chị|quý khách|thêm)?.*$",
+    r"^(?:nếu\s+)?(?:anh/chị|anh|chị|quý khách|mình)\s+cần hỗ trợ thêm.*$",
+    r"^chúc\s+(?:anh/chị|anh|chị|quý khách|bạn|mình).*$",
+    r"^(?:rất\s+)?vui được hỗ trợ.*$",
+    r"^(?:dạ\s+)?(?:em\s+)?(?:đã\s+)?ghi nhận.*$",
+]
+
+
 def _split_into_claims(text: str) -> List[str]:
-    """Break text down into atomic statements for claim verification."""
+    """Break text down into atomic statements for claim verification.
+    Strips polite greeting prefixes and filters out purely courteous closing statements.
+    """
     clean = re.sub(r"\[POL-[A-Z0-9_-]+\]", "", text)
-    sentences = [s.strip() for s in re.split(r"[.\n!?]+", clean) if len(s.strip()) > 15]
-    return sentences
+    sentences = [s.strip() for s in re.split(r"[.\n!?]+", clean) if len(s.strip()) > 8]
+    claims = []
+    for s in sentences:
+        has_nums = len(_extract_numeric_entities(s)) > 0
+        is_pure = any(re.match(p, s.lower().strip()) for p in PURE_COURTESY_PATTERNS)
+        if is_pure and not has_nums:
+            continue
+        stripped = re.sub(
+            r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào|cảm ơn)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)[^,.:\n!?]*[,:]\s*",
+            "",
+            s,
+            flags=re.IGNORECASE,
+        ).strip()
+        target = stripped if len(stripped) > 5 else s
+        is_target_pure = any(re.match(p, target.lower().strip()) for p in PURE_COURTESY_PATTERNS)
+        if not is_target_pure or has_nums:
+            claims.append(target)
+    return claims
 
 
 def _extract_numeric_entities(text: str) -> List[str]:

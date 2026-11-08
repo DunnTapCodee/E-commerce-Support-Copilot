@@ -5,6 +5,7 @@ import { PolicyAuditLogEntry } from '../../types';
 import { Badge } from '../../components/ui/Badge';
 import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
+import { formatSystemDateTime } from '../../lib/time';
 
 export const AuditNotificationView: React.FC = () => {
   const [logs, setLogs] = useState<PolicyAuditLogEntry[]>([]);
@@ -25,6 +26,10 @@ export const AuditNotificationView: React.FC = () => {
 
   useEffect(() => {
     fetchLogs();
+    const timer = setInterval(() => {
+      fetchLogs();
+    }, 3000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleRollback = async (logId: string, docId: string) => {
@@ -131,7 +136,7 @@ export const AuditNotificationView: React.FC = () => {
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">{log.reason || 'Cập nhật tài liệu'}</p>
                 <div className="flex items-center gap-3 text-[11px] text-slate-400">
-                  <span>⏱️ {log.timestamp}</span>
+                  <span>⏱️ {formatSystemDateTime(log.timestamp)}</span>
                   <span>•</span>
                   <span>👤 Thực hiện bởi: <b className="text-slate-600">{log.performed_by}</b></span>
                   <span>•</span>

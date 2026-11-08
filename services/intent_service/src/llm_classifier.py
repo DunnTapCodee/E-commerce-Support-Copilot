@@ -25,38 +25,39 @@ OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("
 OPENAI_MODEL = os.getenv("OPENAI_MODEL", "openai-gpt-oss-20b")
 
 INTENT_DESCRIPTIONS: Dict[str, str] = {
-    "track_order": "Tra cứu vị trí, tiến độ, trạng thái xử lý hoặc theo dõi bưu kiện đơn hàng (ví dụ: 'đơn ORD-1003 đang ở đâu', 'track my order status')",
+    "track_order": "Tra cứu thông tin, vị trí, giá tiền, tổng thanh toán, kiểm tra lại đơn, hóa đơn VAT, sản phẩm, tiến độ, trạng thái xử lý hoặc theo dõi bưu kiện đơn hàng (ví dụ: 'đơn ORD-1003 đang ở đâu', 'đơn hàng của mình bao nhiêu tiền', 'tôi muốn kiểm tra lại đơn', 'xuất hóa đơn VAT')",
     "cancel_order": "Yêu cầu hủy đơn hàng đã đặt (ví dụ: 'tôi muốn hủy đơn', 'cancel order please')",
-    "delivery_time": "Hỏi về thời gian giao hàng, khi nào nhận được hàng, mất bao nhiêu ngày (ví dụ: 'khi nào giao tới', 'how long does shipping take')",
+    "delivery_time": "Hỏi về thời gian giao hàng, khi nào nhận được hàng, mất bao nhiêu ngày (ví dụ: 'khi nào giao tới', 'bao giờ nhận được hàng')",
     "delivery_issue": "Khiếu nại sự cố vận chuyển: giao trễ hạn, shipper không gọi, báo giao thành công nhưng chưa nhận được (ví dụ: 'giao quá chậm', 'delivery delay problem')",
     "shipping_costs": "Hỏi về biểu phí giao hàng, cước ship, có được miễn phí vận chuyển không (ví dụ: 'phí ship bao nhiêu', 'shipping fee')",
-    "return_policy": "Hỏi về quy định, điều kiện, thời hạn, chính sách đổi hoặc trả hàng (ví dụ: 'chính sách đổi trả thế nào', 'return policy guidelines')",
-    "return_product": "Yêu cầu đổi hoặc trả một sản phẩm cụ thể bị lỗi, hỏng hóc hoặc không ưng ý (ví dụ: 'tôi muốn trả lại áo này do rách', 'return this damaged item')",
-    "refund_policy": "Hỏi về quy định, điều kiện, phương thức hoàn lại tiền (ví dụ: 'chính sách hoàn tiền quy định sao', 'refund policy')",
-    "request_refund": "Yêu cầu trực tiếp được hoàn tiền, hủy đơn lấy lại tiền (ví dụ: 'hoàn tiền lại cho tôi', 'i want a refund')",
+    "return_policy": "Hỏi về quy định, điều kiện, thời hạn, chính sách đổi hoặc trả hàng, chính sách bảo hành sản phẩm, sửa chữa hoặc bảo hành điện tử (ví dụ: 'chính sách đổi trả thế nào', 'hàng này có được bảo hành không', 'chính sách bảo hành')",
+    "return_product": "Yêu cầu đổi hoặc trả một sản phẩm cụ thể bị lỗi, hỏng hóc hoặc không ưng ý (ví dụ: 'tôi muốn trả lại áo này do rách', 'đổi cái mới do lỗi')",
+    "refund_policy": "Hỏi về quy định, điều kiện, phương thức hoàn lại tiền (ví dụ: 'chính sách hoàn tiền quy định sao', 'hoàn tiền mất bao lâu')",
+    "request_refund": "Yêu cầu trực tiếp được hoàn tiền, hủy đơn lấy lại tiền (ví dụ: 'hoàn tiền lại cho tôi', 'tôi muốn lấy lại tiền')",
     "refund_status": "Tra cứu tiến độ hoàn tiền, hỏi tiền đã về thẻ/tài khoản ngân hàng chưa (ví dụ: 'tiền hoàn đã về chưa', 'refund status check')",
-    "payment_issue": "Sự cố giao dịch thanh toán: bị trừ tiền nhiều lần, lỗi cổng VNPAY/MoMo, thẻ bị từ chối (ví dụ: 'tài khoản bị trừ 2 lần', 'payment failed')",
+    "payment_issue": "Thắc mắc, hướng dẫn, lựa chọn hoặc sự cố thanh toán: các phương thức thanh toán (tiền mặt COD, thẻ ngân hàng, ví MoMo, VNPAY), cách thanh toán khi đặt hàng, lỗi trừ tiền nhiều lần, thẻ bị từ chối (ví dụ: 'chỉ cho thanh toán bằng tiền mặt thì làm sao', 'phương thức thanh toán gồm những gì', 'bị trừ tiền 2 lần')",
     "human_agent": "Yêu cầu gặp trực tiếp nhân viên tư vấn người thật, kết nối tổng đài viên (ví dụ: 'cho tôi gặp nhân viên', 'talk to human agent')",
-    "out_of_scope": "Các câu hỏi nằm ngoài phạm vi thương mại điện tử CSKH (ví dụ: thời tiết, toán học, chém gió không liên quan)",
+    "get_discounts": "Hỏi về chương trình khuyến mãi, ưu đãi, voucher, mã giảm giá, coupon hoặc quà tặng, tích xu (ví dụ: 'có ưu đãi gì không', 'có mã giảm giá không')",
+    "out_of_scope": "Các câu hỏi hoàn toàn KHÔNG liên quan đến thương mại điện tử, mua sắm hoặc CSKH (ví dụ: hỏi thời tiết, giải toán, thể thao, người nổi tiếng, chính trị, triết học)",
 }
 
 INTENT_SYSTEM_PROMPT = f"""Bạn là chuyên gia NLU phân loại ý định khách hàng (Intent Classification) cho sàn thương mại điện tử E-commerce Tiki/Shopee.
 
-Hệ thống có 12 Ý ĐỊNH CHÍNH (TARGET_INTENTS) sau:
+Hệ thống có các Ý ĐỊNH CHÍNH (TARGET_INTENTS) sau:
 {chr(10).join(f"- {name}: {desc}" for name, desc in INTENT_DESCRIPTIONS.items())}
 
-QUY TẮC PHÂN LOẠI:
+QUY TẮC PHÂN LOẠI & PHẠM VI (SCOPE BOUNDARY):
 1. Đọc kỹ câu hỏi khách hàng (hỗ trợ cả Tiếng Việt và Tiếng Anh).
-2. XỬ LÝ NGỮ CẢNH HỘI THOẠI:
+2. TẤT CẢ câu hỏi liên quan đến mua sắm, đặt hàng, thanh toán, vận chuyển, đổi trả, bảo hành, voucher, CSKH trên sàn TMĐT ĐỀU LÀ IN-SCOPE và BẮT BUỘC gán vào 1 trong 12 intent nghiệp vụ ở trên:
+   - Thắc mắc phương thức thanh toán (tiền mặt COD, thẻ, ví điện tử) -> gán `payment_issue`.
+   - Hỏi về bảo hành, sửa chữa sản phẩm -> gán `return_policy`.
+   - Hỏi kiểm tra lại thông tin đơn, xuất hóa đơn VAT -> gán `track_order`.
+3. TUYỆT ĐỐI CHỈ DÙNG `out_of_scope` khi câu hỏi hoàn toàn không thuộc về mua sắm hay TMĐT (như thời tiết, toán học, ronaldo, bóng đá, thơ ca).
+4. XỬ LÝ NGỮ CẢNH HỘI THOẠI:
    - Nếu câu hỏi bắt đầu bằng các thẻ ngữ cảnh hội thoại như `[PREV_INTENT: ...]`, `[ORDER: ...]`, `[AWAITING: ...]`, bạn PHẢI cân nhắc ngữ cảnh này.
    - Ví dụ: `[PREV_INTENT:track_order] [AWAITING:order_id] ORD-1003` -> Đây là câu bổ sung thông tin cho `track_order`.
    - Nếu khách đảo ý định: `[PREV_INTENT:cancel_order] thôi không hủy nữa, xem bao giờ giao` -> Intent chuyển sang `delivery_time`.
-3. PHÂN BIỆT RÕ CẶP INTENT DỄ NHẦM LẪN:
-   - `return_policy` (hỏi điều kiện/chính sách đổi trả) vs `return_product` (yêu cầu đổi trả sản phẩm cụ thể).
-   - `refund_policy` (hỏi chính sách/thời hạn hoàn tiền) vs `request_refund` (yêu cầu hoàn tiền ngay).
-   - `request_refund` (yêu cầu hoàn tiền) vs `refund_status` (hỏi tiến độ/tiền đã về tài khoản chưa).
-   - `delivery_time` (hỏi bao giờ tới) vs `delivery_issue` (khiếu nại shipper, trễ hạn nghiêm trọng, mất hàng).
-4. ĐỊNH DẠNG ĐẦU RA:
+5. ĐỊNH DẠNG ĐẦU RA:
    Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài):
 {{
   "intent": "<tên intent thuộc danh sách trên>",
@@ -74,7 +75,7 @@ QUY TẮC PHÂN LOẠI:
 class LLMIntentClassifier:
     """Classifies customer intents using Gemini 2.5 Flash with structured output and robust fallback."""
 
-    def __init__(self, api_key: Optional[str] = None, timeout: int = 8):
+    def __init__(self, api_key: Optional[str] = None, timeout: int = 20):
         self.api_key = api_key or GEMINI_API_KEY
         self.timeout = timeout
 
@@ -85,46 +86,41 @@ class LLMIntentClassifier:
 
         openai_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
 
-        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b)
-        if openai_key:
-            try:
-                result = self._call_openai_compatible(clean_query, openai_key)
-                if result:
-                    latency = (time.perf_counter() - start_time) * 1000
-                    result.latency_ms = round(latency, 2)
-                    return result
-            except Exception as e:
-                print(f"[LLMIntentClassifier] OpenAI-compatible call failed: {e}")
+        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b) with multi-key failover
+        try:
+            result = self._call_openai_compatible(clean_query)
+            if result:
+                latency = (time.perf_counter() - start_time) * 1000
+                result.latency_ms = round(latency, 2)
+                return result
+        except Exception as e:
+            print(f"[LLMIntentClassifier] OpenAI-compatible call failed: {e}")
 
         # High-precision semantic heuristic fallback
         fallback_resp = self._semantic_fallback(clean_query)
         fallback_resp.latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return fallback_resp
 
-    def _call_openai_compatible(self, query: str, api_key: str) -> Optional[IntentPredictionResponse]:
-        """Call OpenAI-compatible chat completion for intent classification."""
+    def _call_openai_compatible(self, query: str, api_key: Optional[str] = None) -> Optional[IntentPredictionResponse]:
+        """Call OpenAI-compatible chat completion for intent classification with multi-key failover."""
+        from contracts.llm_failover import call_chat_completion_sync_with_failover
+
         base_url = os.getenv("OPENAI_BASE_URL", OPENAI_BASE_URL).rstrip("/")
         model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
-        url = f"{base_url}/chat/completions"
 
         messages = [
             {"role": "system", "content": INTENT_SYSTEM_PROMPT},
             {"role": "user", "content": f"Phân loại câu hỏi sau:\n\"{query}\""}
         ]
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}"
-        }
         payload = {
             "model": model,
             "messages": messages,
             "temperature": 0.1,
-            "max_tokens": 800,
+            "max_tokens": 2048,
         }
 
-        resp = requests.post(url, json=payload, headers=headers, timeout=self.timeout, verify=False)
-        if resp.status_code == 200:
-            data = resp.json()
+        data = call_chat_completion_sync_with_failover(payload, base_url=base_url, timeout=self.timeout)
+        if data:
             choices = data.get("choices", [])
             if choices:
                 raw_text = choices[0].get("message", {}).get("content", "")
@@ -265,12 +261,12 @@ class LLMIntentClassifier:
         if re.search(r"\b(hủy đơn|huy don|hủy lệnh|huy lenh|cancel.*order|cancel.*purchase|dừng đơn|dung don|không muốn mua|khong muon mua|muốn hủy đơn|hủy giúp tôi đơn)\b", q_lower):
             return self._build_resp("cancel_order", 0.95, query)
 
-        # 8. Payment issues
-        if re.search(r"\b(trừ.*(2 lần|hai lần)|lỗi thanh toán|thanh toán thất bại|thẻ.*bị từ chối|vnpay|momo|mã qr.*thanh toán|payment failed|payment error|charged twice|trừ tiền|credit card.*error|sự cố trừ tiền)\b", q_lower):
+        # 8. Payment issues & payment methods
+        if re.search(r"\b(tiền mặt|phương thức thanh toán|hình thức thanh toán|thanh toán bằng|cách thanh toán|trừ.*(2 lần|hai lần)|lỗi thanh toán|thanh toán thất bại|thẻ.*bị từ chối|vnpay|momo|zalopay|mã qr.*thanh toán|payment failed|payment error|charged twice|trừ tiền|credit card.*error|sự cố trừ tiền|không thanh toán được|chỉ cho thanh toán)\b", q_lower):
             return self._build_resp("payment_issue", 0.95, query)
 
-        # 9. Return policy (guidelines/rules for returns)
-        if re.search(r"\b(chính sách.*đổi trả|quy định.*(đổi|trả)|thời hạn.*(đổi|trả)|điều kiện.*(đổi|trả)|return policy|quy trình đổi trả|bóc seal.*đổi trả|newest.*return policy|đổi trả.*bao nhiêu ngày|return.*condition|can i return)\b", q_lower):
+        # 9. Return policy & Warranty (guidelines/rules for returns and warranties)
+        if re.search(r"\b(chính sách.*đổi trả|quy định.*(đổi|trả)|thời hạn.*(đổi|trả)|điều kiện.*(đổi|trả)|return policy|quy trình đổi trả|bóc seal.*đổi trả|newest.*return policy|đổi trả.*bao nhiêu ngày|return.*condition|can i return|bảo hành|bảo dưỡng|chính sách bảo hành|có được bảo hành|hàng chính hãng|chính hãng)\b", q_lower):
             return self._build_resp("return_policy", 0.94, query)
 
         # 10. Return product (action on a specific item)
@@ -289,8 +285,12 @@ class LLMIntentClassifier:
         if re.search(r"\b(bao giờ.*(nhận|giao|tới)|khi nào.*(giao|tới|nhận)|mấy ngày.*(giao|có|nhận)|thời gian.*(giao|vận chuyển)|when.*arrive|how long.*(delivery|shipping)|estimated delivery|khi nào.*shipper|ngày mai có giao kịp|giao hàng tới|giao tới)\b", q_lower):
             return self._build_resp("delivery_time", 0.94, query)
 
-        # 14. Track order
-        if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status)\b", q_lower):
+        # 13b. Get discounts / Promotions / Vouchers
+        if re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|chiết khấu|quà tặng|tiki xu)\b", q_lower):
+            return self._build_resp("get_discounts", 0.95, query)
+
+        # 14. Track order & Order details (status, progress, price, amount, VAT invoice)
+        if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|kiểm tra lại đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status|bao nhiêu tiền|hết bao nhiêu|tổng tiền|giá bao nhiêu|đơn.*của mình.*là gì|hóa đơn.*vat|hóa đơn đỏ|xuất hóa đơn)\b", q_lower):
             return self._build_resp("track_order", 0.94, query)
 
         # 15. General keywords

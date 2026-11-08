@@ -19,6 +19,8 @@ services:
       - INTENT_BACKEND=${INTENT_BACKEND:-hybrid}
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -59,6 +61,8 @@ services:
       - HF_HOME=/models/huggingface
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -117,6 +121,8 @@ services:
       - RAG_SERVICE_URL=http://rag_service:8002
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
@@ -142,14 +148,18 @@ services:
       - "18006:8006"
     volumes:
       - ./data:/app/data:ro
+      - ./copilot_conversations.sqlite3:/app/copilot_conversations.sqlite3
     environment:
       - PORT=8006
+      - CONVERSATIONS_DB_PATH=/app/copilot_conversations.sqlite3
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
       - MOCK_ORDERS_PATH=/app/data/mock_orders.json
       - LLM_PROVIDER=${LLM_PROVIDER:-openai_compatible}
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
+      - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
       - OPENAI_MODEL=${OPENAI_MODEL:-openai-gpt-oss-20b}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
