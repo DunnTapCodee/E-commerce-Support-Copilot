@@ -49,7 +49,9 @@ class PolicyRetriever:
                 for doc in indexer.documents
                 if doc.is_active
             ]
-            if self.method == "bm25":
+            if not active_documents:
+                self.searcher = None
+            elif self.method == "bm25":
                 self.searcher = BM25Searcher(active_documents, include_tags=True)
             elif self.method == "dense":
                 self.searcher = DenseSearcher(active_documents, model_name=dense_model, device=device)
@@ -68,6 +70,9 @@ class PolicyRetriever:
         if self.method == "tfidf":
             scored_docs = self.indexer.search(query, top_k=top_k)
             return [doc.model_copy(update={"score": round(score, 4)}) for doc, score in scored_docs]
+
+        if not self.searcher:
+            return []
 
         hits = self.searcher.search(query, top_k=top_k)
         documents_by_id = {doc.doc_id: doc for doc in self.indexer.documents}
@@ -101,17 +106,29 @@ class PolicyRetriever:
                 "truoc nam 2024",
                 "năm 2023",
                 "năm 2022",
+                "2023",
+                "2022",
+                "quý mão",
+                "phiên bản năm",
             )
         )
 
         if is_asking_expired:
-            warranty_docs = [
-                doc for doc in self.indexer.documents if "POL-WARRANTY-OLD" in doc.doc_id or "OLD" in doc.doc_id
-            ]
-            if warranty_docs:
+            matched_old = []
+            for doc in self.indexer.documents:
+                if "OLD" in doc.doc_id:
+                    if "promo" in doc.doc_id.lower() and any(k in q_lower for k in ("khuyến mãi", "hoàn xu", "tết", "quý mão", "2023")):
+                        matched_old.insert(0, doc)
+                    elif "return" in doc.doc_id.lower() and any(k in q_lower for k in ("đổi trả", "trả hàng", "phiên bản", "2022")):
+                        matched_old.insert(0, doc)
+                    elif "warranty" in doc.doc_id.lower() and any(k in q_lower for k in ("bảo hành", "2024")):
+                        matched_old.insert(0, doc)
+                    else:
+                        matched_old.append(doc)
+            if matched_old:
                 if filter_active_only:
-                    return [doc for doc in warranty_docs if doc.is_active]
-                return warranty_docs[:top_k]
+                    return [doc for doc in matched_old if doc.is_active]
+                return matched_old[:top_k]
 
         # Strip order numbers (e.g. ORD-2024-001) so numeric tokens like '2024' don't falsely match old policy titles
         clean_query = re.sub(r"ORD-[\w-]+", "", query, flags=re.IGNORECASE).strip()
@@ -145,6 +162,10 @@ class PolicyRetriever:
             "request_refund": "POL-REFUND-001",
             "payment_issue": "POL-PAY-001",
             "human_agent": "POL-CS-001",
+            "warranty": "POL-WARRANTY-001",
+            "create_account": "POL-CS-002",
+            "recover_password": "POL-CS-003",
+            "get_discounts": "POL-CS-005",
         }
         if intent and intent in intent_doc_map:
             target_id = intent_doc_map[intent]
@@ -155,6 +176,12 @@ class PolicyRetriever:
 
         if filter_active_only or not is_asking_expired:
             candidates = [doc for doc in candidates if doc.is_active]
+
+        # In-scope general fallback if search yielded no active documents
+        if not candidates and not is_asking_expired:
+            fallback_docs = [doc for doc in self.indexer.documents if doc.doc_id in ("POL-CS-001", "POL-ORD-001") and doc.is_active]
+            if fallback_docs:
+                candidates = fallback_docs
 
         return candidates[:top_k]
 

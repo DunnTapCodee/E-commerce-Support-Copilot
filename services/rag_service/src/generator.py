@@ -7,6 +7,7 @@ from typing import List, Optional
 import httpx
 
 from contracts.schemas import RAGGenerateResponse, RetrievedDocument
+from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
 
 # Auto-load .env if not in environment
 _env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
@@ -80,10 +81,10 @@ class LLMGenerator:
         openai_key = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or OPENAI_API_KEY
         gemini_key = os.getenv("GEMINI_API_KEY", "") or GEMINI_API_KEY
 
-        # Strategy 1: OpenAI-compatible (ckey.vn / openai-gpt-oss-20b)
-        if (provider in ("openai_compatible", "openai", "auto")) and openai_key:
+        # Strategy 1: OpenAI-compatible (ckey.vn / xah.io) with multi-key failover
+        if (provider in ("openai_compatible", "openai", "auto")) and get_available_api_keys():
             try:
-                draft_text = await self._call_openai_compatible(query, citations, openai_key)
+                draft_text = await self._call_openai_compatible(query, citations)
                 if draft_text:
                     return RAGGenerateResponse(
                         draft_text=draft_text,
@@ -133,44 +134,42 @@ class LLMGenerator:
         )
 
     async def _call_openai_compatible(
-        self, query: str, citations: List[RetrievedDocument], api_key: str
+        self, query: str, citations: List[RetrievedDocument], api_key: str = ""
     ) -> str:
-        """Call OpenAI-compatible chat completion."""
-        base_url = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or OPENAI_BASE_URL).rstrip("/")
+        """Call OpenAI-compatible chat completion with automatic multi-key failover."""
         model = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or OPENAI_MODEL
-        url = f"{base_url}/chat/completions"
-
         docs_context = "\n\n".join(
             f"--- Tài liệu [{doc.doc_id}] ({doc.title}) ---\n{doc.content}"
             for doc in citations
         )
         prompt = (
             "Bạn là trợ lý AI chuyên nghiệp hỗ trợ nhân viên CSKH của sàn thương mại điện tử Tiki.\n"
-            "Dựa trên các tài liệu chính sách dưới đây, hãy soạn thảo câu trả lời hoàn chỉnh, lịch sự bằng tiếng Việt:\n\n"
+            "Dựa trên các tài liệu chính sách dưới đây, hãy soạn thảo một câu trả lời hoàn chỉnh, chuẩn xác, lịch sự bằng tiếng Việt:\n\n"
             f"{docs_context}\n\n"
-            f"CÂU HỎI KHÁCH HÀNG: \"{query}\"\n\n"
-            "QUY TẮC XƯNG HÔ BẮT BUỘC: Nhân viên CSKH luôn xưng 'em' và gọi khách hàng là 'anh/chị' (hoặc 'mình'). TUYỆT ĐỐI KHÔNG dùng từ 'bạn' khi xưng hô với khách hàng. Luôn mở đầu bằng 'Dạ em chào anh/chị...'.\n"
-            "YÊU CẦU: Trích dẫn mã tài liệu [POL-XXX] sau mỗi thông tin/điều kiện đưa ra. Viết súc tích, lịch sự."
+            f"CÂU HỎI CỦA KHÁCH HÀNG: \"{query}\"\n\n"
+            "QUY TẮC BẮT BUỘC:\n"
+            "1. XƯNG HÔ: Luôn xưng 'em' và gọi khách là 'anh/chị' (hoặc 'mình'). TUYỆT ĐỐI KHÔNG dùng từ 'bạn'. Luôn mở đầu: 'Dạ em chào anh/chị...'.\n"
+            "2. CĂN CỨ TÀI LIỆU (GROUNDING): Mỗi thông tin, mốc thời gian, tỷ lệ hoàn tiền hoặc điều kiện đưa ra BẮT BUỘC kèm mã tài liệu tương ứng [POL-XXX] ngay phía sau.\n"
+            "3. ĐỘ DÀI: Súc tích, dưới 130 từ, trình bày gạch đầu dòng rõ ràng nếu có từ 2 điều kiện trở lên.\n"
+            "4. CHỐNG BỊA ĐẶT (NO HALLUCINATION): Nếu thông tin không có trong tài liệu, thông báo rõ ràng: 'Dạ hiện tại tài liệu chưa có quy định cụ thể cho trường hợp này, em xin phép kiểm tra lại và phản hồi mình sau nhé ạ'. Tuyệt đối không tự suy diễn chính sách."
         )
 
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        }
         payload = {
             "model": model,
-            "messages": [{"role": "user", "content": prompt}],
+            "messages": [
+                {"role": "system", "content": "Bạn là trợ lý AI Copilot CSKH Tiki. Hãy suy nghĩ ngắn gọn và trả lời trực tiếp bằng tiếng Việt chuẩn mực CSKH."},
+                {"role": "user", "content": prompt}
+            ],
             "temperature": 0.2,
-            "max_tokens": 1024,
+            "max_tokens": 4096,
         }
 
-        async with httpx.AsyncClient(timeout=float(self.timeout_seconds - 1), verify=False) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code == 200:
-                data = resp.json()
-                choices = data.get("choices", [])
-                if choices:
-                    return choices[0].get("message", {}).get("content", "").strip()
+        try:
+            res_data = await call_chat_completion_with_failover(payload, timeout=25.0)
+            if res_data and "choices" in res_data and res_data["choices"]:
+                return res_data["choices"][0].get("message", {}).get("content", "").strip()
+        except Exception as exc:
+            print(f"[LLMGenerator] OpenAI-compatible call error: {exc}")
         return ""
 
     async def _call_gemini(

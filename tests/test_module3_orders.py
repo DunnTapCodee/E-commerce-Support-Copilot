@@ -4,7 +4,10 @@ from pathlib import Path
 import unittest
 
 from contracts.schemas import OrderCancelRequest
-from services.gateway.src.agent import extract_entities_advanced, extract_entities_baseline
+from services.conversation_service.src.input_pipeline.order_matcher import (
+    extract_entities_advanced,
+    extract_entities_baseline,
+)
 from services.telemetry_service.src.cache import OrderLRUCache, normalize_phone
 from services.telemetry_service.src.database import get_db_connection, init_db, migrate_mock_orders
 from services.telemetry_service.src.repository import TelemetryRepository
@@ -129,7 +132,7 @@ class TestModule3OrdersAndTools(unittest.TestCase):
 
     def test_rule_order_matcher(self):
         """Verify Method 2: RuleOrderMatcher exact keyword & regex extraction."""
-        from services.gateway.src.order_matchers import RuleOrderMatcher
+        from services.conversation_service.src.input_pipeline.order_matcher import RuleOrderMatcher
         matcher = RuleOrderMatcher()
         
         # Test exact order ID
@@ -146,7 +149,7 @@ class TestModule3OrdersAndTools(unittest.TestCase):
 
     def test_embedding_order_matcher_tfidf(self):
         """Verify Method 3: EmbeddingOrderMatcher semantic similarity with TF-IDF."""
-        from services.gateway.src.order_matchers import EmbeddingOrderMatcher
+        from services.conversation_service.src.input_pipeline.order_matcher import EmbeddingOrderMatcher
         matcher = EmbeddingOrderMatcher(embedding_model="tfidf")
 
         # Semantic query by product and customer name
@@ -162,7 +165,10 @@ class TestModule3OrdersAndTools(unittest.TestCase):
 
     def test_hybrid_order_matcher_default(self):
         """Verify Method 4: HybridOrderMatcher as system default."""
-        from services.gateway.src.order_matchers import get_order_matcher, HybridOrderMatcher
+        from services.conversation_service.src.input_pipeline.order_matcher import (
+            get_order_matcher,
+            HybridOrderMatcher,
+        )
         matcher = get_order_matcher()
         self.assertIsInstance(matcher, HybridOrderMatcher)
 

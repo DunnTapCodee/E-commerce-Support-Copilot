@@ -1,123 +1,79 @@
 """Customer Acknowledgement Engine (Phần 1: Trả lời dạo tức thì cho User).
-Deterministic, slot-filled templates providing instant (<20ms), safe acknowledgement.
+Cung cấp câu đệm tức thì (< 20ms), lịch sự, tự nhiên, đa dạng (20+ mẫu câu)
+và tự động chống lặp lại giữa các lượt hội thoại.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+import re
+from typing import Any, Dict, List, Optional
 
 
-# Centralized, customizable acknowledgement templates per intent & sub-topic
-ACK_TEMPLATES = {
-    # 1. Tra cứu đơn hàng
-    "track_order": (
-        "Dạ Tiki chào anh/chị! Em đã ghi nhận yêu cầu tra cứu đơn hàng{order_clause}. "
-        "Em đang kết nối hệ thống bưu tá để kiểm tra lộ trình gửi anh/chị ngay nhé ạ!"
-    ),
-    "track_order_alt": (
-        "Dạ em đang đối soát vị trí bưu kiện đơn hàng{order_clause} từ bưu cục "
-        "để cập nhật tình trạng giao nhận cho anh/chị ngay đây ạ!"
-    ),
-    # 2. Thời gian giao hàng / Giao trễ
-    "delivery_time": (
-        "Dạ em rất xin lỗi vì đơn hàng{order_clause} khiến anh/chị phải chờ đợi. "
-        "Em đang kiểm tra tiến độ giao hàng từ bưu cục gửi anh/chị ngay đây ạ!"
-    ),
-    # 3. Sự cố giao hàng
-    "delivery_issue": (
-        "Dạ em rất tiếc về sự cố giao nhận đơn hàng{order_clause} của mình. "
-        "Em đang liên hệ đội ngũ bưu tá để xử lý gấp cho anh/chị ngay ạ!"
-    ),
-    # 4. Đổi trả sản phẩm cụ thể (bị lỗi, vỡ, móp méo)
-    "return_product": (
-        "Dạ em rất tiếc về sự cố sản phẩm{product_clause} của anh/chị. "
-        "Em đang kiểm tra chính sách đổi trả và bảo hành phù hợp gửi anh/chị ngay ạ!"
-    ),
-    "return_followup": (
-        "Dạ em đã nắm được thắc mắc tiếp theo của anh/chị về quy trình đổi trả. "
-        "Em đang tra cứu hướng dẫn chi tiết gửi mình ngay đây ạ!"
-    ),
-    # 5. Phí ship thu hồi / Shipper lấy tận nhà khi đổi trả
-    "return_shipping": (
-        "Dạ em đang tra cứu quy định về hình thức thu hồi tận nhà và cước phí vận chuyển đổi trả "
-        "gửi anh/chị ngay nhé ạ!"
-    ),
-    # 6. Quy trình / Thủ tục các bước thực hiện
-    "procedure_steps": (
-        "Dạ em đang tra cứu các bước thực hiện chi tiết để hướng dẫn anh/chị thao tác thuận tiện nhất nhé ạ!"
-    ),
-    # 7. Chính sách đổi trả chung
-    "return_policy": (
-        "Dạ em đang tra cứu quy định và điều kiện đổi trả hiện hành của Tiki "
-        "để giải đáp chi tiết cho anh/chị ngay nhé ạ!"
-    ),
-    # 8. Yêu cầu hoàn tiền (An toàn nghiệp vụ)
-    "request_refund": (
-        "Dạ em đã tiếp nhận yêu cầu đối soát hoàn tiền cho đơn hàng{order_clause}. "
-        "Em đang kiểm tra dữ liệu giao dịch từ hệ thống để hỗ trợ anh/chị ngay đây ạ."
-    ),
-    # 9. Chính sách hoàn tiền chung
-    "refund_policy": (
-        "Dạ em đang tra cứu quy định về thời gian và phương thức hoàn tiền "
-        "để gửi hướng dẫn cụ thể cho anh/chị ngay nhé ạ!"
-    ),
-    # 10. Trạng thái hoàn tiền
-    "refund_status": (
-        "Dạ em đã ghi nhận yêu cầu tra cứu tiến độ hoàn tiền{order_clause}. "
-        "Em đang đối soát với cổng thanh toán để cập nhật trạng thái tiền về cho anh/chị ngay ạ!"
-    ),
-    # 11. Lỗi thanh toán / Trừ tiền trùng
-    "payment_issue": (
-        "Dạ Tiki đã tiếp nhận phản ánh về sự cố thanh toán{order_clause}. "
-        "Em đang đối soát giao dịch với ngân hàng để hỗ trợ anh/chị ngay đây ạ!"
-    ),
-    # 12. Phí giao hàng / Freeship
-    "shipping_costs": (
-        "Dạ em đang tra cứu biểu phí vận chuyển và chính sách Freeship "
-        "áp dụng cho khu vực của mình gửi ngay nhé ạ!"
-    ),
-    # 13. Hủy đơn hàng
-    "cancel_order": (
-        "Dạ em đã tiếp nhận yêu cầu hủy đơn hàng{order_clause} của anh/chị. "
-        "Em đang kiểm tra trạng thái xuất kho của kiện hàng ngay đây ạ!"
-    ),
-    # 14. Gặp nhân viên trực tiếp
-    "human_agent": (
-        "Dạ em đang chuyển cuộc trò chuyện đến chuyên viên CSKH phụ trách trực tiếp. "
-        "Anh/chị chờ em trong giây lát nhé ạ!"
-    ),
-    # 15. Dịch vụ ngoài luồng / Thanh lý / Thu mua / Sản phẩm cũ
-    "service_inquiry": (
-        "Dạ Tiki đã ghi nhận câu hỏi của anh/chị về dịch vụ này. "
-        "Em đang kiểm tra thông tin để giải đáp chi tiết cho mình ngay nhé ạ!"
-    ),
-    # 16. Chitchat cảm ơn kết hợp câu hỏi mới ("cảm ơn em, tiện thể hỏi luôn...")
-    "thanks_and_question": (
-        "Dạ em cảm ơn anh/chị! Về câu hỏi tiếp theo của mình, "
-        "em đang kiểm tra thông tin để giải đáp ngay cho anh/chị đây ạ!"
-    ),
-    # 17. Chitchat chào hỏi thuần túy
-    "chitchat_greeting": (
-        "Dạ Tiki chào anh/chị! Rất vui được hỗ trợ mình hôm nay. Anh/chị cần em hỗ trợ thông tin gì về đơn hàng "
-        "hoặc chính sách mua sắm không ạ?"
-    ),
-    # 18. Chitchat cảm ơn thuần túy
-    "chitchat_thanks": (
-        "Dạ không có gì ạ! Chúc anh/chị có trải nghiệm mua sắm thật vui vẻ cùng Tiki. "
-        "Nếu cần hỗ trợ thêm bất cứ điều gì, anh/chị cứ nhắn cho em nhé!"
-    ),
-    # 19. Chitchat xác nhận thuần túy
-    "chitchat_confirm": (
-        "Dạ em đã ghi nhận thông tin của anh/chị. Em đang kiểm tra hỗ trợ mình ngay đây ạ!"
-    ),
-    # 20. Mặc định
-    "default": (
-        "Dạ em đã ghi nhận thông tin của anh/chị và đang kiểm tra hỗ trợ ngay đây ạ!"
-    ),
-}
+# Kho mẫu câu phản hồi đệm phong phú (~20 samples) phân theo ngữ cảnh
+GENERAL_BUFFERS: List[str] = [
+    "Dạ anh/chị chờ em một xíu, nhân viên đang chuẩn bị thông tin cho mình ngay đây ạ!",
+    "Dạ em đã nhận được yêu cầu của anh/chị. Em đang kiểm tra thông tin để hỗ trợ mình ngay nhé ạ!",
+    "Dạ Tiki chào anh/chị, em đang đối soát dữ liệu trên hệ thống để giải đáp cho mình ngay đây ạ.",
+    "Dạ vâng, anh/chị đợi em trong giây lát, chuyên viên CSKH đang chuẩn bị câu trả lời gửi mình nhé ạ!",
+    "Dạ em đã ghi nhận tin nhắn của mình. Em đang tra cứu thông tin hỗ trợ anh/chị ngay đây ạ!",
+    "Dạ anh/chị đợi em một chút nhé, em đang phối hợp kiểm tra hệ thống để hỗ trợ mình chu đáo nhất ạ.",
+]
+
+GREETING_BUFFERS: List[str] = [
+    "Dạ Tiki chào anh/chị! Rất vui được hỗ trợ mình hôm nay. Anh/chị cần em hỗ trợ thông tin gì về đơn hàng hoặc mua sắm không ạ?",
+    "Dạ em chào anh/chị ạ! Chúc anh/chị một ngày nhiều niềm vui. Em có thể hỗ trợ gì cho mình hôm nay ạ?",
+    "Dạ em chào anh/chị, em sẵn sàng hỗ trợ giải đáp mọi thắc mắc của mình rồi ạ!",
+]
+
+THANKS_CONFIRM_BUFFERS: List[str] = [
+    "Dạ không có gì ạ! Nếu cần hỗ trợ thêm bất kỳ điều gì, anh/chị cứ nhắn cho em nhé!",
+    "Dạ em cảm ơn anh/chị. Anh/chị cần em hỗ trợ thêm thông tin gì nữa không ạ?",
+    "Dạ vâng ạ, anh/chị đợi em trong giây lát nhé!",
+]
+
+ORDER_BUFFERS: List[str] = [
+    "Dạ em đã ghi nhận yêu cầu tra cứu đơn hàng{order_clause}. Em đang kết nối hệ thống bưu tá kiểm tra lộ trình gửi anh/chị ngay nhé ạ!",
+    "Dạ anh/chị chờ em một xíu, nhân viên đang kiểm tra dữ liệu đơn hàng{order_clause} cho mình ngay đây ạ.",
+    "Dạ em đang đối soát vị trí và tiến độ đơn hàng{order_clause} để cập nhật cho anh/chị ngay ạ!",
+]
+
+DISCOUNT_BUFFERS: List[str] = [
+    "Dạ Tiki đã ghi nhận thắc mắc về ưu đãi và voucher{order_clause}. Em đang tra cứu các chương trình khuyến mãi hiện có gửi anh/chị ngay nhé ạ!",
+    "Dạ anh/chị chờ em một lát, em đang tổng hợp các voucher và mã giảm giá tốt nhất gửi mình ngay nhé ạ!",
+    "Dạ Tiki đang có nhiều ưu đãi hấp dẫn, anh/chị đợi em một xíu để em kiểm tra mã áp dụng cho mình nhé ạ!",
+]
+
+RETURN_REFUND_BUFFERS: List[str] = [
+    "Dạ em đã tiếp nhận yêu cầu đổi trả / hoàn tiền{order_clause}. Em đang tra cứu quy định và hỗ trợ mình ngay đây ạ.",
+    "Dạ anh/chị đợi em một chút, nhân viên đang đối soát chính sách để hướng dẫn các bước đổi trả thuận tiện nhất cho mình ạ.",
+    "Dạ em đã ghi nhận vấn đề của mình. Em đang kiểm tra hồ sơ để xử lý nhanh nhất cho anh/chị ạ.",
+]
+
+PRICE_BUFFERS: List[str] = [
+    "Dạ em đã ghi nhận thắc mắc về giá trị đơn hàng và thanh toán. Em đang kiểm tra bảng kê chi tiết gửi anh/chị ngay đây ạ!",
+    "Dạ anh/chị chờ em một xíu, em đang kiểm tra số tiền và thanh toán đơn hàng gửi mình ngay nhé ạ.",
+]
+
+OUT_OF_SCOPE_BUFFERS: List[str] = [
+    "Dạ em đã nhận được câu hỏi của anh/chị. Em đang kiểm tra thông tin để phản hồi ngay nhé ạ!",
+    "Dạ anh/chị chờ em một xíu, em đang xử lý câu hỏi của mình ngay đây ạ.",
+]
 
 
 class CustomerAcknowledgementEngine:
-    """Tự động điền dữ liệu thực tế (Slot-filling) và nhận diện sắc thái câu hỏi cho câu trả lời dạo."""
+    """Tự động chọn câu đệm tự nhiên, lịch sự, đa dạng (~20 mẫu) và chống lặp ngữ cảnh."""
+
+    @classmethod
+    def _pick_variant(cls, candidates: List[str], last_ack: Optional[str] = None) -> str:
+        """Chọn câu đệm trong danh sách, ưu tiên câu khác với last_ack để chống lặp."""
+        if not candidates:
+            return GENERAL_BUFFERS[0]
+        if not last_ack:
+            return candidates[0]
+        # Tìm câu khác với last_ack
+        for c in candidates:
+            if c[:30] not in last_ack:
+                return c
+        return candidates[0]
 
     @classmethod
     def generate(
@@ -128,67 +84,54 @@ class CustomerAcknowledgementEngine:
         user_query: str = "",
         last_ack: Optional[str] = None,
     ) -> str:
-        """Sinh câu trả lời dạo trước nhạy ngữ cảnh, chống lặp và slot-filling chính xác."""
+        """Sinh câu trả lời dạo trước nhạy ngữ cảnh, chống lặp và tự nhiên."""
         facts = facts or {}
         q_lower = user_query.lower().strip()
-
-        has_thanks = any(k in q_lower for k in ["cam on", "cảm ơn", "thanks", "thank you"])
-        has_inquiry = any(k in q_lower for k in ["tiện thể", "hỏi", "thanh lý", "thu mua", "thế còn", "vậy còn", "?", "không", "sao", "thế nào", "bao nhiêu"])
-
-        # 1. Compound: Courtesy / Thanks + New Question
-        if has_thanks and has_inquiry:
-            template_key = "thanks_and_question"
-
-        # 2. Service inquiry / Off-topic trade-in (e.g. thanh lý iPhone cũ)
-        elif any(k in q_lower for k in ["thanh lý", "thu mua", "thu cũ", "đổi mới", "bán lại", "mua lại", "iphone cũ", "máy cũ", "đồ cũ"]):
-            template_key = "service_inquiry"
-
-        # 3. Return shipping fees / Shipper home pick-up (e.g. ai chịu phí ship, shipper đến tận nhà lấy)
-        elif any(k in q_lower for k in ["ai chịu", "ai trả", "chịu phí", "trả phí", "phí ship", "cước ship", "shipper đến", "tận nhà", "thu hồi tận nhà", "lấy tận nhà"]):
-            template_key = "return_shipping"
-
-        # 4. Procedure / Step-by-step guidance
-        elif any(k in q_lower for k in ["thủ tục", "quy trình", "các bước", "làm sao để", "cần làm gì"]):
-            template_key = "procedure_steps"
-
-        # 5. Pure chitchat
-        elif input_type == "chitchat":
-            if has_thanks:
-                template_key = "chitchat_thanks"
-            elif any(k in q_lower for k in ["ok", "oke", "vâng", "vang", "đúng", "dung", "dạ"]):
-                template_key = "chitchat_confirm"
-            else:
-                template_key = "chitchat_greeting"
-
-        # 6. Intent-based mapping with anti-repetition fallback
-        else:
-            template_key = intent
-            if intent == "return_product" and last_ack and "sự cố sản phẩm" in last_ack:
-                template_key = "return_followup"
-            elif intent == "track_order" and last_ack and "kết nối hệ thống bưu tá" in last_ack:
-                template_key = "track_order_alt"
-
-        template = ACK_TEMPLATES.get(template_key, ACK_TEMPLATES.get(intent, ACK_TEMPLATES["default"]))
 
         # Format slot clauses
         order_id = facts.get("order_id")
         order_clause = f" {order_id}" if order_id else ""
+        product_name = facts.get("product_name")
 
-        product = facts.get("product_name") or facts.get("item")
-        issue = facts.get("issue")
-        if product and issue:
-            product_clause = f" {product} ({issue})"
-        elif product:
-            product_clause = f" {product}"
-        elif issue:
-            product_clause = f" ({issue})"
+        if product_name and intent in ("return_product", "complaint", "return_policy"):
+            return f"Dạ em rất tiếc về sự cố với {product_name} của mình. Em đang tra cứu quy định và hỗ trợ mình ngay đây ạ."
+
+        # 1. Chitchat greeting (Hỗ trợ cả kéo dài chữ như hiiiii, hellooo mà không bắt nhầm 'hiện tại', 'hiển thị')
+        is_greeting = bool(re.search(r"\b(h+i+|h+e+l+l*o+|a+l+o+|c+h+à+o+|c+h+a+o+)\b", q_lower))
+        is_thanks = bool(re.search(r"\b(cảm ơn|cam on|thanks|thank you)\b", q_lower))
+        is_confirm = bool(re.search(r"\b(ok|oke|oki|vâng|vang|đúng|dung|dạ)\b", q_lower))
+
+        # Check explicit keywords
+        has_promo = bool(re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|tiki xu)\b", q_lower))
+        has_return_refund = bool(re.search(r"\b(trả hàng|đổi hàng|đổi trả|hoàn tiền|refund|hủy đơn|huỷ đơn)\b", q_lower))
+        has_order_tracking = bool(re.search(r"\b(vận đơn|bưu tá|đã giao chưa|giao chưa|khi nào tới|bao giờ tới|đơn hàng của mình|đơn của mình|ord-)\b", q_lower))
+        has_order_price = bool(re.search(r"\b(đơn.*bao nhiêu tiền|tổng tiền.*đơn|giá đơn hàng|tiền đơn hàng|đơn hàng.*hết bao nhiêu)\b", q_lower))
+        has_out_of_scope = bool(re.search(r"\b(thời tiết|giá xăng|xăng|ronaldo|messi|bóng đá|toán học|phương trình)\b", q_lower))
+
+        # Decision routing
+        if is_thanks or intent == "chitchat_thanks":
+            chosen = cls._pick_variant(THANKS_CONFIRM_BUFFERS, last_ack)
+        elif is_greeting and not has_promo and not has_return_refund and not has_order_tracking and len(q_lower.split()) <= 4:
+            chosen = cls._pick_variant(GREETING_BUFFERS, last_ack)
+        elif is_confirm and len(q_lower.split()) <= 3:
+            chosen = cls._pick_variant(THANKS_CONFIRM_BUFFERS, last_ack)
+        elif has_promo or intent in ("get_discounts", "promotion_policy"):
+            chosen = cls._pick_variant(DISCOUNT_BUFFERS, last_ack)
+        elif has_return_refund or intent in ("return_policy", "return_product", "request_refund", "refund_policy", "cancel_order"):
+            chosen = cls._pick_variant(RETURN_REFUND_BUFFERS, last_ack)
+        elif has_order_price or (intent == "track_order" and "bao nhiêu tiền" in q_lower):
+            chosen = cls._pick_variant(PRICE_BUFFERS, last_ack)
+        elif has_order_tracking or (intent in ("track_order", "delivery_time")):
+            if not order_id and any(k in q_lower for k in ["khi nào", "bao giờ", "giao chưa", "đến đâu", "tới nơi"]):
+                return "Dạ em chào anh/chị! Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé để em kiểm tra ngay cho mình ạ."
+            chosen = cls._pick_variant(ORDER_BUFFERS, last_ack)
+        elif has_out_of_scope or intent == "out_of_scope":
+            chosen = cls._pick_variant(OUT_OF_SCOPE_BUFFERS, last_ack)
         else:
-            product_clause = ""
+            # General safe natural buffer: Rất thân thiện, không phỏng đoán bừa bãi
+            chosen = cls._pick_variant(GENERAL_BUFFERS, last_ack)
 
         try:
-            return template.format(
-                order_clause=order_clause,
-                product_clause=product_clause,
-            )
+            return chosen.format(order_clause=order_clause)
         except Exception:
-            return ACK_TEMPLATES["default"]
+            return chosen

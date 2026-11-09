@@ -84,16 +84,55 @@ class TestGatewayGuardrails(unittest.TestCase):
         self.assertFalse(res.allow_llm)
         self.assertEqual(res.action_type, "ESCALATE_HUMAN")
 
-    def test_temporal_policy_guard_blocks_expired_date(self):
-        """Even if is_active is erroneously True, expired expiration_date must be blocked."""
+    def test_policy_guard_blocks_superseded_document(self):
+        """Documents with policy_type='superseded' must always be blocked regardless of is_active."""
+        citations = [
+            RetrievedDocument(
+                doc_id="POL-WARRANTY-OLD",
+                title="Bảo hành cũ (có hiệu lực từ 01/01/2020 đến 31/12/2023 - đã hết hiệu lực)",
+                content="Chính sách bảo hành phiên bản cũ, có hiệu lực từ 01/01/2020 đến 31/12/2023.",
+                version="0.1",
+                is_active=False,
+                policy_type="superseded",
+                effective_date="2020-01-01",
+                expiration_date="2023-12-31",
+            )
+        ]
+        res = evaluate_policy_guard(citations)
+        self.assertFalse(res.allow_llm)
+        self.assertEqual(res.action_type, "ESCALATE_HUMAN")
+        self.assertEqual(res.temporal_status, "SUPERSEDED")
+        self.assertIn("Superseded Policy Guard", res.reason)
+
+    def test_policy_guard_blocks_superseded_even_if_active_true(self):
+        """Superseded policy with is_active=True must still be blocked (superseded trumps is_active)."""
+        citations = [
+            RetrievedDocument(
+                doc_id="POL-RETURN-OLD",
+                title="Quy chế 2022 (01/01/2022-31/12/2022 - đã hết hiệu lực)",
+                content="Thời hạn đổi trả 3 ngày áp dụng từ 01/01/2022 đến 31/12/2022.",
+                version="0.2",
+                is_active=True,  # Trap: superseded must override this
+                policy_type="superseded",
+                effective_date="2022-01-01",
+                expiration_date="2022-12-31",
+            )
+        ]
+        res = evaluate_policy_guard(citations)
+        self.assertFalse(res.allow_llm)
+        self.assertEqual(res.temporal_status, "SUPERSEDED")
+
+    def test_temporal_policy_guard_blocks_expired_temporary(self):
+        """Temporary policy with expiration_date in the past must be blocked."""
         ref_today = date(2026, 10, 22)
         citations = [
             RetrievedDocument(
                 doc_id="POL-PROMO-OLD",
-                title="Chương trình hoàn xu Tết 2023",
-                content="Hoàn xu 50% cho dịp Tết 2023.",
+                title="Khuyến mãi Tết Quý Mão 2023",
+                content="Hoàn 50% xu áp dụng từ ngày 01/01/2023 đến hết ngày 31/01/2023 (đã kết thúc).",
                 version="0.5",
-                is_active=True,  # Test trap: marked True but expired temporally!
+                is_active=True,  # Trap: is_active=True but temporally expired
+                policy_type="temporary",
                 effective_date="2023-01-01",
                 expiration_date="2023-01-31",
             )
@@ -105,17 +144,18 @@ class TestGatewayGuardrails(unittest.TestCase):
         self.assertIn("Temporal Policy Guard", res.reason)
 
     def test_temporal_policy_guard_blocks_future_effective_date(self):
-        """Policies with effective_date in the future must not be applied yet."""
+        """Temporary policies with effective_date in the future must not be applied yet."""
         ref_today = date(2026, 10, 22)
         citations = [
             RetrievedDocument(
-                doc_id="POL-FUTURE-2030",
-                title="Chính sách dự kiến 2030",
-                content="Chính sách mới chưa ban hành.",
-                version="3.0",
+                doc_id="POL-PROMO-FUTURE",
+                title="Chương trình Flash Sale 2030",
+                content="Ưu đãi đặc biệt áp dụng từ ngày 01/01/2030 đến 31/01/2030.",
+                version="1.0",
                 is_active=True,
+                policy_type="temporary",
                 effective_date="2030-01-01",
-                expiration_date="2035-12-31",
+                expiration_date="2030-01-31",
             )
         ]
         res = evaluate_policy_guard(citations, reference_date=ref_today)
@@ -123,8 +163,8 @@ class TestGatewayGuardrails(unittest.TestCase):
         self.assertEqual(res.action_type, "ESCALATE_HUMAN")
         self.assertEqual(res.temporal_status, "NOT_YET_EFFECTIVE")
 
-    def test_policy_guard_allows_active_and_temporally_valid_documents(self):
-        """Active documents within valid temporal window allow LLM draft generation."""
+    def test_permanent_policy_ignores_expiration_date(self):
+        """Permanent policy with no expiration_date must be ACTIVE regardless of date context."""
         ref_today = date(2026, 10, 22)
         citations = [
             RetrievedDocument(
@@ -133,8 +173,47 @@ class TestGatewayGuardrails(unittest.TestCase):
                 content="Đổi trả trong vòng 30 ngày cho Tiki Trading và 7 ngày cho sàn đối tác.",
                 version="2.0",
                 is_active=True,
+                policy_type="permanent",
                 effective_date="2024-01-01",
-                expiration_date="2030-12-31",
+                expiration_date=None,   # permanent: no end date
+            )
+        ]
+        res = evaluate_policy_guard(citations, reference_date=ref_today)
+        self.assertTrue(res.allow_llm)
+        self.assertEqual(res.action_type, "PROCEED_TO_LLM")
+        self.assertEqual(res.temporal_status, "ACTIVE")
+
+    def test_permanent_policy_blocked_if_inactive(self):
+        """Permanent policy with is_active=False must be blocked even without expiration_date."""
+        citations = [
+            RetrievedDocument(
+                doc_id="POL-RET-001",
+                title="Chính sách đổi trả tiêu chuẩn",
+                content="Đổi trả trong vòng 30 ngày.",
+                version="2.0",
+                is_active=False,    # Manually deactivated
+                policy_type="permanent",
+                effective_date="2024-01-01",
+                expiration_date=None,
+            )
+        ]
+        res = evaluate_policy_guard(citations)
+        self.assertFalse(res.allow_llm)
+        self.assertEqual(res.action_type, "ESCALATE_HUMAN")
+
+    def test_policy_guard_allows_active_and_temporally_valid_documents(self):
+        """Active permanent document allows LLM draft generation."""
+        ref_today = date(2026, 10, 22)
+        citations = [
+            RetrievedDocument(
+                doc_id="POL-RET-001",
+                title="Chính sách đổi trả tiêu chuẩn",
+                content="Đổi trả trong vòng 30 ngày cho Tiki Trading và 7 ngày cho sàn đối tác.",
+                version="2.0",
+                is_active=True,
+                policy_type="permanent",
+                effective_date="2024-01-01",
+                expiration_date=None,
             )
         ]
         res = evaluate_policy_guard(citations, reference_date=ref_today)

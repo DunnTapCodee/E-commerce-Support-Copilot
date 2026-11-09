@@ -3,13 +3,22 @@ Inspired by VoiceAgent packs/public-service/new_policy.py.
 """
 from __future__ import annotations
 
+import json
 import re
 import unicodedata
 from typing import Any, Dict, Literal, Optional, Tuple
 import httpx
 from pydantic import BaseModel
 
-from services.conversation_service.src.config import GEMINI_API_KEY, GEMINI_MODEL
+from services.conversation_service.src.config import (
+    GEMINI_API_KEY,
+    GEMINI_MODEL,
+    LLM_PROVIDER,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL,
+    OPENAI_MODEL,
+)
+from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
 from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
 
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
@@ -21,24 +30,32 @@ InputCategory = Literal["chitchat", "fact_supplement", "negation_reversal", "new
 # Fast lexicons for Tier 1
 _CHITCHAT_EXACT = frozenset({
     "ok", "oke", "okie", "da", "dạ", "vang", "vâng", "vâng ạ", "vang a", "da vang", "dạ vâng",
-    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn",
-    "chao shop", "chào shop", "alo", "ad oi", "ad ơi", "hi", "hello", "hi shop", "hello shop",
-    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh"
+    "cam on", "cảm ơn", "cam on shop", "cảm ơn shop", "thanks", "thank you", "cảm ơn bạn", "cảm ơn b", "cam on b",
+    "chao shop", "chào shop", "chao b", "chào b", "chao ban", "chào bạn", "chao", "chào", "chào nha", "chao nha",
+    "alo", "alo b", "ad oi", "ad ơi", "hi", "hi b", "hello", "hello b", "hi shop", "hello shop",
+    "dung roi", "đúng rồi", "chuan roi", "chuẩn rồi", "dong y", "đồng ý", "uhm", "ừ", "u", "uh", "helllllo", "helo",
+    "the a", "thế à", "the ha", "thế hả", "vay a", "vậy à", "vay ha", "vậy hả", "vay sao", "vậy sao", "the sao", "thế sao", "o vay a", "ồ vậy à"
 })
 
 _NEGATION_PATTERNS = [
     re.compile(r"\b(?:thôi\s+không|thoi\s+khong|đổi\s+ý|doi\s+y|không\s+muốn\s+hủy|khong\s+muon\s+huy|không\s+hủy\s+nữa|khoan\s+đã|thôi\s+khỏi)\b", re.IGNORECASE),
 ]
 
+_QUESTION_PATTERNS = [
+    re.compile(r"(?:\?|gì|sao|thế nào|như nào|ở đâu|khi nào|bao giờ|bao lâu|mấy ngày|kiểm tra|tra cứu|hỏi|xem|đơn hàng|đơn|hàng|hủy|đổi|trả|hoàn tiền|ship|phí|bảo hành|voucher|mã|thanh toán|tiền|giao|nhận|mua|chính sách|quy định)", re.IGNORECASE),
+]
+
 
 class InputClassifier:
-    """Hybrid Classifier combining instant regex (< 1ms) with Gemini 2.5 Flash (~300ms)."""
+    """Ultra-fast Hybrid Classifier combining instant rules (< 0.1ms) with LLM Classifier (openai-gpt-oss-20b)."""
 
     def __init__(self, gemini_api_key: Optional[str] = None):
         self.api_key = gemini_api_key or GEMINI_API_KEY
+        self.openai_key = OPENAI_API_KEY
+        self.provider = LLM_PROVIDER
 
     def classify_fast_tier(self, text: str, facts: Dict[str, Any]) -> Optional[InputCategory]:
-        """Tier 1: Fast Rule / Lexicon evaluation."""
+        """Tier 1: Fast Rule / Lexicon evaluation (< 0.1ms)."""
         cleaned = text.strip().lower()
         cleaned = re.sub(r"[^\w\s-]", "", cleaned).strip()
 
@@ -46,26 +63,34 @@ class InputClassifier:
         if cleaned in _CHITCHAT_EXACT:
             return "chitchat"
 
-        # Compound courtesies (e.g. "dạ vâng cảm ơn shop", "vâng cảm ơn bạn", "ok cảm ơn nhé")
+        # Compound courtesies
         if len(cleaned.split()) <= 6:
             courtesy_tokens = {
                 "da", "dạ", "vang", "vâng", "a", "ạ", "cam", "on", "cảm", "ơn",
-                "shop", "ban", "bạn", "nhe", "nhé", "ok", "oke", "okie", "thanks",
-                "thank", "you", "chao", "chào", "ad", "oi", "ơi"
+                "shop", "ban", "bạn", "b", "c", "e", "nha", "nhe", "nhé", "ok", "oke", "okie", "thanks",
+                "thank", "you", "chao", "chào", "ad", "oi", "ơi", "hi", "hello"
             }
             tokens = set(cleaned.split())
             if tokens and tokens.issubset(courtesy_tokens):
                 return "chitchat"
 
-        # 2. Pure fact input (e.g. customer sends just 'ORD-1003' or phone number)
+        # 2. Pure fact input
         words = text.strip().split()
-        if len(words) <= 3 and ("order_id" in facts or "phone" in facts):
+        if len(words) <= 4 and ("order_id" in facts or "phone" in facts or "phone_number" in facts):
             return "fact_supplement"
 
         # 3. Negation reversal cues
         for pat in _NEGATION_PATTERNS:
             if pat.search(text):
                 return "negation_reversal"
+
+        # 4. Fast Question / Inquiry heuristic detection (< 0.1ms)
+        for pat in _QUESTION_PATTERNS:
+            if pat.search(text):
+                return "new_question"
+
+        if len(words) >= 4:
+            return "new_question"
 
         return None
 
@@ -75,80 +100,88 @@ class InputClassifier:
         active_intent: Optional[str] = None,
         context_summary: Optional[str] = None,
     ) -> Tuple[InputCategory, Dict[str, Any], float]:
-        """Full hybrid classification: Tier 1 -> Tier 2 (LLM).
-        Returns (category, extracted_facts, confidence).
-        """
+        """Full hybrid classification: Tier 1 -> Tier 2 (LLM)."""
         extracted = extract_facts(text)
         fast_category = self.classify_fast_tier(text, extracted)
         if fast_category:
             return fast_category, extracted, 0.95
 
-        # If length is long and has question cues, default to new_question
-        if not self.api_key:
-            return "new_question", extracted, 0.85
+        # Tier 2: LLM Structured Output
+        prompt = self._build_prompt(text, active_intent, context_summary)
 
-        # Tier 2: LLM Structured Output with Gemini Flash
-        try:
-            category, llm_facts, conf = await self._classify_with_gemini(text, active_intent, context_summary)
-            extracted.update(llm_facts)
-            return category, extracted, conf
-        except Exception:
-            return "new_question", extracted, 0.75
+        # 1. Try OpenAI-compatible with multi-key failover
+        if get_available_api_keys():
+            try:
+                res = await self._classify_with_openai_compatible(prompt)
+                if res:
+                    category, llm_facts, conf = res
+                    extracted.update(llm_facts)
+                    return category, extracted, conf
+            except Exception:
+                pass
 
-    async def _classify_with_gemini(
-        self,
-        text: str,
-        active_intent: Optional[str],
-        context_summary: Optional[str],
-    ) -> Tuple[InputCategory, Dict[str, Any], float]:
-        """Send concise context to Gemini 2.5 Flash for structured categorization."""
-        prompt = f"""Bạn là bộ phân loại câu hội thoại cho trợ lý CSKH E-commerce.
+        return "new_question", extracted, 0.85
+
+    def _build_prompt(self, text: str, active_intent: Optional[str], context_summary: Optional[str]) -> str:
+        return f"""Bạn là bộ phân loại câu hội thoại NLU thông minh cho trợ lý CSKH E-commerce Tiki.
 Hãy phân tích tin nhắn của khách hàng và phân loại vào ĐÚNG 1 TRONG 4 LOẠI:
-- "chitchat": Câu chào hỏi, cảm ơn, xã giao (ví dụ: "chào bạn", "cảm ơn nhiều nhé").
-- "fact_supplement": Câu bổ sung mã đơn hàng, số điện thoại, chi tiết sản phẩm cho ý định trước đó mà không có ý định mới.
-- "negation_reversal": Khách quay xe, đổi ý, phủ định ý định cũ (ví dụ: "thôi không hủy đơn nữa, xem bao giờ giao hộ tôi").
-- "new_question": Khách hỏi một câu hỏi hoặc khiếu nại mới hoàn toàn.
+1. "chitchat": Chỉ đơn thuần là lời chào, cảm ơn, xác nhận hoặc tạm biệt xã giao (không chứa câu hỏi hay yêu cầu nghiệp vụ nào khác).
+   - Ví dụ: "Chào bạn", "Cảm ơn shop nhiều", "Dạ vâng em hiểu rồi ạ", "Ok shop".
+2. "fact_supplement": Khách hàng chỉ bổ sung thông tin còn thiếu (như mã đơn hàng, số điện thoại, tên người nhận, màu sắc sản phẩm) cho câu hỏi hoặc yêu cầu đang trao đổi trước đó.
+   - Ví dụ: "Mã đơn là ORD-1003 nhé", "0912345678", "Màu đen size L".
+3. "negation_reversal": Khách hàng thay đổi ý định, phủ định hoặc hủy bỏ yêu cầu vừa đưa ra trước đó để chuyển sang yêu cầu khác.
+   - Ví dụ: "Thôi không hủy đơn nữa, xem bao giờ giao hộ tôi", "Khoan hãy đổi hàng, cho tôi hỏi chính sách trước".
+4. "new_question": Khách hàng hỏi một câu hỏi mới, tra cứu chính sách, hỏi về đơn hàng, khiếu nại hoặc yêu cầu hỗ trợ mới.
+   - LƯU Ý ĐẶC BIỆT: Nếu khách vừa chào hỏi vừa đặt câu hỏi (ví dụ: "Chào shop, kiểm tra giúp mình đơn ORD-1002"), BẮT BUỘC phân loại là "new_question" để không bỏ sót câu hỏi của khách!
 
-NGỮ CẢNH TRƯỚC:
-- Intent đang xử lý: {active_intent or 'Chưa có'}
+NGỮ CẢNH TRƯỚC ĐÓ:
+- Ý định đang xử lý: {active_intent or 'Chưa có'}
 - Tóm tắt bối cảnh: {context_summary or 'Chưa có'}
 
 CÂU NÓI HIỆN TẠI CỦA KHÁCH:
 "{text}"
 
-YÊU CẦU: Trả về JSON hợp lệ theo định dạng:
-{{"input_type": "...", "order_id": "...", "confidence": 0.95}}
-Chỉ trả về JSON thuần túy, không thêm markdown.
+YÊU CẦU: Trả về DUY NHẤT một JSON hợp lệ:
+{{"input_type": "chitchat" | "fact_supplement" | "negation_reversal" | "new_question", "order_id": "ORD-XXXX hoặc null", "confidence": 0.95}}
+Tuyệt đối không thêm markdown hay giải thích ngoài.
 """
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={self.api_key}"
+
+    async def _classify_with_openai_compatible(
+        self, prompt: str
+    ) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
         payload = {
-            "contents": [{"parts": [{"text": prompt}]}],
-            "generationConfig": {
-                "temperature": 0.0,
-                "maxOutputTokens": 500,
-                "thinkingConfig": {
-                    "thinkingBudget": 0
-                },
-            }
+            "model": OPENAI_MODEL,
+            "messages": [
+                {"role": "system", "content": "Bạn là chuyên gia phân loại câu hội thoại CSKH Tiki. Trả về DUY NHẤT một JSON hợp lệ theo định dạng yêu cầu."},
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0.0,
+            "max_tokens": 1000,
         }
+        res_data = await call_chat_completion_with_failover(payload, timeout=12.0)
+        if res_data and "choices" in res_data and res_data["choices"]:
+            msg = res_data["choices"][0].get("message", {})
+            raw_text = msg.get("content", "").strip()
+            if not raw_text:
+                raw_text = msg.get("reasoning_content", "").strip()
+            return self._parse_json_result(raw_text)
+        return None
 
-        async with httpx.AsyncClient(timeout=3.0) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code == 200:
-                data = resp.json()
-                raw_text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
-                # Clean code blocks if returned
-                raw_text = re.sub(r"^```(?:json)?", "", raw_text).strip()
-                raw_text = re.sub(r"```$", "", raw_text).strip()
-                import json
-                parsed = json.loads(raw_text)
-                category = parsed.get("input_type", "new_question")
-                if category not in {"chitchat", "fact_supplement", "negation_reversal", "new_question"}:
-                    category = "new_question"
-                llm_facts = {}
-                if parsed.get("order_id"):
-                    llm_facts["order_id"] = parsed["order_id"].upper()
-                conf = float(parsed.get("confidence", 0.90))
-                return category, llm_facts, conf
-
-        return "new_question", {}, 0.80
+    def _parse_json_result(self, raw_text: str) -> Optional[Tuple[InputCategory, Dict[str, Any], float]]:
+        if not raw_text:
+            return None
+        match = re.search(r"\{.*\}", raw_text, re.DOTALL)
+        if not match:
+            return None
+        try:
+            parsed = json.loads(match.group(0))
+        except Exception:
+            return None
+        category = parsed.get("input_type", "new_question")
+        if category not in {"chitchat", "fact_supplement", "negation_reversal", "new_question"}:
+            category = "new_question"
+        llm_facts = {}
+        if parsed.get("order_id"):
+            llm_facts["order_id"] = str(parsed["order_id"]).upper()
+        conf = float(parsed.get("confidence", 0.90))
+        return category, llm_facts, conf

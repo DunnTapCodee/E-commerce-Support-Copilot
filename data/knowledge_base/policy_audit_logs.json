@@ -1,0 +1,348 @@
+[
+  {
+    "log_id": "LOG-4B7F11DA96",
+    "timestamp": "2026-11-07 13:52:40",
+    "doc_id": "POL-RET-001",
+    "doc_title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+    "action": "UPDATE",
+    "performed_by": "Nhân viên CSKH (Web)",
+    "reason": "Cập nhật thông tin. Trạng thái tự động: Active (Chính sách [POL-RET-001] đang có hiệu lực áp dụng.)",
+    "before_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2024-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    },
+    "after_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2024-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-22CE9680BA",
+    "timestamp": "2026-11-07 13:52:19",
+    "doc_id": "POL-RET-001",
+    "doc_title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+    "action": "UPDATE",
+    "performed_by": "Nhân viên CSKH (Web)",
+    "reason": "Cập nhật thông tin. Trạng thái tự động: Inactive (Chính sách tạm thời [POL-RET-001] thiếu ngày hết hạn (expiration_date).)",
+    "before_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2024-01-01",
+      "expiration_date": "2026-10-07",
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    },
+    "after_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2024-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-1B95D2338C",
+    "timestamp": "2026-11-07 13:51:10",
+    "doc_id": "POL-RET-001",
+    "doc_title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+    "action": "UPDATE",
+    "performed_by": "Nhân viên CSKH (Web)",
+    "reason": "Cập nhật thông tin. Trạng thái tự động: Inactive (Chính sách [POL-RET-001] đã hết hạn vào ngày 2026-10-07 (hiện tại: 2026-11-07).)",
+    "before_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "permanent",
+      "effective_date": "2024-01-01",
+      "expiration_date": "2026-10-07",
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    },
+    "after_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2024-01-01",
+      "expiration_date": "2026-10-07",
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-5449A7ACED",
+    "timestamp": "2026-11-07 13:50:57",
+    "doc_id": "POL-RET-001",
+    "doc_title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+    "action": "UPDATE",
+    "performed_by": "Nhân viên CSKH (Web)",
+    "reason": "Cập nhật thông tin. Trạng thái tự động: Inactive (Chính sách [POL-RET-001] đã hết hạn vào ngày 2026-10-07 (hiện tại: 2026-11-07).)",
+    "before_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2024-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    },
+    "after_snapshot": {
+      "doc_id": "POL-RET-001",
+      "category": "return_refund",
+      "title": "Chính sách và điều kiện đổi trả sản phẩm tiêu chuẩn của Tiki",
+      "content": "Khách hàng có thể yêu cầu đổi hoặc trả sản phẩm trong vòng 30 ngày (đối với các sản phẩm do Tiki Trading phân phối trực tiếp) hoặc trong vòng 07 ngày (đối với sản phẩm từ các nhà bán hàng đối tác trên sàn Tiki) kể từ ngày nhận hàng thành công. Sản phẩm đổi trả phải còn nguyên tem niêm phong, đầy đủ bao bì hộp, phụ kiện, hóa đơn và quà tặng kèm, chưa có dấu hiệu đã qua sử dụng hay giặt tẩy.",
+      "version": "2.0",
+      "is_active": false,
+      "policy_type": "permanent",
+      "effective_date": "2024-01-01",
+      "expiration_date": "2026-10-07",
+      "tags": [
+        "đổi trả",
+        "điều kiện đổi trả",
+        "thời hạn đổi trả",
+        "30 ngày",
+        "7 ngày",
+        "tiki trading",
+        "nguyên tem"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-20261029034359-BDC04F",
+    "timestamp": "2026-10-29T03:43:59.208341",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi nhà sản xuất",
+        "sai mẫu mã",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034343-6D1B95",
+    "timestamp": "2026-10-29T03:43:43.293277",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "CREATE",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Thêm mới chính sách 'POL-RET2026'",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi nhà sản xuất",
+        "sai mẫu mã",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-20261029034256-4771DC",
+    "timestamp": "2026-10-29T03:42:56.713257",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": null,
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034252-677178",
+    "timestamp": "2026-10-29T03:42:52.891942",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": null,
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034249-22D273",
+    "timestamp": "2026-10-29T03:42:49.421981",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "ROLLBACK",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Nhân viên NV_CSKH_01 khôi phục thao tác CREATE",
+    "before_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi sản xuất",
+        "giao sai mẫu",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-20261029034236-79FF20",
+    "timestamp": "2026-10-29T03:42:36.240197",
+    "doc_id": "POL-RET2026",
+    "doc_title": null,
+    "action": "CREATE",
+    "performed_by": "NV_CSKH_01",
+    "reason": "Thêm mới chính sách 'POL-RET2026'",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-RET2026",
+      "category": "return_refund",
+      "title": "Quy định đổi trả hàng hóa tiêu chuẩn",
+      "content": "Khách hàng được quyền yêu cầu đổi trả hoặc trả hàng - hoàn tiền trong vòng 15 ngày kể từ ngày nhận hàng thành công nếu sản phẩm có lỗi từ nhà sản xuất, giao sai mẫu mã hoặc bị hư hỏng trong quá trình vận chuyển. Sản phẩm yêu cầu còn nguyên tem mác, chưa qua sử dụng và đầy đủ phụ kiện, hóa đơn đi kèm.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-01-01",
+      "expiration_date": null,
+      "tags": [
+        "đổi trả",
+        "hoàn tiền",
+        "lỗi sản xuất",
+        "giao sai mẫu",
+        "hư hỏng vận chuyển",
+        "15 ngày"
+      ],
+      "score": null
+    }
+  }
+]

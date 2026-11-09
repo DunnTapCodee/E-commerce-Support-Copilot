@@ -10,6 +10,7 @@ from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.llm_classifier import LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
 from services.intent_service.src.preprocessing import preprocess, segment_vi
+from services.intent_service.src.normalizer import normalize_vietnamese_query
 from services.intent_service.src.router import LanguageRouter
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -184,10 +185,12 @@ class IntentPredictor:
         return (self.intent_backend in {"llm", "hybrid"}) or bool(self.backends) or (self.legacy_model is not None)
 
     def _predict_ml(self, query: str) -> IntentPredictionResponse:
-        """Execute legacy/module 1 ML model pipeline."""
+        """Execute legacy/module 1 ML model pipeline with unaccented normalizer."""
         start = time.perf_counter()
-        text = preprocess(query) if callable(globals().get("preprocess")) else query.strip()
-        language = self.router.detect(text)
+        raw_text = query.strip()
+        norm_text, was_norm = normalize_vietnamese_query(raw_text)
+        text = preprocess(norm_text) if callable(globals().get("preprocess")) else norm_text
+        language = self.router.detect(raw_text)
 
         # 1. Module 1 Multi-backend inference
         if not self.is_legacy and self.backends:
@@ -273,8 +276,26 @@ class IntentPredictor:
             return self._predict_ml(query)
 
         # Hybrid: run ML first; if low confidence or out-of-scope, fallback to LLM
-        ml_resp = self._predict_ml(query)
         q_low = query.lower()
+
+        # Priority keyword routing directly to LLM for promotion / discount / voucher / refund / cancel:
+        # This prevents LinearSVC/TF-IDF baseline from being biased by "đơn hàng" or order numbers
+        PROMO_DISCOUNT_KEYWORDS = [
+            "ưu đãi", "khuyến mãi", "khuyến mại", "voucher", "mã giảm", "coupon",
+            "freeship", "giảm giá", "chiết khấu", "quà tặng", "chính sách ưu đãi",
+            "chương trình ưu đãi", "áp dụng mã", "tiki xu"
+        ]
+        REFUND_KEYWORDS = [
+            "hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund", "trả hàng", "đổi trả"
+        ]
+        CANCEL_KEYWORDS = [
+            "hủy đơn", "huỷ đơn", "không lấy nữa", "hủy hàng", "huỷ hàng", "hủy mua"
+        ]
+
+        if any(k in q_low for k in PROMO_DISCOUNT_KEYWORDS + REFUND_KEYWORDS + CANCEL_KEYWORDS):
+            return self.llm_classifier.predict(query)
+
+        ml_resp = self._predict_ml(query)
         if ml_resp.intent == "track_order" and any(k in q_low for k in ["hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund"]):
             return self.llm_classifier.predict(query)
         if ml_resp.is_in_scope and ml_resp.confidence >= 0.75:

@@ -77,6 +77,7 @@ def health_check():
 
 
 @app.post("/ingest")
+@app.post("/api/v1/rag/sync-kb")
 def trigger_ingestion():
     """Trigger ingestion of policies.json to update vector store index."""
     try:
@@ -93,6 +94,7 @@ def trigger_ingestion():
 
 
 @app.post("/retrieve", response_model=List[RetrievedDocument])
+@app.post("/api/v1/rag/retrieve", response_model=List[RetrievedDocument])
 def retrieve_policies(request: RAGRetrieveRequest):
     """Retrieve top-k policy documents with active version filtering."""
     if not retriever_instance:
@@ -109,6 +111,7 @@ def retrieve_policies(request: RAGRetrieveRequest):
 
 
 @app.post("/generate", response_model=RAGGenerateResponse)
+@app.post("/api/v1/rag/generate", response_model=RAGGenerateResponse)
 async def generate_draft(request: RAGGenerateRequest):
     """Generate grounded draft response citing policy documents."""
     try:
