@@ -1,7 +1,43 @@
 # E-commerce Support Copilot
 
-Five-service agent workbench: Streamlit UI, FastAPI gateway, bilingual intent
-classification, policy retrieval/drafting, and SQLite audit telemetry.
+Hệ thống AI Copilot hỗ trợ chăm sóc khách hàng (CSKH) thương mại điện tử: UI Streamlit Workbench, API Gateway, Intent Classification (Phân loại ý định song ngữ), RAG Policy Retrieval & Drafting (Truy xuất chính sách & soạn thảo nháp), Quản lý vòng đời chính sách và SQLite Audit Telemetry.
+
+---
+
+## 🚀 Hướng dẫn khởi chạy nhanh (Quick Start)
+
+Dự án đã được đóng gói toàn bộ vào Docker Compose. Người mới clone repo về **chỉ cần chạy 1 lệnh duy nhất**:
+
+### Cách 1: Sử dụng Docker Compose trực tiếp
+```bash
+# 1. Tạo file cấu hình môi trường từ template (nếu chưa có)
+cp .env.example .env
+
+# 2. Khởi chạy toàn bộ hệ thống
+docker compose up -d --build
+```
+
+### Cách 2: Chạy script tự động (Tự tạo .env và build container)
+- **Trên Windows:** Click đúp vào file `start.bat` (hoặc mở PowerShell gõ `.\start.bat`).
+- **Trên Linux / macOS:** Chạy file `bash start.sh`.
+
+---
+
+## 🌐 Các cổng truy cập sau khi khởi chạy
+
+Sau khi Docker Compose khởi chạy thành công, truy cập các địa chỉ sau trên trình duyệt:
+- **Giao diện CSKH Workbench UI:** [http://localhost:8501](http://localhost:8501)
+- **API Gateway (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
+- **Knowledge / Document Management Service:** [http://localhost:18004/docs](http://localhost:18004/docs)
+- **RAG & Policy Service:** [http://localhost:18002/docs](http://localhost:18002/docs)
+- **Intent Service:** [http://localhost:18005/docs](http://localhost:18005/docs)
+- **Conversation Service:** [http://localhost:18006/docs](http://localhost:18006/docs)
+- **Telemetry Service:** [http://localhost:18003/docs](http://localhost:18003/docs)
+
+> [!NOTE]
+> Để sử dụng đầy đủ các tính năng sinh phản hồi với LLM, bạn chỉ cần mở file `.env` và điền API Key tương ứng (`OPENAI_API_KEY` hoặc `GEMINI_API_KEY`). Mô hình phân loại ý định (Intent) và truy xuất chính sách (RAG BM25) cùng cơ sở dữ liệu SQLite đã được tích hợp sẵn sàng để chạy offline ngay lập tức!
+
+---
 
 Module 1 NLU implementation and commands: [README_MODULE1.md](services/intent_service/README_MODULE1.md). The one-run Kaggle notebook is `kaggle/kernels/k00-end-to-end-nlu/k00_end_to_end_nlu.ipynb`.
 New NLU artifacts must be trained and deployed before the intent API becomes healthy.

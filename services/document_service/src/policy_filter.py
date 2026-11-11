@@ -211,6 +211,14 @@ Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc
                 if content.endswith("```"):
                     content = content[:-3]
                 return json.loads(content.strip())
+            try:
+                error_message = resp.json().get("error", {}).get("message", "")
+            except (ValueError, AttributeError):
+                error_message = ""
+            print(
+                f"[PolicyFilter] OpenAI extraction failed: HTTP {resp.status_code} "
+                f"for model {OPENAI_MODEL}: {error_message[:200]}"
+            )
     except Exception as exc:
         print(f"[PolicyFilter] OpenAI extraction failed: {exc}")
     return None

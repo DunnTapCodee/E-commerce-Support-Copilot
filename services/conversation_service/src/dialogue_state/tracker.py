@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from contracts.llm_failover import call_chat_completion_with_failover
 from contracts.schemas import IntentPredictionResponse
+from services.conversation_service.src.config import OPENAI_MODEL
 from services.conversation_service.src.dialogue_state.state import ConversationState
 
 logger = logging.getLogger("dialogue_tracker")
@@ -174,7 +175,7 @@ class IntentTracker:
                 )
 
                 payload = {
-                    "model": "openai-gpt-oss-20b",
+                    "model": OPENAI_MODEL,
                     "messages": [
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt},

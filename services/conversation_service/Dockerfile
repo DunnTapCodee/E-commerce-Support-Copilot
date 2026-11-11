@@ -7,6 +7,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY contracts /app/contracts
 COPY services/conversation_service /app/services/conversation_service
+COPY data /app/data
 
 ENV PYTHONPATH=/app
 ENV PORT=8006
