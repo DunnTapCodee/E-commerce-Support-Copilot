@@ -595,7 +595,11 @@ async def process_chat_turn_stream(request: QueryRequest):
             "interaction_id": interaction_id,
             "session_id": session_id,
             "customer_acknowledgement": prep["customer_ack"],
-            "intent": prep["effective_intent"],
+            "intent": {
+                "intent": prep["effective_intent"],
+                "confidence": prep["effective_conf"],
+                "is_in_scope": True if DISABLE_CONFIDENCE_GUARD else (prep["effective_conf"] >= 0.50),
+            },
             "confidence": prep["effective_conf"],
             "input_type": prep["input_type"],
             "rewritten_query": prep["rewritten_query"],

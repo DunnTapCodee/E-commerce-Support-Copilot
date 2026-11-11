@@ -7,10 +7,11 @@ RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY contracts/ /app/contracts/
 COPY services/intent_service/ /app/services/intent_service/
+COPY ML-model/ /app/ML-model/
+COPY artifacts/ /app/artifacts/
 
 ENV PYTHONPATH=/app
 ENV PORT=8005
-COPY artifacts/models/intent/ /app/artifacts/models/intent/
 ENV INTENT_MODEL_DIR=/app/artifacts/models/intent
 ENV INTENT_ROUTING_MODE=router
 
