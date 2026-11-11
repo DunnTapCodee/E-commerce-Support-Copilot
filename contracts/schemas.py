@@ -198,7 +198,6 @@ class RawPolicyFilterRequest(BaseModel):
     """Payload containing raw policy text supplied by staff."""
     raw_text: str = Field(..., description="Unstructured policy text to be parsed")
     suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
-    gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
 
 
 class PolicyFilterResult(BaseModel):
@@ -274,52 +273,4 @@ class ConversationSessionState(BaseModel):
     updated_at: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M:%S"))
 
 
-# -------------------------------------------------------------------
-# 9. Policy Filter & Creation Contracts
-# -------------------------------------------------------------------
-class RawPolicyFilterRequest(BaseModel):
-    """Payload containing raw policy text supplied by staff."""
-    raw_text: str = Field(..., description="Unstructured policy text to be parsed")
-    suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
-    gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
 
-
-class PolicyFilterResult(BaseModel):
-    """Result of automatic extraction, ready for human review/edit."""
-    extracted_policy: RetrievedDocument
-    warnings: List[str] = Field(default_factory=list, description="Extraction or validation warnings")
-    confidence_score: float = Field(ge=0.0, le=1.0, description="Confidence of automatic parsing")
-
-
-class PolicyCreateRequest(BaseModel):
-    """Final payload to persist a new policy after human confirmation."""
-    policy: RetrievedDocument
-    admin_note: Optional[str] = None
-    performed_by: Optional[str] = "Admin"
-    reason: Optional[str] = None
-
-
-class PolicyUpdateRequest(BaseModel):
-    """Payload to partially update an existing policy with audit tracking."""
-    updates: Dict[str, Any]
-    performed_by: Optional[str] = "Admin"
-    reason: Optional[str] = None
-
-
-class PolicyAuditLogEntry(BaseModel):
-    """Audit log entry capturing policy lifecycle changes for traceability and rollback."""
-    log_id: str
-    timestamp: str
-    doc_id: str
-    action: str  # "CREATE", "UPDATE", "SUPERSEDE", "ROLLBACK"
-    performed_by: str = "Admin"
-    reason: Optional[str] = None
-    before_snapshot: Optional[Dict[str, Any]] = None
-    after_snapshot: Optional[Dict[str, Any]] = None
-
-
-class PolicyRollbackRequest(BaseModel):
-    """Request to rollback a policy to a prior version/state based on an audit log ID."""
-    log_id: str
-    performed_by: Optional[str] = "Admin"
-    reason: Optional[str] = None

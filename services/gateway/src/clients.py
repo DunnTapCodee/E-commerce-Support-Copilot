@@ -190,6 +190,27 @@ class MicroserviceClients:
             resp.raise_for_status()
             return resp.json()
 
+    async def filter_bulk_policy(self, request: RawPolicyFilterRequest) -> List[Dict[str, Any]]:
+        """Call document_service:8004/api/v1/documents/filter-bulk-preview."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=3.0)) as client:
+            resp = await client.post(
+                f"{DOCUMENT_SERVICE_URL}/api/v1/documents/filter-bulk-preview",
+                json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def parse_file(self, filename: str, content: bytes, content_type: Optional[str] = None) -> Dict[str, Any]:
+        """Call document_service:8004/api/v1/documents/parse-file."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0)) as client:
+            files = {"file": (filename, content, content_type or "application/octet-stream")}
+            resp = await client.post(
+                f"{DOCUMENT_SERVICE_URL}/api/v1/documents/parse-file",
+                files=files,
+            )
+            resp.raise_for_status()
+            return resp.json()
+
     async def create_policy(self, request: PolicyCreateRequest) -> Dict[str, Any]:
         """Call document_service:8004/api/v1/documents/policies."""
         async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=3.0)) as client:

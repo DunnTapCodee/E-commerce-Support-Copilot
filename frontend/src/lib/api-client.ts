@@ -220,6 +220,34 @@ export const apiClient = {
     return res.json();
   },
 
+  async filterPolicyBulk(rawText: string, suggestedCategory?: string): Promise<PolicyFilterResult[]> {
+    const res = await fetch(`${API_BASE}/policy/filter-bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        raw_text: rawText,
+        suggested_category: suggestedCategory,
+      }),
+    });
+    if (!res.ok) {
+      throw new Error(`Bulk Filter Error (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  },
+
+  async parseDocumentFile(file: File): Promise<{ filename: string; text: string; size: number }> {
+    const formData = new FormData();
+    formData.append('file', file);
+    const res = await fetch(`${API_BASE}/policy/parse-file`, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!res.ok) {
+      throw new Error(`Parse File Error (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  },
+
   async createPolicy(policy: RetrievedDocument, reason?: string): Promise<RetrievedDocument> {
     const res = await fetch(`${API_BASE}/policy/create`, {
       method: 'POST',

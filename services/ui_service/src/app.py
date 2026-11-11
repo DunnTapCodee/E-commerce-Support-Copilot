@@ -74,18 +74,6 @@ with st.sidebar:
         index=0,
     )
 
-    with st.expander("🔑 Cấu hình Gemini API Key (cho tính năng LLM)", expanded=False):
-        user_key = st.text_input(
-            "Google Gemini API Key",
-            value=st.session_state.get("custom_gemini_key", ""),
-            type="password",
-            placeholder="Nhập Gemini API Key (AQ... hoặc AIzaSy...)",
-            help="Nhập Gemini API Key của bạn để sử dụng mô hình LLM trích xuất chính sách tự động.",
-            key="custom_gemini_key_input",
-        )
-        if user_key:
-            st.session_state["custom_gemini_key"] = user_key.strip()
-
     st.divider()
     st.caption(f"Gateway URL: `{GATEWAY_URL}`")
     st.caption("Version: 2.1.0-modular")

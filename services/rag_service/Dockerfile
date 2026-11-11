@@ -23,4 +23,4 @@ ENV HF_HOME=/models/huggingface
 
 EXPOSE 8002
 
-CMD ["uvicorn", "services.rag_service.src.main:app", "--host", "0.0.0.0", "--port", "8002"]
+CMD ["python", "-m", "uvicorn", "services.rag_service.src.main:app", "--host", "0.0.0.0", "--port", "8002"]
