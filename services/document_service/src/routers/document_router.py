@@ -1,6 +1,6 @@
 """FastAPI Router for Document and Policy Management (Port 8004)."""
 from typing import Any, Dict, List, Optional
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from contracts.schemas import (
     PolicyAuditLogEntry,
@@ -11,7 +11,11 @@ from contracts.schemas import (
     RawPolicyFilterRequest,
     RetrievedDocument,
 )
-from services.document_service.src.policy_filter import filter_raw_policy
+from services.document_service.src.policy_filter import (
+    extract_text_from_file_bytes,
+    filter_bulk_raw_policy,
+    filter_raw_policy,
+)
 from services.document_service.src.policy_manager import policy_manager
 
 router = APIRouter(prefix="/api/v1/documents", tags=["documents"])
@@ -26,6 +30,36 @@ async def filter_preview_endpoint(request: RawPolicyFilterRequest):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Trích xuất chính sách thất bại: {str(exc)}",
+        )
+
+
+@router.post("/filter-bulk-preview", response_model=List[PolicyFilterResult])
+async def filter_bulk_preview_endpoint(request: RawPolicyFilterRequest):
+    """Parse raw text/document containing 1 or multiple policies into a list of PolicyFilterResult."""
+    try:
+        return await filter_bulk_raw_policy(request.raw_text, request.suggested_category)
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Trích xuất danh sách chính sách thất bại: {str(exc)}",
+        )
+
+
+@router.post("/parse-file")
+async def parse_file_endpoint(file: UploadFile = File(...)):
+    """Extract plain text from uploaded files (.docx, .txt, .json, .md, .csv, etc.)."""
+    try:
+        content_bytes = await file.read()
+        extracted_text = extract_text_from_file_bytes(file.filename or "unknown", content_bytes)
+        return {
+            "filename": file.filename,
+            "size": len(content_bytes),
+            "text": extracted_text,
+        }
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Không thể đọc file {file.filename}: {str(exc)}",
         )
 
 

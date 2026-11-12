@@ -82,31 +82,37 @@ class CopilotDraftEngine:
 
     @classmethod
     async def _call_gemini(cls, prompt: str, api_key: str) -> Optional[str]:
-        """Generate response via Google Gemini API."""
+        """Generate response via Google Gemini API with multi-model resilience."""
         try:
             payload = {
                 "contents": [{"parts": [{"text": prompt}]}],
                 "generationConfig": {
                     "temperature": 0.2,
                     "maxOutputTokens": 2048,
-                    "thinkingConfig": {
-                        "thinkingBudget": 0
-                    },
                 },
             }
-            async with httpx.AsyncClient(timeout=8.0) as client:
-                resp = await client.post(
-                    f"{GEMINI_URL}?key={api_key}",
-                    json=payload,
-                )
-                if resp.status_code == 200:
-                    candidates = resp.json().get("candidates", [])
-                    if candidates:
-                        raw_draft = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
-                        if raw_draft:
-                            return raw_draft
-                else:
-                    print(f"[CopilotDraftEngine] Gemini returned status {resp.status_code}: {resp.text[:200]}")
+            candidate_models = [
+                os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
+                "gemini-3.8-flash",
+                "gemini-2.5-flash",
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+            ]
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                for model in dict.fromkeys(candidate_models):
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+                    try:
+                        resp = await client.post(url, json=payload)
+                        if resp.status_code == 200:
+                            candidates = resp.json().get("candidates", [])
+                            if candidates:
+                                raw_draft = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
+                                if raw_draft:
+                                    return raw_draft
+                        elif resp.status_code in (400, 404, 429, 500, 503):
+                            continue
+                    except Exception:
+                        continue
         except Exception as exc:
             print(f"[CopilotDraftEngine] Gemini generation call failed: {exc}")
         return None

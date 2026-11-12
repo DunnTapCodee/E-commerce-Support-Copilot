@@ -19,11 +19,11 @@ from contracts.schemas import (
     PolicyRollbackRequest,
 )
 from services.gateway.src.config import (
+    CONVERSATION_SERVICE_URL,
+    DOCUMENT_SERVICE_URL,
     INTENT_SERVICE_URL,
     RAG_SERVICE_URL,
     TELEMETRY_SERVICE_URL,
-    CONVERSATION_SERVICE_URL,
-    DOCUMENT_SERVICE_URL,
 )
 
 
@@ -57,7 +57,8 @@ class MicroserviceClients:
                 json=req_data.model_dump(),
             )
             resp.raise_for_status()
-            return [RetrievedDocument(**item) for item in resp.json()]
+            data = resp.json()
+            return [RetrievedDocument(**doc) for doc in data.get("documents", [])]
 
     async def generate_draft(
         self, query: str, citations: List[RetrievedDocument]
@@ -137,6 +138,8 @@ class MicroserviceClients:
             except httpx.HTTPError as exc:
                 print(f"[Gateway] Failed to record audit log: {exc}")
 
+    record_audit_log = log_telemetry
+
     async def record_human_action(self, action_payload: HumanActionUpdate) -> bool:
         """Send CS Agent review action to telemetry_service:8003/audit/action."""
         async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -183,6 +186,27 @@ class MicroserviceClients:
             resp = await client.post(
                 f"{DOCUMENT_SERVICE_URL}/api/v1/documents/filter-preview",
                 json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def filter_bulk_policy(self, request: RawPolicyFilterRequest) -> List[Dict[str, Any]]:
+        """Call document_service:8004/api/v1/documents/filter-bulk-preview."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(45.0, connect=3.0)) as client:
+            resp = await client.post(
+                f"{DOCUMENT_SERVICE_URL}/api/v1/documents/filter-bulk-preview",
+                json=request.model_dump(),
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+    async def parse_file(self, filename: str, content: bytes, content_type: Optional[str] = None) -> Dict[str, Any]:
+        """Call document_service:8004/api/v1/documents/parse-file."""
+        async with httpx.AsyncClient(timeout=httpx.Timeout(30.0, connect=3.0)) as client:
+            files = {"file": (filename, content, content_type or "application/octet-stream")}
+            resp = await client.post(
+                f"{DOCUMENT_SERVICE_URL}/api/v1/documents/parse-file",
+                files=files,
             )
             resp.raise_for_status()
             return resp.json()

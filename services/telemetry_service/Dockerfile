@@ -15,4 +15,4 @@ ENV MOCK_ORDERS_PATH=/app/data/mock_orders.json
 
 EXPOSE 8003
 
-CMD ["uvicorn", "services.telemetry_service.src.main:app", "--host", "0.0.0.0", "--port", "8003"]
+CMD ["python", "-m", "uvicorn", "services.telemetry_service.src.main:app", "--host", "0.0.0.0", "--port", "8003"]

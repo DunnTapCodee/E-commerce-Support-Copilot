@@ -1,5 +1,117 @@
 [
   {
+    "log_id": "LOG-1E48A1A1F4",
+    "timestamp": "2026-11-11 23:29:13",
+    "doc_id": "POL-TEST-VERIFY-99",
+    "doc_title": "Chính sách kiểm thử hệ thống tự động",
+    "action": "DELETE",
+    "performed_by": "Admin",
+    "reason": "Xóa chính sách [POL-TEST-VERIFY-99] khỏi hệ thống.",
+    "before_snapshot": {
+      "doc_id": "POL-TEST-VERIFY-99",
+      "category": "support",
+      "title": "Chính sách kiểm thử hệ thống tự động",
+      "content": "Đây là nội dung kiểm thử quy trình lưu KB tự động.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-11-11",
+      "expiration_date": null,
+      "tags": [
+        "kiểm thử",
+        "test",
+        "copilot"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-23D359040C",
+    "timestamp": "2026-11-11 23:29:13",
+    "doc_id": "POL-TEST-VERIFY-99",
+    "doc_title": "Chính sách kiểm thử hệ thống tự động",
+    "action": "CREATE",
+    "performed_by": "Test Suite Runner",
+    "reason": "Automated verification test",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-TEST-VERIFY-99",
+      "category": "support",
+      "title": "Chính sách kiểm thử hệ thống tự động",
+      "content": "Đây là nội dung kiểm thử quy trình lưu KB tự động.",
+      "version": "1.0",
+      "is_active": true,
+      "policy_type": "permanent",
+      "effective_date": "2026-11-11",
+      "expiration_date": null,
+      "tags": [
+        "kiểm thử",
+        "test",
+        "copilot"
+      ],
+      "score": null
+    }
+  },
+  {
+    "log_id": "LOG-FFAB476E9D",
+    "timestamp": "2026-11-11 23:17:11",
+    "doc_id": "POL-47C355EE",
+    "doc_title": "Chương trình ưu đãi Flash Sale Tết Nguyên Đán 2026",
+    "action": "DELETE",
+    "performed_by": "Admin",
+    "reason": "Xóa chính sách [POL-47C355EE] khỏi hệ thống.",
+    "before_snapshot": {
+      "doc_id": "POL-47C355EE",
+      "category": "promotions",
+      "title": "Chương trình ưu đãi Flash Sale Tết Nguyên Đán 2026",
+      "content": "- Thời gian áp dụng: từ 10/01/2026 đến 28/02/2026.\n- Đối tượng áp dụng: tất cả các đơn hàng có giá trị từ 500.000 VNĐ trở lên khi thanh toán trực tuyến.\n- Ưu đãi: giảm trực tiếp 15% giá trị đơn hàng (tối đa 100.000 VNĐ).\n- Quà tặng kèm: voucher miễn phí vận chuyển toàn quốc.\n- Giới hạn: mỗi tài khoản chỉ được sử dụng tối đa 2 lần trong suốt thời gian diễn ra sự kiện.",
+      "version": "1.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2026-01-10",
+      "expiration_date": "2026-02-28",
+      "tags": [
+        "flash sale",
+        "tết nguyên đán",
+        "giảm giá",
+        "voucher vận chuyển",
+        "thanh toán trực tuyến"
+      ],
+      "score": null
+    },
+    "after_snapshot": null
+  },
+  {
+    "log_id": "LOG-180898E3E7",
+    "timestamp": "2026-11-11 23:16:11",
+    "doc_id": "POL-47C355EE",
+    "doc_title": "Chương trình ưu đãi Flash Sale Tết Nguyên Đán 2026",
+    "action": "CREATE",
+    "performed_by": "Nhân viên CSKH (Web)",
+    "reason": "Trích xuất AI Filter từ văn bản. Trạng thái tự động: false",
+    "before_snapshot": null,
+    "after_snapshot": {
+      "doc_id": "POL-47C355EE",
+      "category": "promotions",
+      "title": "Chương trình ưu đãi Flash Sale Tết Nguyên Đán 2026",
+      "content": "- Thời gian áp dụng: từ 10/01/2026 đến 28/02/2026.\n- Đối tượng áp dụng: tất cả các đơn hàng có giá trị từ 500.000 VNĐ trở lên khi thanh toán trực tuyến.\n- Ưu đãi: giảm trực tiếp 15% giá trị đơn hàng (tối đa 100.000 VNĐ).\n- Quà tặng kèm: voucher miễn phí vận chuyển toàn quốc.\n- Giới hạn: mỗi tài khoản chỉ được sử dụng tối đa 2 lần trong suốt thời gian diễn ra sự kiện.",
+      "version": "1.0",
+      "is_active": false,
+      "policy_type": "temporary",
+      "effective_date": "2026-01-10",
+      "expiration_date": "2026-02-28",
+      "tags": [
+        "flash sale",
+        "tết nguyên đán",
+        "giảm giá",
+        "voucher vận chuyển",
+        "thanh toán trực tuyến"
+      ],
+      "score": null
+    }
+  },
+  {
     "log_id": "LOG-4B7F11DA96",
     "timestamp": "2026-11-07 13:52:40",
     "doc_id": "POL-RET-001",

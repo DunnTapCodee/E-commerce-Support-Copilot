@@ -198,7 +198,6 @@ class RawPolicyFilterRequest(BaseModel):
     """Payload containing raw policy text supplied by staff."""
     raw_text: str = Field(..., description="Unstructured policy text to be parsed")
     suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
-    gemini_api_key: Optional[str] = Field(default=None, description="Optional Gemini API key passed from UI/caller")
 
 
 class PolicyFilterResult(BaseModel):
@@ -272,3 +271,6 @@ class ConversationSessionState(BaseModel):
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
     updated_at: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M:%S"))
+
+
+

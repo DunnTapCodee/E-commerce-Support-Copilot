@@ -196,7 +196,21 @@ export const PolicyListView: React.FC = () => {
                     <td className="px-5 py-3.5 font-mono font-semibold text-slate-900">{p.doc_id}</td>
                     <td className="px-5 py-3.5 max-w-xs">
                       <div className="font-semibold text-slate-800 line-clamp-1">{p.title}</div>
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wide">{p.category || 'support'}</span>
+                      <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                        <span className="text-[10px] text-slate-400 uppercase tracking-wide font-medium">{p.category || 'support'}</span>
+                        {p.tags && p.tags.length > 0 && (
+                          <div className="flex items-center gap-1 flex-wrap">
+                            {p.tags.slice(0, 3).map((tag, tIdx) => (
+                              <span key={tIdx} className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 border border-slate-200">
+                                #{tag}
+                              </span>
+                            ))}
+                            {p.tags.length > 3 && (
+                              <span className="text-[10px] text-slate-400">+{p.tags.length - 3}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="px-5 py-3.5">
                       <span className="capitalize">{p.policy_type}</span>
@@ -362,6 +376,19 @@ export const PolicyListView: React.FC = () => {
                 <span className="font-semibold text-slate-700">{viewingPolicy.expiration_date || 'Vô hạn (Thường trực)'}</span>
               </div>
             </div>
+
+            {viewingPolicy.tags && viewingPolicy.tags.length > 0 && (
+              <div>
+                <span className="text-slate-500 font-semibold block mb-1">Thẻ từ khóa (Tags):</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {viewingPolicy.tags.map((tag, idx) => (
+                    <span key={idx} className="px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200 text-[11px] font-medium">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div>
               <div className="flex items-center justify-between mb-1.5">

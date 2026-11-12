@@ -1,4 +1,4 @@
-"""Policy extraction: LLM-first (OpenAI-compatible / Gemini) with Heuristic Fallback.
+"""Policy extraction: OpenAI LLM with Heuristic fallback.
 
 Extracts structured policy fields from raw staff documents:
   - doc_id: Generated or extracted
@@ -12,23 +12,23 @@ Extracts structured policy fields from raw staff documents:
   - tags: Extracted keywords
   - is_active: Dynamically computed via calculate_active_status()
 """
+import io
 import json
-import os
 import re
 import uuid
-from datetime import date, datetime
+import zipfile
+import xml.etree.ElementTree as ET
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 import httpx
 
+from contracts.llm_failover import call_chat_completion_with_failover
 from contracts.schemas import (
     PolicyFilterResult,
     RawPolicyFilterRequest,
     RetrievedDocument,
 )
 from services.document_service.src.config import (
-    GEMINI_API_KEY,
-    GEMINI_MODEL,
-    LLM_PROVIDER,
     OPENAI_API_KEY,
     OPENAI_BASE_URL,
     OPENAI_MODEL,
@@ -167,31 +167,69 @@ def _heuristic_fallback_extract(raw_text: str, suggested_category: Optional[str]
     )
 
 
-async def _llm_extract_openai(raw_text: str, suggested_category: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Extract fields using OpenAI-compatible API."""
-    if not OPENAI_API_KEY:
-        return None
+def extract_text_from_file_bytes(filename: str, file_bytes: bytes) -> str:
+    """Safely extract plain text from uploaded files (docx, txt, json, md, csv, etc.)."""
+    fname = filename.lower()
 
+    # 1. Word .docx format (ZIP archive containing word/document.xml)
+    if fname.endswith(".docx"):
+        try:
+            with zipfile.ZipFile(io.BytesIO(file_bytes)) as zf:
+                if "word/document.xml" in zf.namelist():
+                    xml_content = zf.read("word/document.xml")
+                    tree = ET.fromstring(xml_content)
+                    paragraphs = []
+                    for node in tree.iter():
+                        if node.tag.endswith("}p"):
+                            p_texts = [child.text for child in node.iter() if child.tag.endswith("}t") and child.text]
+                            if p_texts:
+                                paragraphs.append("".join(p_texts))
+                    if paragraphs:
+                        return "\n\n".join(paragraphs).strip()
+                    texts = [node.text for node in tree.iter() if node.tag.endswith("}t") and node.text]
+                    return "\n".join(texts).strip()
+        except Exception as exc:
+            print(f"[DocumentParser] Error parsing docx: {exc}")
+
+    # 2. Text / Markdown / CSV / JSON
+    for enc in ["utf-8", "utf-8-sig", "latin-1", "cp1252"]:
+        try:
+            decoded = file_bytes.decode(enc).strip()
+            if decoded:
+                return decoded
+        except Exception:
+            continue
+
+    return ""
+
+
+async def _llm_extract_openai_items(raw_text: str, suggested_category: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Extract 1 or multiple structured policy items from text using OpenAI-compatible LLM.
+
+    Always returns a list of policy dicts (may have 1 or more items).
+    """
     system_prompt = """Bạn là trợ lý AI chuyên phân tích và chuẩn hóa văn bản chính sách thương mại điện tử.
-Hãy đọc kỹ văn bản chính sách thô của nhân viên và trích xuất thành định dạng JSON chuẩn:
-{
-  "title": "Tiêu đề ngắn gọn, rõ ràng của chính sách",
-  "category": "return_refund | shipping | warranty | payment | promotions | account | support",
-  "policy_type": "permanent | temporary | superseded",
-  "effective_date": "YYYY-MM-DD hoặc null nếu không ghi rõ",
-  "expiration_date": "YYYY-MM-DD hoặc null nếu chính sách vĩnh viễn",
-  "content": "Nội dung chuẩn hóa đầy đủ của chính sách, trình bày rõ ràng có gạch đầu dòng",
-  "version": "1.0",
-  "tags": ["tag1", "tag2", "tag3"]
-}
-Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc giải thích thêm."""
+Người dùng sẽ cung cấp một văn bản hoặc tài liệu (có thể chứa 1 hoặc NHIỀU chính sách khác nhau).
+Hãy phát hiện và trích xuất TẤT CẢ các chính sách có trong văn bản thành một danh sách JSON (JSON Array):
+[
+  {
+    "title": "Tiêu đề ngắn gọn, rõ ràng của chính sách",
+    "category": "return_refund | shipping | warranty | payment | promotions | account | support",
+    "policy_type": "permanent | temporary | superseded",
+    "effective_date": "YYYY-MM-DD hoặc null nếu không ghi rõ",
+    "expiration_date": "YYYY-MM-DD hoặc null nếu chính sách vĩnh viễn",
+    "content": "Nội dung chuẩn hóa đầy đủ của chính sách, trình bày rõ ràng có gạch đầu dòng",
+    "version": "1.0",
+    "tags": ["tag1", "tag2", "tag3"]
+  }
+]
+Quy tắc:
+1. Nếu văn bản chỉ chứa 1 chính sách, hãy trả về mảng có đúng 1 phần tử.
+2. Nếu văn bản chứa NHIỀU chính sách khác nhau, hãy bóc tách riêng biệt từng chính sách thành từng phần tử trong mảng.
+3. Chỉ trả về duy nhất chuỗi JSON hợp lệ (bắt đầu bằng [ và kết thúc bằng ]), không kèm markdown hoặc giải thích thêm."""
 
-    prompt = f"Gợi ý danh mục: {suggested_category or 'Không có'}\n\nVăn bản chính sách thô:\n{raw_text}"
+    prompt = f"Gợi ý danh mục: {suggested_category or 'Không có'}\n\nVăn bản tài liệu thô:\n{raw_text}"
 
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json",
-    }
     payload = {
         "model": OPENAI_MODEL,
         "messages": [
@@ -202,75 +240,108 @@ Chỉ trả về duy nhất chuỗi JSON hợp lệ, không kèm markdown hoặc
     }
 
     try:
-        async with httpx.AsyncClient(timeout=25.0) as client:
-            resp = await client.post(f"{OPENAI_BASE_URL}/chat/completions", headers=headers, json=payload)
-            if resp.status_code == 200:
-                content = resp.json()["choices"][0]["message"]["content"].strip()
-                if content.startswith("```json"):
-                    content = content[7:]
-                if content.endswith("```"):
-                    content = content[:-3]
-                return json.loads(content.strip())
-            try:
-                error_message = resp.json().get("error", {}).get("message", "")
-            except (ValueError, AttributeError):
-                error_message = ""
-            print(
-                f"[PolicyFilter] OpenAI extraction failed: HTTP {resp.status_code} "
-                f"for model {OPENAI_MODEL}: {error_message[:200]}"
-            )
+        data = await call_chat_completion_with_failover(
+            payload=payload,
+            base_url=OPENAI_BASE_URL,
+            timeout=35.0,
+        )
+        if data and "choices" in data and data["choices"]:
+            content = data["choices"][0]["message"]["content"].strip()
+            # Clean possible markdown wrap
+            if content.startswith("```json"):
+                content = content[7:]
+            elif content.startswith("```"):
+                content = content[3:]
+            if content.endswith("```"):
+                content = content[:-3]
+            parsed = json.loads(content.strip())
+            if isinstance(parsed, list):
+                return parsed
+            if isinstance(parsed, dict):
+                return [parsed]
+        print(f"[PolicyFilter] LLM extraction returned no choices for model {OPENAI_MODEL}")
     except Exception as exc:
-        print(f"[PolicyFilter] OpenAI extraction failed: {exc}")
-    return None
+        print(f"[PolicyFilter] LLM extraction error: {exc}")
+    return []
 
 
-async def _llm_extract_gemini(raw_text: str, api_key: str, suggested_category: Optional[str] = None) -> Optional[Dict[str, Any]]:
-    """Extract fields using Gemini API."""
-    if not api_key:
-        return None
+async def _llm_extract_openai(raw_text: str, suggested_category: Optional[str] = None) -> Optional[Dict[str, Any]]:
+    """Extract single policy dict (backward compatibility)."""
+    items = await _llm_extract_openai_items(raw_text, suggested_category)
+    return items[0] if items else None
 
-    prompt = f"""Bạn là trợ lý AI chuẩn hóa chính sách thương mại điện tử.
-Trích xuất thông tin từ văn bản thô sau thành duy nhất 1 JSON object:
-{{
-  "title": "Tiêu đề chính sách",
-  "category": "return_refund | shipping | warranty | payment | promotions | account | support",
-  "policy_type": "permanent | temporary | superseded",
-  "effective_date": "YYYY-MM-DD hoặc null",
-  "expiration_date": "YYYY-MM-DD hoặc null",
-  "content": "Nội dung chuẩn hóa",
-  "version": "1.0",
-  "tags": ["tag1", "tag2"]
-}}
 
-Văn bản thô:
-{raw_text}
-"""
+async def filter_bulk_raw_policy(raw_text: str, suggested_category: Optional[str] = None) -> List[PolicyFilterResult]:
+    """Policy Extraction: OpenAI LLM extracting multiple policies → Heuristic fallback.
 
-    models = [GEMINI_MODEL, "gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash-lite"]
-    payload = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"temperature": 0.1, "maxOutputTokens": 1024},
-    }
+    Returns a list of PolicyFilterResult items.
+    """
+    raw_text = raw_text.strip()
+    if not raw_text:
+        raise ValueError("Văn bản chính sách không được để trống.")
 
-    async with httpx.AsyncClient(timeout=20.0) as client:
-        for model in models:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-            try:
-                resp = await client.post(url, json=payload)
-                if resp.status_code == 200:
-                    text_out = resp.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
-                    if text_out.startswith("```json"):
-                        text_out = text_out[7:]
-                    if text_out.endswith("```"):
-                        text_out = text_out[:-3]
-                    return json.loads(text_out.strip())
-            except Exception:
-                continue
-    return None
+    existing_docs = policy_manager.load_policies()
+    existing_ids = [d.doc_id for d in existing_docs]
+
+    extracted_items = []
+    extraction_source = f"openai ({OPENAI_MODEL})"
+
+    try:
+        extracted_items = await _llm_extract_openai_items(raw_text, suggested_category)
+    except Exception:
+        pass
+
+    results: List[PolicyFilterResult] = []
+
+    if extracted_items:
+        for idx, item_dict in enumerate(extracted_items):
+            doc_id = _generate_unique_doc_id(existing_ids, prefix="POL")
+            existing_ids.append(doc_id)
+
+            item_dict["doc_id"] = doc_id
+            is_active, status_reason = calculate_active_status(item_dict)
+            item_dict["is_active"] = is_active
+
+            doc = RetrievedDocument(
+                doc_id=doc_id,
+                category=item_dict.get("category") or suggested_category or _detect_category(raw_text),
+                title=item_dict.get("title") or f"Chính sách {idx + 1}",
+                content=item_dict.get("content") or raw_text,
+                version=str(item_dict.get("version") or "1.0"),
+                is_active=is_active,
+                policy_type=item_dict.get("policy_type") or "permanent",
+                effective_date=item_dict.get("effective_date"),
+                expiration_date=item_dict.get("expiration_date"),
+                tags=item_dict.get("tags") or _extract_tags(raw_text),
+            )
+
+            warnings = [
+                f"Trích xuất thành công bằng mô hình AI ({extraction_source}).",
+                f"Trạng thái tự động: {'Active' if is_active else 'Inactive'} ({status_reason})",
+            ]
+            if doc.policy_type == "temporary" and not doc.expiration_date:
+                warnings.append("Cảnh báo: Chính sách tạm thời cần có ngày hết hạn rõ ràng.")
+
+            results.append(
+                PolicyFilterResult(
+                    extracted_policy=doc,
+                    warnings=warnings,
+                    confidence_score=0.92,
+                )
+            )
+        return results
+
+    # Fallback heuristic if LLM failed
+    fallback_res = _heuristic_fallback_extract(raw_text, suggested_category)
+    return [fallback_res]
 
 
 async def filter_raw_policy(request: RawPolicyFilterRequest) -> PolicyFilterResult:
-    """Cascade Policy Extraction: OpenAI -> Gemini -> Heuristic."""
+    """Policy Extraction: OpenAI LLM → Heuristic fallback.
+
+    1. Gửi văn bản thô tới OpenAI LLM để trích xuất các trường thông tin.
+    2. Nếu OpenAI thất bại → fallback sang bộ phân tích heuristic.
+    """
     raw_text = request.raw_text.strip()
     if not raw_text:
         raise ValueError("Văn bản chính sách không được để trống.")
@@ -286,22 +357,11 @@ async def filter_raw_policy(request: RawPolicyFilterRequest) -> PolicyFilterResu
     except Exception:
         pass
 
-    # 2. Try Gemini LLM
-    if not extracted_dict:
-        gemini_key = request.gemini_api_key or GEMINI_API_KEY
-        if gemini_key:
-            try:
-                extracted_dict = await _llm_extract_gemini(raw_text, gemini_key, request.suggested_category)
-                if extracted_dict:
-                    extraction_source = "gemini"
-            except Exception:
-                pass
-
-    # 3. Fallback to Heuristic
+    # 2. Fallback to Heuristic if LLM extraction failed
     if not extracted_dict:
         return _heuristic_fallback_extract(raw_text, request.suggested_category)
 
-    # Process Extracted Dict
+    # Process Extracted Dict from LLM
     existing_docs = policy_manager.load_policies()
     existing_ids = [d.doc_id for d in existing_docs]
     doc_id = _generate_unique_doc_id(existing_ids, prefix="POL")
@@ -336,4 +396,3 @@ async def filter_raw_policy(request: RawPolicyFilterRequest) -> PolicyFilterResu
         warnings=warnings,
         confidence_score=0.92,
     )
-

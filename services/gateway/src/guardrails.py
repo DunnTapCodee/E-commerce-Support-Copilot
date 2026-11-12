@@ -392,7 +392,6 @@ def evaluate_response_faithfulness(
         if "shipping_timeline" in order_data and isinstance(order_data["shipping_timeline"], list):
             order_str += " " + " ".join(t.get("status", "") if isinstance(t, dict) else str(t) for t in order_data["shipping_timeline"])
         premise_parts.append(order_str)
-
     premise_text = " ".join(premise_parts).lower()
 
     # 2. Extract atomic claims from draft text

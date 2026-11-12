@@ -3,6 +3,7 @@ Thin Orchestrator routing to modular views in services/ui_service/src/views/.
 """
 import os
 import sys
+import uuid
 from pathlib import Path
 import streamlit as st
 
@@ -24,6 +25,12 @@ st.set_page_config(
 )
 
 GATEWAY_URL = os.getenv("GATEWAY_URL", "http://127.0.0.1:8000").rstrip("/")
+
+# -----------------------------------------------------------------------------
+# Session State Initialization
+# -----------------------------------------------------------------------------
+if "session_id" not in st.session_state:
+    st.session_state.session_id = f"SES-{uuid.uuid4().hex[:8].upper()}"
 
 # Custom CSS Styling
 st.markdown(
