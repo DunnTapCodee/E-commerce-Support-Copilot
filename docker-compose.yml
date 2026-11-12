@@ -148,7 +148,7 @@ services:
     ports:
       - "18006:8006"
     volumes:
-      - ./data:/app/data:ro
+      - ./data:/app/data
       - copilot_data:/app/db_storage
     environment:
       - PORT=8006
