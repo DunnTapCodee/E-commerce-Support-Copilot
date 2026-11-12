@@ -1,7 +1,7 @@
 """FastAPI router proxying policy and document management endpoints to Document Service."""
 from typing import Any, Dict, List, Optional
 import httpx
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, File, HTTPException, Query, UploadFile, status
 
 from contracts.schemas import (
     PolicyCreateRequest,
@@ -44,6 +44,19 @@ async def _proxy_document_call(coro):
 async def proxy_policy_filter(request: RawPolicyFilterRequest):
     """Proxy: LLM-based policy metadata extraction from raw text."""
     return await _proxy_document_call(clients.filter_policy(request))
+
+
+@router.post("/policy/filter-bulk")
+async def proxy_policy_filter_bulk(request: RawPolicyFilterRequest):
+    """Proxy: LLM-based extraction of multiple policies from raw text/document."""
+    return await _proxy_document_call(clients.filter_bulk_policy(request))
+
+
+@router.post("/policy/parse-file")
+async def proxy_parse_file(file: UploadFile = File(...)):
+    """Proxy: Extract clean text from uploaded document files (.docx, .pdf, .txt, etc.)."""
+    content = await file.read()
+    return await _proxy_document_call(clients.parse_file(file.filename or "unknown", content, file.content_type))
 
 
 @router.post("/policy/create")

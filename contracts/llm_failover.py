@@ -185,7 +185,7 @@ async def stream_chat_completion_with_failover(
                         try:
                             chunk = json.loads(data_str)
                             delta = chunk.get("choices", [{}])[0].get("delta", {})
-                            token = delta.get("content") or delta.get("reasoning_content") or ""
+                            token = delta.get("content") or ""
                             if token:
                                 yield token
                         except Exception:

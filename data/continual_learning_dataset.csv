@@ -1,0 +1,81 @@
+id,source_strategy,raw_user_query,training_input,intent_label,confidence,human_verified,human_action,created_at
+0063b212-fb93-4601-bbf5-c45af9128505,1_standalone,đơn hàng của tôi đến đâu rồi,đơn hàng của tôi đến đâu rồi,track_order,0.94,0,AUTO_LLM,2026-10-29 10:52:29
+30925f8f-5f8f-4fa1-a9c6-ac98c6b35c0a,1_standalone_switch,chính sách đổi trả,chính sách đổi trả,return_policy,0.94,0,AUTO_LLM,2026-10-29 10:53:00
+aa806641-91ad-49c2-b079-3e41f2a0f7fd,1_standalone,Kiểm tra tiến độ đơn hàng ORD-1003 giúp tôi,Kiểm tra tiến độ đơn hàng ORD-1003 giúp tôi,track_order,0.94,0,AUTO_LLM,2026-10-29 10:54:18
+df271464-e28d-4e5b-9c37-4873ca45694b,1_standalone,Kiem tra don ORD-2024-001 giup minh,Kiem tra don ORD-2024-001 giup minh,track_order,0.95,0,AUTO_LLM,2026-11-05 14:41:57
+f9f8fe38-4c8a-4626-a764-7264ac3db608,1_standalone_switch,"Xin chào shop, shop có chính sách đổi trả hàng không?","Xin chào shop, shop có chính sách đổi trả hàng không?",return_policy,0.96,0,AUTO_LLM,2026-11-05 14:48:56
+5db5e152-f3f4-40fb-8bf1-cb7727a4783e,1_standalone,Kiểm tra đơn hàng ORD-2024-001,Kiểm tra đơn hàng ORD-2024-001,track_order,0.96,0,AUTO_LLM,2026-11-05 14:50:40
+3cb891a5-ff98-43e7-907b-5bd6f82d91e8,1_standalone,hi,hi,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-05 14:53:29
+334a0c56-7439-4ddc-b0b0-ef33dcab1545,1_standalone,đơn hàng của mình bao nhiêu tiền nhỉ,đơn hàng của mình bao nhiêu tiền nhỉ,track_order,0.98,1,AUDITED_HUMAN,2026-11-05 14:54:14
+db2b44ad-e2fd-4ba0-b363-cadf4454192b,1_standalone,helllllo,helllllo,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-05 14:55:33
+5b09bfcf-d5ff-4c24-97da-385556c663f0,1_standalone,đơn hàng của mình là gì nhỉ,đơn hàng của mình là gì nhỉ,track_order,0.98,1,AUDITED_HUMAN,2026-11-05 14:56:45
+e47edfb2-91ad-4bc0-8840-6914ec11269a,1_standalone,đơn hàng của mình là gì,đơn hàng của mình là gì,track_order,0.98,1,AUDITED_HUMAN,2026-11-05 16:11:18
+82deb9f5-69e2-4078-b7de-eb66c0039e55,1_standalone,mình đg kbt lsao để áp thay đổi địa chỉ nhận hàng,mình đg kbt lsao để áp thay đổi địa chỉ nhận hàng,track_order,0.98,1,AUDITED_HUMAN,2026-11-05 16:12:10
+bded82e5-0717-4660-a6b5-c44d4ad74519,1_standalone,uk đroi e,uk đroi e,chitchat_confirm,0.98,1,AUDITED_HUMAN,2026-11-05 16:13:44
+341c761c-c95f-4db0-af25-fb8b50bbb417,1_standalone,kê mk camon\,kê mk camon\,chitchat_confirm,0.98,1,AUDITED_HUMAN,2026-11-05 16:16:24
+fcf293c2-3d4c-4819-91da-af38c8992864,1_standalone_switch,mình muốn đặt cái áo giá 300k thì hiện tại có mã freeship nào ko nhỉ,mình muốn đặt cái áo giá 300k thì hiện tại có mã freeship nào ko nhỉ,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-05 16:17:06
+8b01012c-2296-46f8-bdc8-1179c56ae209,1_standalone,Kiểm tra đơn hàng ORD-1100 giúp mình,Kiểm tra đơn hàng ORD-1100 giúp mình,track_order,0.9735,0,AUTO_LLM,2026-11-05 16:33:58
+bac73f93-6710-441a-a3e9-bdb459320ad3,1_standalone,Kiểm tra đơn hàng của mình đến đâu rồi,Kiểm tra đơn hàng của mình đến đâu rồi,track_order,0.95,0,AUTO_LLM,2026-11-05 16:52:17
+63402539-400b-4ce0-b074-9b8ed7ac6cb0,1_standalone,ORD-1100,ORD-1100,track_order,0.9,0,AUTO_LLM,2026-11-05 16:52:19
+67676193-d6a0-4c83-93a6-eaf3d6eae003,1_standalone_switch,Tôi yêu cầu hoàn tiền lại cho tôi ngay vào tài khoản,Tôi yêu cầu hoàn tiền lại cho tôi ngay vào tài khoản,request_refund,0.95,0,AUTO_LLM,2026-11-05 16:52:23
+41065747-0d05-4544-8e5e-4ed2e6b3d8fa,1_standalone_switch,Chính sách đổi trả hàng hóa của sàn thế nào?,Chính sách đổi trả hàng hóa của sàn thế nào?,return_policy,0.94,0,AUTO_LLM,2026-11-05 16:52:27
+4e5b2d22-737a-4e92-a175-f1f21cd7bda3,1_standalone,choa fb,choa fb,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-06 17:45:19
+93b2be00-98fb-4704-bcfb-28c84dd22cdf,1_standalone,mình muốn biết thông tin đơn hàng của mình,mình muốn biết thông tin đơn hàng của mình,track_order,0.95,1,APPROVE,2026-11-06 17:45:56
+0d034b0e-be93-4c95-8604-a3e663b2256b,1_standalone_switch,giờ có các mã giảm giá nào nhỉ,giờ có các mã giảm giá nào nhỉ,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-06 17:46:55
+148974fe-bee3-42ce-814c-6bcedb761b53,1_standalone,đơn hàng của mình đã giao tới chưa,đơn hàng của mình đã giao tới chưa,track_order,0.94,0,AUTO_LLM,2026-11-06 18:23:39
+c70a3e90-c4a7-4476-a2d9-018376af6d7b,1_standalone,alo,alo,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-06 18:27:09
+a0baca0b-dc05-4c56-a9c0-d4499bafcf28,1_standalone_switch,có mã giảm giá gì hôm nay nhỉ,có mã giảm giá gì hôm nay nhỉ,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-06 18:30:09
+2e171300-10aa-415c-96a3-664136873ade,1_standalone_switch,mình có đơn hàng 100k thì có mã giảm giá nào ko,mình có đơn hàng 100k thì có mã giảm giá nào ko,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-06 18:30:44
+1f0880eb-8f1c-431a-9d73-a40134437db1,1_standalone_switch,mình có đơn hàng 100k có mã giảm giá nào ko,mình có đơn hàng 100k có mã giảm giá nào ko,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 00:13:25
+d1c810d1-a1b7-4953-bef3-80f232a1586c,1_standalone_switch,mình có đơn hàng 100k có mã giảm giá nào ko freeship ý,mình có đơn hàng 100k có mã giảm giá nào ko freeship ý,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 00:14:22
+68f2036b-294c-4cb9-a40e-2a31f04804f2,1_standalone_switch,mình có đơn hàng 100k có mã giảm giá nào ko freeship ý giảm bao nhiêu Tiki Coupon là cj,mình có đơn hàng 100k có mã giảm giá nào ko freeship ý giảm bao nhiêu Tiki Coupon là cj,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 00:17:24
+553d69a0-303f-4d45-942a-863dc9327bd4,1_standalone,Yêu cầu hỗ trợ từ khách hàng,Yêu cầu hỗ trợ từ khách hàng,out_of_scope,0.95,0,AUTO_LLM,2026-11-07 00:18:43
+ab432c1e-9432-42da-bd20-5a1188104b46,1_standalone,nhưng mình có đổi hàng đâu,nhưng mình có đổi hàng đâu,return_product,0.85,0,AUTO_LLM,2026-11-07 00:19:14
+924c0a19-a428-4df0-8309-c27d2bea077d,1_standalone,đơn hàng của mình là gì nhỉ đã giao đến chưa,đơn hàng của mình là gì nhỉ đã giao đến chưa,track_order,0.92,1,APPROVE,2026-11-07 00:23:55
+ddebb8d4-3c7e-425a-b26c-547d81926ab2,1_standalone,xem luôn cho mình cụ thể đơn hàng là gì,xem luôn cho mình cụ thể đơn hàng là gì,track_order,0.85,1,APPROVE,2026-11-07 00:25:05
+b94a87ff-2629-4c40-bffe-e4b7987dac92,1_standalone_switch,mình muốn trả hàng thì hoàn tiền như nào,mình muốn trả hàng thì hoàn tiền như nào,refund_policy,0.98,1,AUDITED_HUMAN,2026-11-07 00:27:39
+ded4cd12-00c2-4748-a711-604124970527,1_standalone,oce,oce,chitchat_confirm,0.98,1,AUDITED_HUMAN,2026-11-07 00:49:02
+dc8d9c57-6179-478c-8d83-5e5f08430a50,1_standalone_switch,hiện tịa đang có mã giảm giá nào,hiện tịa đang có mã giảm giá nào,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 00:53:24
+87558de5-69b8-49b6-aa43-2040d23e4255,1_standalone_switch,hiện tịa đang có mã giảm giá nào freeship,hiện tịa đang có mã giảm giá nào freeship,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 00:53:52
+bdf9fceb-e3d1-4f2a-ad0f-cb5dfcdd4aef,1_standalone,xem luôn cho mình cụ thể đơn hàng là gì và đã giao đến chưa,xem luôn cho mình cụ thể đơn hàng là gì và đã giao đến chưa,track_order,0.95,0,AUTO_LLM,2026-11-07 01:13:47
+7bcbb7f6-1eb0-49a5-ab9f-8848c14a2e23,1_standalone_switch,mình muốn ngừng giao và hoàn tiền,mình muốn ngừng giao và hoàn tiền,request_refund,0.92,1,APPROVE,2026-11-07 01:25:42
+f3762d1e-30e0-40fd-b543-27cc96dff2c2,1_standalone,chào b,chào b,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-07 01:53:55
+49b8a182-3040-45c1-8ab5-98dec4f302c1,1_standalone,đơn hàng của mình bao nhiêu tiền,đơn hàng của mình bao nhiêu tiền,track_order,0.9735,0,AUTO_LLM,2026-11-07 01:54:29
+1b5dda05-357e-4c7d-8a1c-dbd2da1907ec,1_standalone,muốn trả hàng thì làm như nào,muốn trả hàng thì làm như nào,return_product,0.98,1,AUDITED_HUMAN,2026-11-07 01:57:04
+f40cc577-1005-41ae-8d8a-b57ef029c036,1_standalone,giải phương trình bậc 2 như nào,giải phương trình bậc 2 như nào,out_of_scope,0.98,1,AUDITED_HUMAN,2026-11-07 02:01:08
+49822bc5-b545-4c8c-ace9-0082b453786b,1_standalone,nay thời tiết như nào,nay thời tiết như nào,out_of_scope,0.98,1,AUDITED_HUMAN,2026-11-07 02:02:13
+6befa3bf-1e25-4f23-a4b7-bc09d9552b4a,1_standalone,ronaldo là ai,ronaldo là ai,out_of_scope,0.98,1,AUDITED_HUMAN,2026-11-07 02:02:49
+f3e60130-a8f2-48d9-be54-0c223f36901f,1_standalone,okk,okk,chitchat_confirm,0.98,1,AUDITED_HUMAN,2026-11-07 03:23:03
+485237ad-6d2f-4a1a-8c4c-e4926d534e52,1_standalone,hiện tại có những chính sách ưu đãi nào,hiện tại có những chính sách ưu đãi nào,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 03:23:48
+d5273ed9-fe77-4d6d-a483-800126bf7cfa,1_standalone,Hiện tại có những chính sách ưu đãi nào cho đơn ORD-1001?,Hiện tại có những chính sách ưu đãi nào cho đơn ORD-1001?,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-07 04:40:43
+8af3dc08-cb37-4f13-9344-f64602f05679,1_standalone,hiiiii,hiiiii,chitchat_greeting,0.95,0,AUTO_LLM,2026-11-07 05:44:20
+332b01d6-0114-4e28-b63a-d10a7b9051fa,1_standalone,hiện tại tiki có ưu đãi gì,hiện tại tiki có ưu đãi gì,get_discounts,0.95,1,APPROVE,2026-11-07 05:45:00
+39052729-6bcc-4c5f-8e01-d7cad231bcdd,1_standalone,hôm nay trời có lạnh ko,hôm nay trời có lạnh ko,out_of_scope,0.9,1,APPROVE,2026-11-07 05:45:59
+f5e98d29-937c-4cfc-8a34-c7a0bdeb0a65,1_standalone,nay giá xăng như nào,nay giá xăng như nào,out_of_scope,0.98,1,AUDITED_HUMAN,2026-11-07 05:46:31
+e6b463ee-fc56-4ab6-af39-24248cc1228c,1_standalone,đơn hàng ORD-1001 bao giờ giao tới nơi?,đơn hàng ORD-1001 bao giờ giao tới nơi?,delivery_time,0.94,0,AUTO_LLM,2026-11-07 07:19:57
+dc8824f4-122c-4c0f-9e11-06bf7c431299,1_standalone,đơn hàng ORD-1001 khi nào giao tới?,đơn hàng ORD-1001 khi nào giao tới?,delivery_time,0.94,0,AUTO_LLM,2026-11-07 09:05:09
+1b723f2a-cd4c-4ce4-a3bf-6a50299732d1,1_standalone,mình muốn đặt hàng nhưng 7dodwn hàng chỉ cho thanh toán bằng tiền mặt thì làm sao đây,mình muốn đặt hàng nhưng 7dodwn hàng chỉ cho thanh toán bằng tiền mặt thì làm sao đây,payment_issue,0.98,1,AUDITED_HUMAN,2026-11-07 09:23:09
+be5c584d-eaaa-447b-9e54-c867ce329dc3,1_standalone,thế à,thế à,chitchat_confirm,0.98,1,AUDITED_HUMAN,2026-11-07 09:23:35
+bc3d0e3d-5aa1-4e4e-8301-2e3388f9fc23,1_standalone,mình muốn biết đơn hàng của mình bao giwof tới,mình muốn biết đơn hàng của mình bao giwof tới,delivery_time,0.98,1,AUDITED_HUMAN,2026-11-07 09:24:51
+28a79960-0c27-4126-888b-8cd3b372889d,1_standalone,hiện tại đang có hcisnh sách ưu đãi gì nhỉ,hiện tại đang có hcisnh sách ưu đãi gì nhỉ,get_discounts,0.95,0,AUTO_LLM,2026-11-07 09:28:02
+01c70050-6f41-4617-8732-6115c445341e,1_standalone_switch,đơn của mình có được đổi trả không,đơn của mình có được đổi trả không,return_policy,0.98,1,AUDITED_HUMAN,2026-11-07 10:07:30
+88e9027b-6da9-4bab-9868-e8e29f89fc97,1_standalone,hello,hello,chitchat_greeting,0.95,0,AUTO_LLM,2026-11-07 10:14:36
+ad66d8bb-2d47-4802-80d3-32c9832cdd5b,1_standalone,thế bao giờ tới nơi,thế bao giờ tới nơi,delivery_time,0.98,1,AUDITED_HUMAN,2026-11-07 10:16:51
+f96102d7-3a8b-40f4-beef-343c362259d7,1_standalone,"oke, mà bây giwof đang có chính sách ưu đãi gì ko","oke, mà bây giwof đang có chính sách ưu đãi gì ko",get_discounts,0.96,1,APPROVE,2026-11-07 10:17:52
+da480de4-5a2a-49ab-89a4-a166ea011216,1_standalone,cứ đặt hàng là được tích xu à,cứ đặt hàng là được tích xu à,get_discounts,0.85,0,AUTO_LLM,2026-11-07 10:18:41
+0740520e-1377-4339-a6ac-e40c009f1ec1,1_standalone,chao b,chao b,chitchat_greeting,0.95,0,AUTO_LLM,2026-11-07 10:24:08
+e3e43809-8f84-475a-8f8a-dab082811448,1_standalone,chao b vậy thì đơn hàng đang ship chưa,chao b vậy thì đơn hàng đang ship chưa,track_order,0.92,1,APPROVE,2026-11-07 10:26:37
+4e89d990-976f-418e-9f47-b8d062a513d0,1_standalone,hiện tại đang có chương trình ưu đãi gì không,hiện tại đang có chương trình ưu đãi gì không,get_discounts,0.95,1,APPROVE,2026-11-07 10:28:19
+63121bbf-8b13-4a02-a587-cd183916285f,1_standalone_switch,mình muốn đổi trả hàng,mình muốn đổi trả hàng,return_product,0.95,1,APPROVE,2026-11-07 10:29:43
+1496ecb2-5709-42ed-b477-98e0c538967e,1_standalone_switch,thế còn hoàn tiền là như nào,thế còn hoàn tiền là như nào,refund_policy,0.95,1,APPROVE,2026-11-07 10:34:39
+80890726-924b-462b-ae70-2836b911489c,1_standalone_switch,hàng này có được bảo hành không,hàng này có được bảo hành không,return_policy,0.95,0,AUTO_LLM,2026-11-07 10:40:45
+d027b393-860b-45b4-a006-ff15a101a1a1,1_standalone,tôi muốn kiểm tra lại đơn,tôi muốn kiểm tra lại đơn,track_order,0.95,0,AUTO_LLM,2026-11-07 10:40:53
+7587f3da-37bb-46a7-9f5f-6ed46d0e3554,1_standalone,thời tiết hôm nay thế nào,thời tiết hôm nay thế nào,out_of_scope,0.95,0,AUTO_LLM,2026-11-07 10:40:54
+a84070f6-db8b-41e1-9653-1b53c0fdae70,1_standalone,mình muốn biết đơn hàng của mình bao giờ tới,mình muốn biết đơn hàng của mình bao giờ tới,delivery_time,0.94,0,AUTO_LLM,2026-11-08 01:39:59
+01532cb2-afcc-4687-816e-1f26172ee376,1_standalone,hiện tại đang có chính sách ưu đãi gì nhỉ,hiện tại đang có chính sách ưu đãi gì nhỉ,get_discounts,0.95,0,AUTO_LLM,2026-11-08 01:40:16
+17f89764-483a-43d3-a230-5ba357d99a3b,1_standalone,hôm nay trời có mưa không,hôm nay trời có mưa không,out_of_scope,0.9,0,AUTO_LLM,2026-11-08 01:40:19
+a1647c30-f663-479e-9452-3332a67c944c,1_standalone_switch,chuyển máy cho nhân viên hỗ trợ giúp mình với,chuyển máy cho nhân viên hỗ trợ giúp mình với,cancel_order,0.96,1,AUDITED_HUMAN,2026-11-08 02:57:41
+4b40f169-30d4-4fd1-9df5-c731966c371d,1_standalone_switch,hiện tại sàn có voucher freeship hay giảm giá gì không,hiện tại sàn có voucher freeship hay giảm giá gì không,get_discounts,0.98,1,AUDITED_HUMAN,2026-11-08 02:57:47
+58807018-09cc-4f1a-8732-951204be0e1d,1_standalone,kiểm tra đơn ORD-1002 bao giờ giao tới nơi,kiểm tra đơn ORD-1002 bao giờ giao tới nơi,delivery_time,0.94,0,AUTO_LLM,2026-11-08 02:57:58
+40c69fd2-9e52-493c-b883-87618f2eb1ae,1_standalone,đơn hàng của mình bao giờ tới,đơn hàng của mình bao giờ tới,delivery_time,0.96,0,AUTO_LLM,2026-11-10 16:13:31
+test-auto-sync-1,3_rewritten,cho tôi hủy đơn hàng ORD-1002,Yêu cầu hủy đơn hàng ORD-1002 của khách hàng.,cancel_order,0.98,1,AUDITED_HUMAN,2026-11-12 12:15:37

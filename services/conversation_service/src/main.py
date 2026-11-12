@@ -49,6 +49,7 @@ from services.conversation_service.src.input_pipeline import (
     InputClassifier,
     extract_facts,
 )
+from scripts.export_continual_learning_dataset import append_single_interaction_to_csv
 from services.conversation_service.src.memory import (
     ContextSummaryManager,
     MemoryWorker,
@@ -527,6 +528,15 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         latency_ms=int((time.perf_counter() - start_time) * 1000),
     )
     background_tasks.add_task(telemetry_client.record_audit_log, audit_payload)
+    background_tasks.add_task(
+        append_single_interaction_to_csv,
+        interaction_id=interaction_id,
+        customer_query=customer_query,
+        predicted_intent=effective_intent,
+        confidence=effective_conf,
+        human_action="AUTO_LLM",
+        rewritten_query=prep.get("rewritten_query"),
+    )
 
     # Format session turns for UI inspector
     ui_turns = [
@@ -595,7 +605,11 @@ async def process_chat_turn_stream(request: QueryRequest):
             "interaction_id": interaction_id,
             "session_id": session_id,
             "customer_acknowledgement": prep["customer_ack"],
-            "intent": prep["effective_intent"],
+            "intent": {
+                "intent": prep["effective_intent"],
+                "confidence": prep["effective_conf"],
+                "is_in_scope": True if DISABLE_CONFIDENCE_GUARD else (prep["effective_conf"] >= 0.50),
+            },
             "confidence": prep["effective_conf"],
             "input_type": prep["input_type"],
             "rewritten_query": prep["rewritten_query"],
@@ -689,6 +703,17 @@ async def process_chat_turn_stream(request: QueryRequest):
             latency_ms=int((time.perf_counter() - start_time) * 1000),
         )
         asyncio.create_task(telemetry_client.record_audit_log(audit_payload))
+        asyncio.create_task(
+            asyncio.to_thread(
+                append_single_interaction_to_csv,
+                interaction_id=interaction_id,
+                customer_query=customer_query,
+                predicted_intent=prep["effective_intent"],
+                confidence=prep["effective_conf"],
+                human_action="AUTO_LLM",
+                rewritten_query=prep.get("rewritten_query"),
+            )
+        )
 
         # Event N+1: Final Done Event
         done_payload = {

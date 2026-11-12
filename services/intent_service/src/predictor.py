@@ -267,37 +267,24 @@ class IntentPredictor:
         return self.llm_classifier.predict(query)
 
     def predict(self, query: str) -> IntentPredictionResponse:
-        # Pure LLM Intent Classifier
-        if self.intent_backend == "llm":
-            return self.llm_classifier.predict(query)
-
-        # Pure ML model
+        # 1. Pure ML mode (chỉ dùng ML offline, không gọi LLM)
         if self.intent_backend == "ml":
             return self._predict_ml(query)
 
-        # Hybrid: run ML first; if low confidence or out-of-scope, fallback to LLM
-        q_low = query.lower()
+        # 2. LLM First (Mặc định: Ưu tiên LLM cho độ chính xác cao nhất, tự động fallback sang ML nếu LLM lỗi)
+        try:
+            llm_resp = self.llm_classifier.predict(query)
+            if llm_resp and llm_resp.is_in_scope:
+                return llm_resp
+            # Nếu LLM phân loại ra out_of_scope hoặc fallback, kiểm tra lại với ML
+            if llm_resp and not llm_resp.is_in_scope and self.is_loaded:
+                ml_resp = self._predict_ml(query)
+                if ml_resp and ml_resp.is_in_scope and ml_resp.confidence >= 0.80:
+                    return ml_resp
+            if llm_resp:
+                return llm_resp
+        except Exception as exc:
+            logger.warning("[IntentPredictor] LLM call failed (%s). Falling back to ML baseline.", exc)
 
-        # Priority keyword routing directly to LLM for promotion / discount / voucher / refund / cancel:
-        # This prevents LinearSVC/TF-IDF baseline from being biased by "đơn hàng" or order numbers
-        PROMO_DISCOUNT_KEYWORDS = [
-            "ưu đãi", "khuyến mãi", "khuyến mại", "voucher", "mã giảm", "coupon",
-            "freeship", "giảm giá", "chiết khấu", "quà tặng", "chính sách ưu đãi",
-            "chương trình ưu đãi", "áp dụng mã", "tiki xu"
-        ]
-        REFUND_KEYWORDS = [
-            "hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund", "trả hàng", "đổi trả"
-        ]
-        CANCEL_KEYWORDS = [
-            "hủy đơn", "huỷ đơn", "không lấy nữa", "hủy hàng", "huỷ hàng", "hủy mua"
-        ]
-
-        if any(k in q_low for k in PROMO_DISCOUNT_KEYWORDS + REFUND_KEYWORDS + CANCEL_KEYWORDS):
-            return self.llm_classifier.predict(query)
-
-        ml_resp = self._predict_ml(query)
-        if ml_resp.intent == "track_order" and any(k in q_low for k in ["hoàn tiền", "hoàn lại tiền", "trả lại tiền", "refund"]):
-            return self.llm_classifier.predict(query)
-        if ml_resp.is_in_scope and ml_resp.confidence >= 0.75:
-            return ml_resp
-        return self.llm_classifier.predict(query)
+        # Fallback to local ML model if LLM is unavailable / failed
+        return self._predict_ml(query)

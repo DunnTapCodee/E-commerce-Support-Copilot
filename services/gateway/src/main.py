@@ -1,11 +1,13 @@
 """API Gateway & Central Ingress Router on Port 8000."""
 import json
 import os
+import re
 import sys
 import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
@@ -66,6 +68,7 @@ def health_check():
     return {
         "status": "healthy",
         "service": "api_gateway",
+        "port": int(os.getenv("PORT", 8000)),
         "ingress_target": "conversation_service",
         "policy_target": "document_service",
     }
@@ -82,15 +85,17 @@ async def process_copilot_query(
     start_time = time.perf_counter()
     interaction_id = str(uuid.uuid4())
     customer_query = request.query.strip()
-    customer_id = request.customer_id
+    customer_id = request.customer_id or "demo-customer"
     generation_mode = "unknown"
     citations: List[RetrievedDocument] = []
     draft_text = ""
     order_data: Optional[Dict[str, Any]] = None
+    guardrail_decision = GuardrailResult(
+        allow_llm=True, action_type="PROCEED_TO_LLM", reason="Default initialization"
+    )
 
     # Delegate to Conversation Service (Primary Path)
     try:
-        import httpx
         async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0)) as http_client:
             resp = await http_client.post(
                 f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
@@ -117,9 +122,11 @@ async def process_copilot_query(
 
     # Order lookup fallback
     tool_records: List[ToolCallRecord] = []
-    if customer_id:
+    order_match = re.search(r"\bORD-[A-Za-z0-9-]+\b", customer_query, re.IGNORECASE)
+    lookup_key = order_match.group(0) if order_match else customer_id
+    if lookup_key:
         try:
-            order_data = await clients.lookup_order(customer_id)
+            order_data = await clients.lookup_order(lookup_key)
         except Exception:
             pass
 
@@ -188,13 +195,14 @@ async def process_copilot_query(
                     generation_mode = gen_resp.generation_mode
 
                     output_guard = evaluate_response_faithfulness(
-                        draft_text, citations, order_data=order_data
+                        draft_text, citations, customer_query=customer_query, order_data=order_data
                     )
                     guardrail_decision = output_guard
                     if not output_guard.allow_llm:
                         generation_mode = "blocked_faithfulness_guard"
                         # Keep the draft intact so staff can edit, while guardrail records the alert
                 except Exception as exc:
+                    generation_mode = "blocked_generation_error"
                     guardrail_decision = GuardrailResult(
                         allow_llm=False,
                         action_type="ESCALATE_HUMAN",
@@ -226,6 +234,7 @@ async def process_copilot_query(
         tool_calls=tool_records,
         generation_mode=generation_mode,
         suggested_reply=draft_text,
+        agent_guidance=guardrail_decision.reason if not guardrail_decision.allow_llm else None,
         components_used={
             "intent_classifier": "Gateway Heuristic Fallback",
             "query_rewriter": "Direct Customer Query",
@@ -234,6 +243,10 @@ async def process_copilot_query(
             "safety_envelope": f"Guardrail: {guardrail_decision.action_type}",
         },
     )
+
+
+# Alias for backwards compatibility
+query_copilot = process_copilot_query
 
 
 @app.post("/api/v1/copilot/query_stream")
@@ -252,15 +265,35 @@ async def query_copilot_stream(request: QueryRequest):
                     else:
                         print(f"[Gateway] Stream proxy returned status {resp.status_code}")
                         # Fallback non-streaming proxy call
-                        fallback_resp = await query_copilot(request)
+                        fallback_resp = await process_copilot_query(request, BackgroundTasks())
+                        intent_name = (
+                            fallback_resp.intent.intent
+                            if hasattr(fallback_resp.intent, "intent")
+                            else str(fallback_resp.intent)
+                        )
+                        intent_conf = (
+                            fallback_resp.intent.confidence
+                            if hasattr(fallback_resp.intent, "confidence")
+                            else 0.0
+                        )
+                        guard_dict = (
+                            fallback_resp.guardrail.model_dump()
+                            if hasattr(fallback_resp, "guardrail") and fallback_resp.guardrail
+                            else None
+                        )
+                        citations_list = [
+                            (c.model_dump() if hasattr(c, "model_dump") else c)
+                            for c in (fallback_resp.citations or [])
+                        ]
                         meta_payload = {
                             "type": "meta",
-                            "customer_acknowledgement": fallback_resp.customer_acknowledgement,
-                            "intent": fallback_resp.intent,
-                            "confidence": fallback_resp.confidence,
-                            "guardrail_result": fallback_resp.guardrail_result.model_dump() if fallback_resp.guardrail_result else None,
-                            "citations": [c.model_dump() for c in fallback_resp.citations],
-                            "dynamic_components": fallback_resp.dynamic_components,
+                            "interaction_id": fallback_resp.interaction_id,
+                            "customer_acknowledgement": getattr(fallback_resp, "customer_acknowledgement", None) or fallback_resp.draft_text,
+                            "intent": intent_name,
+                            "confidence": intent_conf,
+                            "guardrail_result": guard_dict,
+                            "citations": citations_list,
+                            "dynamic_components": getattr(fallback_resp, "components_used", {}),
                         }
                         yield f"event: meta\ndata: {json.dumps(meta_payload, ensure_ascii=False)}\n\n".encode("utf-8")
                         token_payload = {"type": "token", "delta": fallback_resp.draft_text}
@@ -269,15 +302,35 @@ async def query_copilot_stream(request: QueryRequest):
                         yield f"event: done\ndata: {json.dumps(done_payload, ensure_ascii=False)}\n\n".encode("utf-8")
         except Exception as exc:
             print(f"[Gateway] Stream proxy exception: {exc}")
-            fallback_resp = await query_copilot(request)
+            fallback_resp = await process_copilot_query(request, BackgroundTasks())
+            intent_name = (
+                fallback_resp.intent.intent
+                if hasattr(fallback_resp.intent, "intent")
+                else str(fallback_resp.intent)
+            )
+            intent_conf = (
+                fallback_resp.intent.confidence
+                if hasattr(fallback_resp.intent, "confidence")
+                else 0.0
+            )
+            guard_dict = (
+                fallback_resp.guardrail.model_dump()
+                if hasattr(fallback_resp, "guardrail") and fallback_resp.guardrail
+                else None
+            )
+            citations_list = [
+                (c.model_dump() if hasattr(c, "model_dump") else c)
+                for c in (fallback_resp.citations or [])
+            ]
             meta_payload = {
                 "type": "meta",
-                "customer_acknowledgement": fallback_resp.customer_acknowledgement,
-                "intent": fallback_resp.intent,
-                "confidence": fallback_resp.confidence,
-                "guardrail_result": fallback_resp.guardrail_result.model_dump() if fallback_resp.guardrail_result else None,
-                "citations": [c.model_dump() for c in fallback_resp.citations],
-                "dynamic_components": fallback_resp.dynamic_components,
+                "interaction_id": fallback_resp.interaction_id,
+                "customer_acknowledgement": getattr(fallback_resp, "customer_acknowledgement", None) or fallback_resp.draft_text,
+                "intent": intent_name,
+                "confidence": intent_conf,
+                "guardrail_result": guard_dict,
+                "citations": citations_list,
+                "dynamic_components": getattr(fallback_resp, "components_used", {}),
             }
             yield f"event: meta\ndata: {json.dumps(meta_payload, ensure_ascii=False)}\n\n".encode("utf-8")
             token_payload = {"type": "token", "delta": fallback_resp.draft_text}

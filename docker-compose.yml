@@ -12,6 +12,7 @@ services:
     volumes:
       - ./data:/app/data
       - ./artifacts:/app/artifacts
+      - ./ML-model:/app/ML-model
     environment:
       - PORT=8005
       - INTENT_MODEL_DIR=/app/artifacts/models/intent
@@ -88,10 +89,10 @@ services:
       - "18003:8003"
     volumes:
       - ./data:/app/data
-      - ./copilot_telemetry.sqlite3:/app/copilot_telemetry.sqlite3
+      - copilot_data:/app/db_storage
     environment:
       - PORT=8003
-      - DB_PATH=/app/copilot_telemetry.sqlite3
+      - DB_PATH=/app/db_storage/copilot_telemetry.sqlite3
       - MOCK_ORDERS_PATH=/app/data/mock_orders.json
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8003/health')"]
@@ -147,11 +148,11 @@ services:
     ports:
       - "18006:8006"
     volumes:
-      - ./data:/app/data:ro
-      - ./copilot_conversations.sqlite3:/app/copilot_conversations.sqlite3
+      - ./data:/app/data
+      - copilot_data:/app/db_storage
     environment:
       - PORT=8006
-      - CONVERSATIONS_DB_PATH=/app/copilot_conversations.sqlite3
+      - CONVERSATIONS_DB_PATH=/app/db_storage/copilot_conversations.sqlite3
       - INTENT_SERVICE_URL=http://intent_service:8005
       - RAG_SERVICE_URL=http://rag_service:8002
       - TELEMETRY_SERVICE_URL=http://telemetry_service:8003
@@ -243,3 +244,4 @@ networks:
 
 volumes:
   rag_model_cache:
+  copilot_data:

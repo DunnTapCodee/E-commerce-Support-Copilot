@@ -20,4 +20,4 @@ ENV CONVERSATION_SERVICE_URL=http://conversation_service:8006
 
 EXPOSE 8000
 
-CMD ["uvicorn", "services.gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "-m", "uvicorn", "services.gateway.src.main:app", "--host", "0.0.0.0", "--port", "8000"]
