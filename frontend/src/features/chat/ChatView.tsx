@@ -24,16 +24,17 @@ import {
   Sliders,
   ExternalLink,
   Eye,
+  CornerUpLeft,
 } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { GatewayResponse, RetrievedDocument } from '../../types';
+import { CustomerOrderRecord, CustomerProfileRecord, GatewayResponse, RetrievedDocument } from '../../types';
 import { formatSystemTime } from '../../lib/time';
 
 export interface ChatMessage {
   id: string;
-  role: 'customer' | 'agent' | 'system';
+  role: 'customer' | 'agent' | 'system' | 'acknowledgement';
   content: string;
   timestamp: string;
   citations?: RetrievedDocument[];
@@ -44,6 +45,8 @@ export interface CustomerProfile {
   id: string;
   name: string;
   phone: string;
+  email?: string;
+  assignedStaffId?: string;
   orderId?: string;
   orderStatus?: string;
 }
@@ -53,6 +56,7 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     id: 'CUST-1100',
     name: 'Lê Văn Sơn',
     phone: '0998.708.581',
+    assignedStaffId: 'staff-01',
     orderId: 'ORD-1100',
     orderStatus: 'Đã giao hàng (DELIVERED)',
   },
@@ -60,6 +64,7 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     id: 'CUST-1002',
     name: 'Phan Văn An',
     phone: '0974.716.127',
+    assignedStaffId: 'staff-02',
     orderId: 'ORD-1002',
     orderStatus: 'Đang vận chuyển (SHIPPING)',
   },
@@ -67,6 +72,7 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     id: 'CUST-1001',
     name: 'Bùi Thị An',
     phone: '0938.242.854',
+    assignedStaffId: 'staff-01',
     orderId: 'ORD-1001',
     orderStatus: 'Chờ giao hàng (PROCESSING)',
   },
@@ -74,6 +80,7 @@ export const MOCK_CUSTOMERS: CustomerProfile[] = [
     id: 'CUST-1003',
     name: 'Vũ Thanh Linh',
     phone: '0999.532.448',
+    assignedStaffId: 'staff-03',
     orderId: 'ORD-1003',
     orderStatus: 'Đã hủy đơn (CANCELLED)',
   },
@@ -88,47 +95,45 @@ export interface ConversationSession {
   messages: ChatMessage[];
   copilotResponse: GatewayResponse | null;
   editedDraft: string;
+  messageCount?: number;
 }
 
-export const ChatView: React.FC = () => {
-  // Selected customer state with localStorage backup
+interface ChatViewProps {
+  selectedStaffId?: string;
+  selectedStaffName?: string;
+  initialCustomerId?: string;
+  initialSessionId?: string;
+}
+
+export const ChatView: React.FC<ChatViewProps> = ({
+  selectedStaffId,
+  selectedStaffName,
+  initialCustomerId,
+  initialSessionId,
+}) => {
+  // Live customers list loaded from backend DB
+  const [allCustomers, setAllCustomers] = useState<CustomerProfile[]>(MOCK_CUSTOMERS);
+  const [filterByStaff, setFilterByStaff] = useState<boolean>(false);
+  const [customerOrders, setCustomerOrders] = useState<CustomerOrderRecord[]>([]);
+  const [showOrdersDrawer, setShowOrdersDrawer] = useState<boolean>(false);
+
+  // Selected customer state synchronized with localStorage ('copilot_selected_cust')
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(() => {
-    return localStorage.getItem('copilot_selected_cust') || 'CUST-1100';
+    return initialCustomerId || localStorage.getItem('copilot_selected_cust') || 'CUST-1100';
   });
 
-  // Customer sessions map: customerId -> ConversationSession[]
-  const [sessionsByCustomer, setSessionsByCustomer] = useState<Record<string, ConversationSession[]>>(() => {
-    const cached = localStorage.getItem('copilot_sessions_cache');
-    if (cached) {
-      try {
-        return JSON.parse(cached);
-      } catch (e) {}
-    }
-    const initialSessionId = `sess_${Math.random().toString(36).substring(2, 9)}`;
-    return {
-      'CUST-1100': [
-        {
-          sessionId: initialSessionId,
-          customerId: 'CUST-1100',
-          title: 'Tra cứu đơn ORD-1100',
-          createdAt: formatSystemTime(),
-          updatedAt: new Date().toISOString(),
-          messages: [],
-          copilotResponse: null,
-          editedDraft: '',
-        },
-      ],
-    };
-  });
+  // Customer sessions map: customerId -> ConversationSession[] (SQLite is source of truth)
+  const [sessionsByCustomer, setSessionsByCustomer] = useState<Record<string, ConversationSession[]>>({});
 
   // Active session ID
-  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
-    const list = sessionsByCustomer[selectedCustomerId] || [];
-    return list[0]?.sessionId || '';
-  });
+  const [activeSessionId, setActiveSessionId] = useState<string>(initialSessionId || '');
 
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Input mode in Staff Chat Bar: 'staff_reply' (Staff replies directly) vs 'simulate_customer' (Test customer ask + Copilot)
+  const [chatInputMode, setChatInputMode] = useState<'staff_reply' | 'simulate_customer'>('simulate_customer');
 
   // E-commerce multi-message: Toggle auto-request vs manual "Yêu cầu trả lời"
   const [autoTriggerCopilot, setAutoTriggerCopilot] = useState<boolean>(true);
@@ -140,6 +145,12 @@ export const ChatView: React.FC = () => {
   // Policy modal viewer state
   const [viewingPolicy, setViewingPolicy] = useState<RetrievedDocument | null>(null);
   const [copiedPolicy, setCopiedPolicy] = useState(false);
+  const [allPolicies, setAllPolicies] = useState<RetrievedDocument[]>([]);
+
+  // Customer activity map (customerId -> latest session activity) to sort customers with newest questions first
+  const [customerActivity, setCustomerActivity] = useState<
+    Record<string, { updatedAt: string; hasPendingDraft: boolean; lastTitle: string; messageCount: number }>
+  >({});
 
   // Collapsible state for Copilot Smart Analysis
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
@@ -220,54 +231,206 @@ export const ChatView: React.FC = () => {
     };
   }, []);
 
-  // Sync cache to localStorage
+  // Sync selected customer when initialCustomerId / initialSessionId prop changes
   useEffect(() => {
+    if (initialCustomerId) {
+      setSelectedCustomerId(initialCustomerId);
+    }
+    if (initialSessionId) {
+      setActiveSessionId(initialSessionId);
+    }
+  }, [initialCustomerId, initialSessionId]);
+
+  // Load live customers from backend database
+  useEffect(() => {
+    let mounted = true;
+    const loadCustomersFromDb = async () => {
+      try {
+        const dbCusts: CustomerProfileRecord[] = await apiClient.listCustomers();
+        if (mounted && dbCusts && dbCusts.length > 0) {
+          const mapped: CustomerProfile[] = dbCusts.map((c) => {
+            const mockMatch = MOCK_CUSTOMERS.find((m) => m.id === c.customer_id);
+            return {
+              id: c.customer_id,
+              name: c.name,
+              phone: c.phone || mockMatch?.phone || '',
+              email: c.email || undefined,
+              assignedStaffId: c.assigned_staff_id || mockMatch?.assignedStaffId,
+              orderId: mockMatch?.orderId,
+              orderStatus: mockMatch?.orderStatus,
+            };
+          });
+          setAllCustomers(mapped);
+        }
+      } catch (e) {
+        console.warn('Load customers error:', e);
+      }
+    };
+    loadCustomersFromDb();
+    apiClient
+      .listPolicies()
+      .then((pols) => {
+        if (mounted && Array.isArray(pols)) {
+          setAllPolicies(pols);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Helper to refresh activity across all customers so newest questions float to the top
+  const refreshAllCustomerActivity = React.useCallback(async () => {
     try {
-      localStorage.setItem('copilot_sessions_cache', JSON.stringify(sessionsByCustomer));
-    } catch (e) {}
-  }, [sessionsByCustomer]);
+      const allSess = await apiClient.listSessions();
+      if (!Array.isArray(allSess)) return;
+      const map: Record<string, { updatedAt: string; hasPendingDraft: boolean; lastTitle: string; messageCount: number }> = {};
+      for (const s of allSess) {
+        const cid = s.customerId;
+        if (!cid) continue;
+        const updatedAt = s.updatedAt || s.createdAt || '';
+        const hasDraft = Boolean(s.copilotDraft && String(s.copilotDraft).trim());
+        const existing = map[cid];
+        if (!existing) {
+          map[cid] = {
+            updatedAt,
+            hasPendingDraft: hasDraft,
+            lastTitle: s.title || 'Hội thoại mới',
+            messageCount: s.messageCount || 0,
+          };
+        } else {
+          if (updatedAt > existing.updatedAt) {
+            existing.updatedAt = updatedAt;
+            existing.lastTitle = s.title || existing.lastTitle;
+          }
+          if (hasDraft) {
+            existing.hasPendingDraft = true;
+            existing.lastTitle = s.title || existing.lastTitle;
+          }
+          existing.messageCount += s.messageCount || 0;
+        }
+      }
+      setCustomerActivity(map);
+    } catch (e) {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshAllCustomerActivity();
+  }, [refreshAllCustomerActivity]);
+
+  // Filter and sort customer list: customers with pending questions / newest activity appear at the TOP
+  const displayedCustomers = React.useMemo(() => {
+    let base = allCustomers;
+    if (filterByStaff && selectedStaffId) {
+      const filtered = allCustomers.filter((c) => c.assignedStaffId === selectedStaffId);
+      if (filtered.length > 0) base = filtered;
+    }
+    return [...base].sort((a, b) => {
+      const actA = customerActivity[a.id];
+      const actB = customerActivity[b.id];
+      // 1. Customers with a pending Copilot draft / unanswered question come first
+      if (actA?.hasPendingDraft && !actB?.hasPendingDraft) return -1;
+      if (!actA?.hasPendingDraft && actB?.hasPendingDraft) return 1;
+      // 2. Sort by most recent question/session updatedAt timestamp descending
+      const timeA = actA?.updatedAt ? new Date(actA.updatedAt).getTime() : 0;
+      const timeB = actB?.updatedAt ? new Date(actB.updatedAt).getTime() : 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return 0;
+    });
+  }, [allCustomers, filterByStaff, selectedStaffId, customerActivity]);
 
   useEffect(() => {
     localStorage.setItem('copilot_selected_cust', selectedCustomerId);
   }, [selectedCustomerId]);
 
+  // Load customer orders whenever selectedCustomerId changes
+  useEffect(() => {
+    if (!selectedCustomerId) return;
+    let mounted = true;
+    const loadOrders = async () => {
+      try {
+        const orders = await apiClient.getCustomerOrders(selectedCustomerId);
+        if (mounted) {
+          setCustomerOrders((orders as CustomerOrderRecord[]) || []);
+        }
+      } catch (e) {
+        console.warn('Load customer orders error:', e);
+      }
+    };
+    loadOrders();
+    return () => {
+      mounted = false;
+    };
+  }, [selectedCustomerId]);
+
   // Load persistent sessions from backend SQLite database on mount / customer switch
   useEffect(() => {
+    if (!selectedCustomerId) return;
     let isMounted = true;
     const loadBackendSessions = async () => {
       try {
         const dbSessions = await apiClient.listSessions(selectedCustomerId);
-        if (isMounted && dbSessions && dbSessions.length > 0) {
+        if (!isMounted) return;
+
+        if (dbSessions && dbSessions.length > 0) {
           setSessionsByCustomer((prev) => {
             const currentList = prev[selectedCustomerId] || [];
-            const mergedMap = new Map<string, ConversationSession>();
-            currentList.forEach((s) => mergedMap.set(s.sessionId, s));
+            const existingMap = new Map<string, ConversationSession>();
+            currentList.forEach((s) => existingMap.set(s.sessionId, s));
 
-            dbSessions.forEach((ds) => {
-              if (!mergedMap.has(ds.sessionId)) {
-                mergedMap.set(ds.sessionId, {
-                  sessionId: ds.sessionId,
-                  customerId: ds.customerId,
-                  title: ds.title,
-                  createdAt: ds.createdAt ? formatSystemTime(ds.createdAt) : formatSystemTime(),
-                  updatedAt: ds.updatedAt || new Date().toISOString(),
-                  messages: [],
-                  copilotResponse: null,
-                  editedDraft: '',
-                });
-              }
+            const syncedList: ConversationSession[] = dbSessions.map((ds: any) => {
+              const prevSess = existingMap.get(ds.sessionId);
+              return {
+                sessionId: ds.sessionId,
+                customerId: ds.customerId,
+                title: ds.title || prevSess?.title || 'Hội thoại mới',
+                createdAt: ds.createdAt ? formatSystemTime(ds.createdAt) : prevSess?.createdAt || formatSystemTime(),
+                updatedAt: ds.updatedAt || prevSess?.updatedAt || new Date().toISOString(),
+                messages: prevSess?.messages || [],
+                copilotResponse: prevSess?.copilotResponse || null,
+                editedDraft: ds.copilotDraft ?? prevSess?.editedDraft ?? '',
+                messageCount: ds.messageCount ?? prevSess?.messages.length ?? 0,
+              };
             });
 
-            // Keep sorted newest first
-            const merged = Array.from(mergedMap.values());
             return {
               ...prev,
-              [selectedCustomerId]: merged,
+              [selectedCustomerId]: syncedList,
             };
           });
 
-          // If no active session, pick first
-          setActiveSessionId((curr) => curr || dbSessions[0].sessionId);
+          setActiveSessionId((curr) => {
+            if (initialSessionId && dbSessions.some((s: any) => s.sessionId === initialSessionId)) {
+              return initialSessionId;
+            }
+            if (curr && dbSessions.some((s: any) => s.sessionId === curr)) {
+              return curr;
+            }
+            return dbSessions[0].sessionId;
+          });
+        } else {
+          // No session in SQLite yet for this customer -> create one in SQLite
+          const newSessId = `sess_${Math.random().toString(36).substring(2, 9)}`;
+          const newSession: ConversationSession = {
+            sessionId: newSessId,
+            customerId: selectedCustomerId,
+            title: 'Hội thoại mới',
+            createdAt: formatSystemTime(),
+            updatedAt: new Date().toISOString(),
+            messages: [],
+            copilotResponse: null,
+            editedDraft: '',
+            messageCount: 0,
+          };
+          setSessionsByCustomer((prev) => ({
+            ...prev,
+            [selectedCustomerId]: [newSession],
+          }));
+          setActiveSessionId(newSessId);
+          await apiClient.createSession(newSessId, selectedCustomerId, 'Hội thoại mới');
         }
       } catch (err) {
         console.warn('Load backend sessions error:', err);
@@ -277,49 +440,94 @@ export const ChatView: React.FC = () => {
     return () => {
       isMounted = false;
     };
-  }, [selectedCustomerId]);
+  }, [selectedCustomerId, initialSessionId]);
 
-  // Load message history from backend SQLite when selecting a session
-  useEffect(() => {
-    if (!activeSessionId) return;
-    let isMounted = true;
+  // Real-time synchronization of active session history & Copilot draft from SQLite (on change + every 2.5s)
+  const syncSessionFromSqlite = async (manual = false) => {
+    if (!activeSessionId || !selectedCustomerId) return;
+    if (isLoading && !manual) return;
+    if (manual) setIsSyncing(true);
+    try {
+      const [dbSessions, details] = await Promise.all([
+        apiClient.listSessions(selectedCustomerId),
+        apiClient.getSessionDetails(activeSessionId),
+      ]);
+      // Also refresh global customer activity so newest customer questions float to top of list
+      refreshAllCustomerActivity();
 
-    const loadHistory = async () => {
-      try {
-        const details = await apiClient.getSessionDetails(activeSessionId);
-        if (isMounted && details && details.messages && details.messages.length > 0) {
-          setSessionsByCustomer((prev) => {
-            const list = prev[selectedCustomerId] || [];
+      setSessionsByCustomer((prev) => {
+        const currentList = prev[selectedCustomerId] || [];
+        const existingMap = new Map<string, ConversationSession>();
+        currentList.forEach((s) => existingMap.set(s.sessionId, s));
+
+        let baseList = currentList;
+        if (dbSessions && dbSessions.length > 0) {
+          baseList = dbSessions.map((ds: any) => {
+            const prevSess = existingMap.get(ds.sessionId);
             return {
-              ...prev,
-              [selectedCustomerId]: list.map((s) => {
-                if (s.sessionId === activeSessionId) {
-                  return {
-                    ...s,
-                    title: details.title || s.title,
-                    messages: details.messages,
-                    editedDraft: details.copilotDraft || s.editedDraft,
-                    copilotResponse: details.copilotResponse || s.copilotResponse,
-                  };
-                }
-                return s;
-              }),
+              sessionId: ds.sessionId,
+              customerId: ds.customerId,
+              title: ds.title || prevSess?.title || 'Hội thoại mới',
+              createdAt: ds.createdAt ? formatSystemTime(ds.createdAt) : prevSess?.createdAt || formatSystemTime(),
+              updatedAt: ds.updatedAt || prevSess?.updatedAt || new Date().toISOString(),
+              messages: prevSess?.messages || [],
+              copilotResponse: prevSess?.copilotResponse || null,
+              editedDraft: prevSess?.editedDraft || ds.copilotDraft || '',
+              messageCount: ds.messageCount ?? prevSess?.messages.length ?? 0,
             };
           });
         }
-      } catch (err) {
-        console.warn('Load session history error:', err);
-      }
-    };
-    loadHistory();
-    return () => {
-      isMounted = false;
-    };
-  }, [activeSessionId, selectedCustomerId]);
+
+        if (details) {
+          baseList = baseList.map((s) => {
+            if (s.sessionId === activeSessionId) {
+              const nextDraft =
+                draftMode === 'edit' && s.editedDraft
+                  ? s.editedDraft
+                  : details.copilotDraft !== undefined
+                    ? details.copilotDraft
+                    : s.editedDraft;
+              return {
+                ...s,
+                title: details.title || s.title,
+                messages: Array.isArray(details.messages) ? details.messages : s.messages,
+                editedDraft: nextDraft,
+                copilotResponse:
+                  details.copilotResponse !== undefined ? details.copilotResponse : s.copilotResponse,
+                messageCount: Array.isArray(details.messages) ? details.messages.length : s.messageCount,
+              };
+            }
+            return s;
+          });
+        }
+
+        return {
+          ...prev,
+          [selectedCustomerId]: baseList,
+        };
+      });
+    } catch (err) {
+      console.warn('Sync session history error:', err);
+    } finally {
+      if (manual) setIsSyncing(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!activeSessionId || !selectedCustomerId) return;
+    syncSessionFromSqlite(false);
+    const timer = setInterval(() => {
+      syncSessionFromSqlite(false);
+    }, 2500);
+    return () => clearInterval(timer);
+  }, [activeSessionId, selectedCustomerId, isLoading, draftMode]);
 
   // Active customer helper
   const currentCustomer =
-    MOCK_CUSTOMERS.find((c) => c.id === selectedCustomerId) || MOCK_CUSTOMERS[0];
+    allCustomers.find((c) => c.id === selectedCustomerId) ||
+    MOCK_CUSTOMERS.find((c) => c.id === selectedCustomerId) ||
+    allCustomers[0] ||
+    MOCK_CUSTOMERS[0];
 
   // Active session list for selected customer
   const currentSessions = sessionsByCustomer[selectedCustomerId] || [];
@@ -337,23 +545,7 @@ export const ChatView: React.FC = () => {
     if (existing.length > 0) {
       setActiveSessionId(existing[0].sessionId);
     } else {
-      const newSessId = `sess_${Math.random().toString(36).substring(2, 9)}`;
-      const newSession: ConversationSession = {
-        sessionId: newSessId,
-        customerId: customerId,
-        title: 'Hội thoại mới',
-        createdAt: formatSystemTime(),
-        updatedAt: new Date().toISOString(),
-        messages: [],
-        copilotResponse: null,
-        editedDraft: '',
-      };
-      setSessionsByCustomer((prev) => ({
-        ...prev,
-        [customerId]: [newSession],
-      }));
-      setActiveSessionId(newSessId);
-      apiClient.createSession(newSessId, customerId, 'Hội thoại mới');
+      setActiveSessionId('');
     }
   };
 
@@ -551,8 +743,10 @@ export const ChatView: React.FC = () => {
   // Helper to open policy viewer modal from any citation or document ID
   const handleOpenPolicyDoc = (docId: string, citations?: RetrievedDocument[]) => {
     const cleanId = docId.replace(/[\[\]\(\)]/g, '').trim().toUpperCase();
-    const found = citations?.find((c) => c.doc_id.toUpperCase() === cleanId) ||
-      copilotResponse?.citations?.find((c) => c.doc_id.toUpperCase() === cleanId);
+    const found =
+      citations?.find((c) => c.doc_id.toUpperCase() === cleanId) ||
+      copilotResponse?.citations?.find((c) => c.doc_id.toUpperCase() === cleanId) ||
+      allPolicies.find((p) => p.doc_id.toUpperCase() === cleanId);
 
     if (found) {
       setViewingPolicy(found);
@@ -569,8 +763,18 @@ export const ChatView: React.FC = () => {
     }
   };
 
+  // Find the customer question that a given agent/acknowledgement message is replying to (Messenger-style quote)
+  const findRepliedCustomerQuestion = (msgs: ChatMessage[], currentIdx: number): ChatMessage | null => {
+    for (let i = currentIdx - 1; i >= 0; i--) {
+      if (msgs[i].role === 'customer') {
+        return msgs[i];
+      }
+    }
+    return null;
+  };
+
   // Helper to parse markdown bold (**text**)
-  const parseMarkdownBold = (rawText: string, keyPrefix: string) => {
+  const parseMarkdownBold = (rawText: string, keyPrefix: string, isDarkBubble = false) => {
     const boldRegex = /\*\*([^*]+)\*\*/g;
     const nodes: (string | React.ReactNode)[] = [];
     let lastIdx = 0;
@@ -581,7 +785,10 @@ export const ChatView: React.FC = () => {
         nodes.push(rawText.slice(lastIdx, bMatch.index));
       }
       nodes.push(
-        <strong key={`${keyPrefix}-b-${bMatch.index}`} className="font-bold text-slate-900">
+        <strong
+          key={`${keyPrefix}-b-${bMatch.index}`}
+          className={isDarkBubble ? 'font-bold text-white underline decoration-blue-200/60' : 'font-bold text-slate-900'}
+        >
           {bMatch[1]}
         </strong>
       );
@@ -594,7 +801,11 @@ export const ChatView: React.FC = () => {
   };
 
   // Helper function to render text with highlighted, clickable policy badges [POL-XXX] and markdown bold
-  const renderTextWithPolicyLinks = (text: string, citations?: RetrievedDocument[]) => {
+  const renderTextWithPolicyLinks = (
+    text: string,
+    citations?: RetrievedDocument[],
+    isDarkBubble = false
+  ) => {
     if (!text) return null;
     const regex = /((?:\[|\()?(POL-[A-Z0-9_-]+)(?:\]|\))?)/g;
     const parts: (string | React.ReactNode)[] = [];
@@ -608,7 +819,7 @@ export const ChatView: React.FC = () => {
 
       if (matchStart > lastIndex) {
         const textChunk = text.slice(lastIndex, matchStart);
-        parts.push(...parseMarkdownBold(textChunk, `pre-${matchStart}`));
+        parts.push(...parseMarkdownBold(textChunk, `pre-${matchStart}`, isDarkBubble));
       }
 
       parts.push(
@@ -616,7 +827,11 @@ export const ChatView: React.FC = () => {
           key={`policy-${matchStart}-${docCode}`}
           type="button"
           onClick={() => handleOpenPolicyDoc(docCode, citations)}
-          className="inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-300/80 cursor-pointer transition-colors shadow-2xs align-baseline"
+          className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 mx-0.5 rounded-md font-mono text-[11px] font-bold cursor-pointer transition-colors shadow-2xs align-baseline ${
+            isDarkBubble
+              ? 'text-blue-700 bg-white hover:bg-blue-50 border border-blue-200'
+              : 'text-blue-700 bg-blue-100 hover:bg-blue-200 border border-blue-300/80'
+          }`}
           title={`Click để mở xem toàn văn bản quy định ${docCode}`}
         >
           <FileText className="w-2.5 h-2.5 text-blue-600 inline mr-0.5" />
@@ -629,13 +844,13 @@ export const ChatView: React.FC = () => {
 
     if (lastIndex < text.length) {
       const textChunk = text.slice(lastIndex);
-      parts.push(...parseMarkdownBold(textChunk, `post-${lastIndex}`));
+      parts.push(...parseMarkdownBold(textChunk, `post-${lastIndex}`, isDarkBubble));
     }
 
     return parts;
   };
 
-  // Send message in active session
+  // Send message in active session (supports both Direct Staff Reply and Customer Simulation)
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputQuery.trim() || isLoading || !activeSession) return;
@@ -644,7 +859,39 @@ export const ChatView: React.FC = () => {
     const currentSessionId = activeSession.sessionId;
     const nowTime = formatSystemTime();
 
-    // 1. Create User Message
+    // MODE 1: Staff replies directly to the customer
+    if (chatInputMode === 'staff_reply') {
+      const staffMsg: ChatMessage = {
+        id: `agent_${Date.now()}`,
+        role: 'agent',
+        content: userText,
+        timestamp: nowTime,
+        isAcknowledgement: false,
+      };
+
+      setSessionsByCustomer((prev) => {
+        const list = prev[selectedCustomerId] || [];
+        return {
+          ...prev,
+          [selectedCustomerId]: list.map((s) =>
+            s.sessionId === currentSessionId
+              ? {
+                  ...s,
+                  messages: [...s.messages, staffMsg],
+                  copilotResponse: null,
+                  editedDraft: '',
+                  updatedAt: new Date().toISOString(),
+                }
+              : s
+          ),
+        };
+      });
+      setInputQuery('');
+      await apiClient.saveMessage(currentSessionId, 'agent', userText, false, selectedCustomerId);
+      return;
+    }
+
+    // MODE 2: Simulate Customer message (Test Copilot directly in Staff Workbench)
     const userMsgId = `usr_${Date.now()}`;
     const userMsg: ChatMessage = {
       id: userMsgId,
@@ -658,7 +905,7 @@ export const ChatView: React.FC = () => {
     const updatedTitle = isFirstMsg ? (userText.length > 28 ? `${userText.slice(0, 26)}...` : userText) : activeSession.title;
 
     // Save turn into persistent SQLite DB asynchronously
-    apiClient.saveMessage(currentSessionId, 'customer', userText);
+    apiClient.saveMessage(currentSessionId, 'customer', userText, false, selectedCustomerId);
 
     if (!autoTriggerCopilot) {
       // Manual multi-line mode: Just post customer message into chat stream!
@@ -814,7 +1061,7 @@ export const ChatView: React.FC = () => {
 
   // Staff approves draft
   const handleApproveDraft = async () => {
-    if (!activeSession || !activeSession.copilotResponse) return;
+    if (!activeSession) return;
     const finalContent = activeSession.editedDraft.trim();
     if (!finalContent) return;
 
@@ -824,7 +1071,7 @@ export const ChatView: React.FC = () => {
     // Filter citations: ONLY attach policies that are EXPLICITLY referenced in finalContent (avoid legal risk)
     const citedMatches = finalContent.match(/POL-[A-Z0-9_-]+/gi) || [];
     const citedSet = new Set(citedMatches.map((c) => c.toUpperCase()));
-    const activeCitations = (copilotResp.citations || []).filter((c) =>
+    const activeCitations = (copilotResp?.citations || []).filter((c) =>
       citedSet.has(c.doc_id.toUpperCase())
     );
 
@@ -856,19 +1103,21 @@ export const ChatView: React.FC = () => {
       };
     });
 
-    // Save final approved agent message to SQLite DB
-    apiClient.saveMessage(currentSessionId, 'agent', finalContent, false);
+    // Save final approved agent message to SQLite DB (also clears copilot_draft in SQLite)
+    await apiClient.saveMessage(currentSessionId, 'agent', finalContent, false, selectedCustomerId);
 
     // Record review action to telemetry
-    try {
-      await apiClient.recordAction({
-        interaction_id: copilotResp.interaction_id,
-        action: 'APPROVE',
-        final_text: finalContent,
-        handling_time_ms: 2500,
-      });
-    } catch (err) {
-      console.warn('Record action telemetry error:', err);
+    if (copilotResp?.interaction_id) {
+      try {
+        await apiClient.recordAction({
+          interaction_id: copilotResp.interaction_id,
+          action: 'APPROVE',
+          final_text: finalContent,
+          handling_time_ms: 2500,
+        });
+      } catch (err) {
+        console.warn('Record action telemetry error:', err);
+      }
     }
   };
 
@@ -889,15 +1138,17 @@ export const ChatView: React.FC = () => {
   // Staff dismisses draft
   const handleDismissDraft = () => {
     if (!activeSession) return;
+    const sessId = activeSession.sessionId;
     setSessionsByCustomer((prev) => {
       const list = prev[selectedCustomerId] || [];
       return {
         ...prev,
         [selectedCustomerId]: list.map((s) =>
-          s.sessionId === activeSession.sessionId ? { ...s, copilotResponse: null, editedDraft: '' } : s
+          s.sessionId === sessId ? { ...s, copilotResponse: null, editedDraft: '' } : s
         ),
       };
     });
+    apiClient.clearSessionDraft(sessId);
   };
 
   // Copy policy text
@@ -910,13 +1161,18 @@ export const ChatView: React.FC = () => {
   const messages = activeSession?.messages || [];
   const copilotResponse = activeSession?.copilotResponse;
   const editedDraft = activeSession?.editedDraft || '';
+  const hasPendingCopilot = Boolean(copilotResponse || editedDraft.trim());
 
-  // Check if there are customer messages waiting for response
+  // Check if there are customer messages waiting for response (including when Customer sent a message on /customer and got an ack)
   const lastMessage = messages[messages.length - 1];
-  const hasUnrespondedCustomerMsg = lastMessage?.role === 'customer';
+  const hasUnrespondedCustomerMsg =
+    lastMessage?.role === 'customer' ||
+    lastMessage?.role === 'acknowledgement' ||
+    Boolean(lastMessage?.isAcknowledgement);
 
   // Dynamic components used for the recent request
   const componentsUsed = copilotResponse?.components_used || {};
+  const latestCustomerOrder = customerOrders[0];
 
   return (
     <div
@@ -930,41 +1186,159 @@ export const ChatView: React.FC = () => {
         style={{ width: `${leftWidth}px` }}
         className="flex-shrink-0 flex flex-col bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden"
       >
-        {/* Customer Selector Dropdown */}
+        {/* Customer Selector & Priority Queue (Newest Questions First) */}
         <div className="p-3.5 border-b border-slate-100 bg-slate-50/70">
-          <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 flex items-center justify-between">
-            <span>Chọn Khách Hàng</span>
-            <span className="text-[10px] text-blue-600 font-semibold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100">
-              Demo Users
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              Khách Hàng (Mới nhất lên đầu)
             </span>
-          </label>
+            {selectedStaffId && (
+              <button
+                type="button"
+                onClick={() => setFilterByStaff((v) => !v)}
+                className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border transition-colors cursor-pointer ${
+                  filterByStaff
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                    : 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100'
+                }`}
+                title="Bấm để chuyển đổi giữa danh sách khách phụ trách riêng hoặc toàn bộ khách hàng"
+              >
+                {filterByStaff ? `Phụ trách (${displayedCustomers.length})` : `Tất cả (${allCustomers.length})`}
+              </button>
+            )}
+          </div>
           <select
             value={selectedCustomerId}
             onChange={(e) => handleSelectCustomer(e.target.value)}
             className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer shadow-2xs"
           >
-            {MOCK_CUSTOMERS.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c.id}) {c.orderId ? `• #${c.orderId}` : ''}
-              </option>
-            ))}
+            {displayedCustomers.map((c) => {
+              const isAssigned = selectedStaffId && c.assignedStaffId === selectedStaffId;
+              const act = customerActivity[c.id];
+              return (
+                <option key={c.id} value={c.id}>
+                  {act?.hasPendingDraft ? '🔴 [Chờ trả lời] ' : ''}
+                  {isAssigned ? '★ ' : ''}
+                  {c.name} ({c.id})
+                </option>
+              );
+            })}
           </select>
 
-          {/* Quick info card */}
-          <div className="mt-2.5 p-2.5 bg-white rounded-xl border border-slate-200/80 text-[11px] space-y-1">
-            <div className="flex items-center gap-1 text-slate-600">
-              <Phone className="w-3 h-3 text-slate-400" />
-              <span>{currentCustomer.phone}</span>
+          {/* Sorted Customer List (Newest questions at top for 1-click switching) */}
+          <div className="mt-2 max-h-36 overflow-y-auto overscroll-contain space-y-1 pr-0.5">
+            {displayedCustomers.map((c, idx) => {
+              const isSelected = c.id === selectedCustomerId;
+              const act = customerActivity[c.id];
+              const isAssigned = selectedStaffId && c.assignedStaffId === selectedStaffId;
+              return (
+                <button
+                  key={c.id}
+                  type="button"
+                  onClick={() => handleSelectCustomer(c.id)}
+                  className={`w-full text-left px-2.5 py-1.5 rounded-xl border text-[11px] transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
+                    isSelected
+                      ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                      : act?.hasPendingDraft
+                        ? 'bg-amber-50/90 hover:bg-amber-100/80 text-slate-800 border-amber-300'
+                        : 'bg-white hover:bg-slate-100 text-slate-700 border-slate-200/80'
+                  }`}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1 font-bold truncate">
+                      {idx === 0 && act?.updatedAt && (
+                        <span
+                          className={`text-[9px] px-1 py-0.2 rounded font-extrabold ${
+                            isSelected ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700'
+                          }`}
+                        >
+                          MỚI NHẤT
+                        </span>
+                      )}
+                      {isAssigned && <span title="Khách do bạn phụ trách">★</span>}
+                      <span className="truncate">{c.name}</span>
+                    </div>
+                    {act?.lastTitle && (
+                      <p
+                        className={`text-[10px] truncate mt-0.5 ${
+                          isSelected ? 'text-blue-100' : 'text-slate-500'
+                        }`}
+                      >
+                        💬 {act.lastTitle}
+                      </p>
+                    )}
+                  </div>
+                  {act?.hasPendingDraft && (
+                    <span
+                      className={`shrink-0 px-1.5 py-0.5 rounded-full text-[9px] font-bold ${
+                        isSelected
+                          ? 'bg-amber-300 text-slate-900'
+                          : 'bg-amber-500 text-white animate-pulse'
+                      }`}
+                    >
+                      Chờ duyệt
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Quick info card + Orders toggle */}
+          <div className="mt-2.5 p-2.5 bg-white rounded-xl border border-slate-200/80 text-[11px] space-y-1.5">
+            <div className="flex items-center justify-between text-slate-600">
+              <span className="flex items-center gap-1">
+                <Phone className="w-3 h-3 text-slate-400" />
+                <span>{currentCustomer.phone || 'Chưa cập nhật'}</span>
+              </span>
+              {selectedStaffId && currentCustomer.assignedStaffId === selectedStaffId && (
+                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                  Phụ trách
+                </span>
+              )}
             </div>
-            {currentCustomer.orderId && (
+
+            {(latestCustomerOrder || currentCustomer.orderId) && (
               <div className="flex items-center justify-between text-slate-600 pt-1 border-t border-blue-100/60">
                 <span className="flex items-center gap-1">
                   <Package className="w-3 h-3 text-blue-500" />
-                  <b>#{currentCustomer.orderId}</b>
+                  <b>#{latestCustomerOrder?.order_id || currentCustomer.orderId}</b>
                 </span>
-                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded">
-                  {currentCustomer.orderStatus}
+                <span className="text-[10px] font-medium text-emerald-700 bg-emerald-100/80 px-1.5 py-0.5 rounded truncate max-w-[130px]">
+                  {latestCustomerOrder?.order_status || currentCustomer.orderStatus}
                 </span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowOrdersDrawer((v) => !v)}
+              className="w-full mt-1 pt-1.5 border-t border-slate-100 flex items-center justify-between text-[11px] font-semibold text-blue-600 hover:text-blue-700 cursor-pointer"
+            >
+              <span>📦 Đơn hàng & Giao dịch ({customerOrders.length})</span>
+              {showOrdersDrawer ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+            </button>
+
+            {showOrdersDrawer && (
+              <div className="pt-1.5 space-y-1.5 max-h-40 overflow-y-auto">
+                {customerOrders.length === 0 ? (
+                  <p className="text-[10px] text-slate-400 italic">Khách hàng chưa có đơn hàng nào.</p>
+                ) : (
+                  customerOrders.map((ord) => (
+                    <div key={ord.order_id} className="p-2 rounded-lg bg-slate-50 border border-slate-200/70 text-[10px] space-y-0.5">
+                      <div className="flex items-center justify-between font-bold text-slate-800">
+                        <span>#{ord.order_id}</span>
+                        <span className="text-blue-600">{ord.total_amount?.toLocaleString('vi-VN')}đ</span>
+                      </div>
+                      <p className="text-slate-600 truncate">
+                        {ord.product_name || ord.items?.map((i) => i.name).join(', ')}
+                      </p>
+                      <span className="inline-block text-[9px] font-semibold px-1.5 py-0.2 rounded bg-white border border-slate-200 text-slate-600">
+                        {ord.order_status}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -974,7 +1348,7 @@ export const ChatView: React.FC = () => {
         <div className="px-3.5 py-2.5 border-b border-slate-100 flex items-center justify-between">
           <span className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
             <MessageSquare className="w-3.5 h-3.5 text-slate-500" />
-            <span>Danh sách phiên</span>
+            <span>Lịch sử phiên chat</span>
             <span className="text-[11px] text-slate-400 font-normal">({currentSessions.length})</span>
           </span>
           <button
@@ -988,11 +1362,12 @@ export const ChatView: React.FC = () => {
         </div>
 
         {/* Session List (Sorted newest first) */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-2 space-y-1.5">
           {currentSessions.map((s) => {
             const isActive = s.sessionId === activeSessionId;
             const lastMsg = s.messages[s.messages.length - 1];
             const isEditing = editingSessionId === s.sessionId;
+            const hasDraftWaiting = Boolean(s.editedDraft && s.editedDraft.trim());
 
             return (
               <div
@@ -1042,6 +1417,11 @@ export const ChatView: React.FC = () => {
                       >
                         {s.title}
                       </span>
+                      {hasDraftWaiting && (
+                        <span className="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px] font-bold border border-amber-300">
+                          Chờ duyệt
+                        </span>
+                      )}
                       <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={(e) => handleStartRename(s, e)}
@@ -1067,7 +1447,7 @@ export const ChatView: React.FC = () => {
                     <span>{s.createdAt}</span>
                   </span>
                   <span className="bg-slate-100 text-slate-500 px-1.5 py-0.2 rounded text-[10px]">
-                    {s.messages.length} tin
+                    {s.messageCount ?? s.messages.length} tin
                   </span>
                 </div>
                 {lastMsg && (
@@ -1102,159 +1482,240 @@ export const ChatView: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 <span className="text-sm font-bold text-slate-800">{currentCustomer.name}</span>
                 <span className="text-[10px] text-slate-400 font-mono">({activeSession?.sessionId})</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold">
+                  Đồng bộ trực tuyến /customer
+                </span>
               </div>
               <span className="text-[11px] text-slate-500">{activeSession?.title}</span>
             </div>
           </div>
-          <button
-            onClick={() => {
-              if (!activeSession) return;
-              setSessionsByCustomer((prev) => ({
-                ...prev,
-                [selectedCustomerId]: prev[selectedCustomerId].map((s) =>
-                  s.sessionId === activeSession.sessionId
-                    ? { ...s, messages: [], copilotResponse: null, editedDraft: '' }
-                    : s
-                ),
-              }));
-            }}
-            className="text-xs text-slate-400 hover:text-slate-700 underline cursor-pointer"
-          >
-            Làm sạch tin nhắn
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => syncSessionFromSqlite(true)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-xs font-semibold text-slate-600 cursor-pointer transition-colors"
+              title="Đồng bộ tin nhắn mới nhất từ Khách hàng (/customer)"
+            >
+              <RefreshCw className={`w-3 h-3 ${isSyncing ? 'animate-spin text-blue-600' : ''}`} />
+              <span>Đồng bộ</span>
+            </button>
+          </div>
         </div>
 
-        {/* Message Stream */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {/* Message Stream (Customer on LEFT in WHITE, Staff on RIGHT in BLUE, Messenger-style Quoted Question) */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-4 bg-slate-50/40">
           {messages.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 p-8">
               <MessageSquare className="w-12 h-12 mb-3 text-slate-300 stroke-[1.5]" />
-              <p className="text-sm font-semibold text-slate-600">Bắt đầu phiên trò chuyện</p>
+              <p className="text-sm font-semibold text-slate-600">Bắt đầu hoặc chờ tin nhắn từ Khách hàng</p>
               <p className="text-xs mt-1 text-slate-400 max-w-xs">
-                Đang hỗ trợ khách hàng <b>{currentCustomer.name}</b>. Khách hàng có thể nhập nhiều dòng mô tả trước khi yêu cầu Copilot soạn câu trả lời.
+                Đang kết nối phiên chat của khách hàng <b>{currentCustomer.name} ({currentCustomer.id})</b>. Khi khách gửi tin bên <b>/customer</b>, tin nhắn và bản nháp Copilot sẽ tự động hiển thị tại đây.
               </p>
             </div>
           ) : (
-            messages.map((m) => (
-              <div
-                key={m.id}
-                className={`flex gap-3 ${m.role === 'customer' ? 'justify-end' : 'justify-start'}`}
-              >
-                {m.role === 'agent' && (
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
-                      m.isAcknowledgement ? 'bg-amber-100 text-amber-600' : 'bg-emerald-100 text-emerald-700'
-                    }`}
-                  >
-                    {m.isAcknowledgement ? <Bot className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
-                  </div>
-                )}
-                <div
-                  className={`max-w-[82%] rounded-2xl p-3.5 text-xs whitespace-pre-wrap leading-relaxed ${
-                    m.role === 'customer'
-                      ? 'bg-blue-600 text-white rounded-tr-sm'
-                      : m.isAcknowledgement
-                        ? 'bg-amber-50/90 text-amber-950 border border-amber-200/60 rounded-tl-sm'
-                        : 'bg-slate-100 text-slate-800 rounded-tl-sm border border-slate-200/60'
-                  }`}
-                >
-                  {m.isAcknowledgement && (
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 mb-1.5 pb-1 border-b border-amber-200/50">
-                      <span>⚡ Phản hồi đệm tức thì (Copilot)</span>
-                    </div>
-                  )}
-                  {!m.isAcknowledgement && m.role === 'agent' && (
-                    <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 mb-1.5 pb-1 border-b border-slate-200">
-                      <span>👤 Nhân viên CSKH (Đã duyệt)</span>
-                    </div>
-                  )}
-                  {/* Clickable and colored policy badges inside message content */}
-                  <div className="leading-relaxed whitespace-pre-wrap">
-                    {renderTextWithPolicyLinks(m.content, m.citations)}
-                  </div>
-                  {(() => {
-                    if (!m.citations || m.citations.length === 0) return null;
-                    // Only display citations that are actually cited inside m.content to avoid legal risk!
-                    const citedMatches = m.content.match(/POL-[A-Z0-9_-]+/gi) || [];
-                    const citedSet = new Set(citedMatches.map((c) => c.toUpperCase()));
-                    const activeCitations = m.citations.filter((c) => citedSet.has(c.doc_id.toUpperCase()));
-                    if (activeCitations.length === 0) return null;
+            messages.map((m, idx) => {
+              const isAck = Boolean(m.isAcknowledgement || m.role === 'acknowledgement');
+              const isAgentSide = m.role === 'agent' || m.role === 'acknowledgement';
+              const isBlueStaffBubble = isAgentSide && !isAck;
+              const repliedQuestion = isAgentSide ? findRepliedCustomerQuestion(messages, idx) : null;
 
-                    return (
-                      <div className="mt-2.5 pt-2 border-t border-slate-200/60 text-[11px] text-slate-500">
-                        <span className="font-semibold block mb-1">📚 Căn cứ chính sách:</span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {activeCitations.map((c) => (
-                            <button
-                              key={c.doc_id}
-                              type="button"
-                              onClick={() => handleOpenPolicyDoc(c.doc_id, m.citations)}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 text-[10px] font-medium cursor-pointer transition-colors"
-                            >
-                              <FileText className="w-3 h-3 text-blue-500" />
-                              <span>[{c.doc_id}] {c.title}</span>
-                            </button>
-                          ))}
+              return (
+                <div
+                  key={m.id}
+                  className={`flex gap-3 ${isAgentSide ? 'justify-end' : 'justify-start'}`}
+                >
+                  {/* Customer Avatar on the LEFT */}
+                  {m.role === 'customer' && (
+                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 text-slate-700 flex items-center justify-center flex-shrink-0 text-sm shadow-2xs">
+                      <User className="w-4 h-4" />
+                    </div>
+                  )}
+
+                  <div className={`max-w-[82%] flex flex-col ${isAgentSide ? 'items-end' : 'items-start'}`}>
+                    {/* Messenger-style Faded Quoted Customer Question above Staff/Agent reply */}
+                    {isAgentSide && repliedQuestion && (
+                      <div
+                        className="mb-1 px-3 py-1.5 rounded-xl bg-slate-200/65 border border-slate-300/60 text-[11px] text-slate-600 max-w-full opacity-85 flex items-start gap-1.5 shadow-2xs"
+                        title={`Đang trả lời câu hỏi của ${currentCustomer.name}: "${repliedQuestion.content}"`}
+                      >
+                        <CornerUpLeft className="w-3.5 h-3.5 text-slate-500 shrink-0 mt-0.5" />
+                        <div className="truncate">
+                          <span className="font-semibold text-slate-700 mr-1">
+                            Trả lời {currentCustomer.name}:
+                          </span>
+                          <span className="italic text-slate-600">"{repliedQuestion.content}"</span>
                         </div>
                       </div>
-                    );
-                  })()}
-                  <span
-                    className={`block text-[10px] mt-1.5 text-right ${
-                      m.role === 'customer'
-                        ? 'text-blue-200'
-                        : m.isAcknowledgement
-                          ? 'text-amber-600/70'
-                          : 'text-slate-400'
-                    }`}
-                  >
-                    {m.timestamp}
-                  </span>
-                </div>
-                {m.role === 'customer' && (
-                  <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center flex-shrink-0 text-sm">
-                    <User className="w-4 h-4" />
+                    )}
+
+                    <div
+                      className={`w-full rounded-2xl p-3.5 text-xs whitespace-pre-wrap leading-relaxed ${
+                        m.role === 'customer'
+                          ? 'bg-white text-slate-800 border border-slate-200 rounded-tl-sm shadow-xs'
+                          : isAck
+                            ? 'bg-amber-50/95 text-amber-950 border border-amber-200 rounded-tr-sm shadow-2xs'
+                            : 'bg-blue-600 text-white rounded-tr-sm shadow-sm'
+                      }`}
+                    >
+                      {m.role === 'customer' && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 mb-1.5 pb-1 border-b border-slate-100">
+                          <span>👤 Khách hàng ({currentCustomer.name})</span>
+                        </div>
+                      )}
+                      {isAck && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-700 mb-1.5 pb-1 border-b border-amber-200/50">
+                          <span>⚡ Phản hồi đệm tức thì (Copilot)</span>
+                        </div>
+                      )}
+                      {!isAck && isAgentSide && (
+                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-100 mb-1.5 pb-1 border-b border-blue-500/60">
+                          <span>👨‍💼 Nhân viên CSKH ({selectedStaffName || 'Đã duyệt'})</span>
+                        </div>
+                      )}
+
+                      {/* Clickable and colored policy badges inside message content */}
+                      <div className="leading-relaxed whitespace-pre-wrap">
+                        {renderTextWithPolicyLinks(m.content, m.citations, isBlueStaffBubble)}
+                      </div>
+
+                      {(() => {
+                        const citedMatches = m.content.match(/POL-[A-Z0-9_-]+/gi) || [];
+                        const citedSet = new Set(citedMatches.map((c) => c.toUpperCase()));
+                        const activeCitations =
+                          m.citations && m.citations.length > 0
+                            ? m.citations.filter((c) => citedSet.has(c.doc_id.toUpperCase()))
+                            : Array.from(citedSet).map((code) => {
+                                const found = allPolicies.find((p) => p.doc_id.toUpperCase() === code);
+                                return (
+                                  found || {
+                                    doc_id: code,
+                                    title: `Chính sách ${code}`,
+                                    content: '',
+                                    is_active: true,
+                                  }
+                                );
+                              });
+
+                        if (activeCitations.length === 0) return null;
+
+                        return (
+                          <div
+                            className={`mt-2.5 pt-2 border-t text-[11px] ${
+                              isBlueStaffBubble
+                                ? 'border-blue-500/60 text-blue-100'
+                                : 'border-slate-200/60 text-slate-500'
+                            }`}
+                          >
+                            <span className="font-semibold block mb-1">
+                              📚 File chính sách đính kèm (Bấm để xem):
+                            </span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {activeCitations.map((c) => (
+                                <button
+                                  key={c.doc_id}
+                                  type="button"
+                                  onClick={() => handleOpenPolicyDoc(c.doc_id, m.citations)}
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold cursor-pointer transition-colors ${
+                                    isBlueStaffBubble
+                                      ? 'bg-white text-blue-700 hover:bg-blue-50 border border-blue-200 shadow-2xs'
+                                      : 'bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100'
+                                  }`}
+                                >
+                                  <FileText className="w-3 h-3 text-blue-600" />
+                                  <span>
+                                    [{c.doc_id}] {c.title}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      <span
+                        className={`block text-[10px] mt-1.5 text-right ${
+                          m.role === 'customer'
+                            ? 'text-slate-400'
+                            : isAck
+                              ? 'text-amber-600/70'
+                              : 'text-blue-200'
+                        }`}
+                      >
+                        {m.timestamp}
+                      </span>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))
+
+                  {/* Staff / Agent Avatar on the RIGHT */}
+                  {isAgentSide && (
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-sm shadow-2xs ${
+                        isAck ? 'bg-amber-100 text-amber-600' : 'bg-blue-600 text-white'
+                      }`}
+                    >
+                      {isAck ? <Bot className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
 
         {/* E-commerce Multi-message Banner & Trigger Button */}
-        {hasUnrespondedCustomerMsg && !isLoading && !copilotResponse && (
+        {hasUnrespondedCustomerMsg && !isLoading && !hasPendingCopilot && (
           <div className="px-4 py-2 bg-blue-50/90 border-t border-blue-100 flex items-center justify-between">
             <span className="text-[11px] text-blue-700">
-              Khách đã gửi tin. Bạn có thể gửi thêm dòng hoặc yêu cầu Copilot soạn trả lời ngay:
+              Khách đang chờ phản hồi. Bấm để yêu cầu AI Copilot phân tích & soạn bản nháp trả lời:
             </span>
             <button
               onClick={handleManualRequestResponse}
               className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer animate-pulse"
             >
               <Zap className="w-3.5 h-3.5" />
-              <span>⚡ Yêu cầu trả lời</span>
+              <span>⚡ Yêu cầu Copilot soạn nháp</span>
             </button>
           </div>
         )}
 
-        {/* Input Bar with Auto-trigger Toggle */}
+        {/* Input Bar with Mode Switcher (Direct Staff Reply vs Customer Simulation) */}
         <div className="p-3 border-t border-slate-100 bg-white space-y-2">
-          <div className="flex items-center justify-between text-[11px] text-slate-500 px-1">
-            <label className="flex items-center gap-1.5 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={autoTriggerCopilot}
-                onChange={(e) => setAutoTriggerCopilot(e.target.checked)}
-                className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
-              />
-              <span className="font-medium text-slate-600">
-                Tự động yêu cầu Copilot phản hồi khi gửi (dành cho câu hỏi đơn)
-              </span>
-            </label>
-            {!autoTriggerCopilot && (
-              <span className="text-amber-600 text-[10px] font-semibold bg-amber-50 px-2 py-0.5 rounded">
-                Chế độ nhập nhiều dòng
-              </span>
+          <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 px-1">
+            <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-lg">
+              <button
+                type="button"
+                onClick={() => setChatInputMode('simulate_customer')}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                  chatInputMode === 'simulate_customer'
+                    ? 'bg-white text-blue-700 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                🧪 Giả lập Khách hỏi (Test Copilot)
+              </button>
+              <button
+                type="button"
+                onClick={() => setChatInputMode('staff_reply')}
+                className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${
+                  chatInputMode === 'staff_reply'
+                    ? 'bg-white text-emerald-700 shadow-2xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                👤 Nhân viên nhắn trực tiếp
+              </button>
+            </div>
+
+            {chatInputMode === 'simulate_customer' && (
+              <label className="flex items-center gap-1.5 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={autoTriggerCopilot}
+                  onChange={(e) => setAutoTriggerCopilot(e.target.checked)}
+                  className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                />
+                <span className="font-medium text-slate-600">Tự động gọi Copilot</span>
+              </label>
             )}
           </div>
 
@@ -1264,9 +1725,11 @@ export const ChatView: React.FC = () => {
               value={inputQuery}
               onChange={(e) => setInputQuery(e.target.value)}
               placeholder={
-                autoTriggerCopilot
-                  ? `Nhập câu hỏi từ khách hàng ${currentCustomer.name}...`
-                  : `Nhập dòng tin nhắn của khách hàng (bấm gửi rồi bấm 'Yêu cầu trả lời')...`
+                chatInputMode === 'staff_reply'
+                  ? `Nhập phản hồi trực tiếp của Nhân viên gửi tới ${currentCustomer.name}...`
+                  : autoTriggerCopilot
+                    ? `Nhập câu hỏi từ khách hàng ${currentCustomer.name} để Copilot phân tích...`
+                    : `Nhập dòng tin nhắn của khách hàng (bấm gửi rồi bấm 'Yêu cầu trả lời')...`
               }
               disabled={isLoading || !activeSession}
               className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 disabled:bg-slate-50"
@@ -1274,17 +1737,26 @@ export const ChatView: React.FC = () => {
             <button
               type="submit"
               disabled={isLoading || !inputQuery.trim() || !activeSession}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-sm"
-              title={autoTriggerCopilot ? 'Gửi câu hỏi và kích hoạt Copilot' : 'Gửi tin nhắn này vào khung chat'}
+              className={`px-4 py-2.5 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                chatInputMode === 'staff_reply'
+                  ? 'bg-emerald-600 hover:bg-emerald-700'
+                  : 'bg-blue-600 hover:bg-blue-700'
+              }`}
             >
               {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              <span>{autoTriggerCopilot ? 'Gửi & Trả lời' : 'Gửi dòng tin'}</span>
+              <span>
+                {chatInputMode === 'staff_reply'
+                  ? 'Gửi cho Khách'
+                  : autoTriggerCopilot
+                    ? 'Gửi & Soạn nháp'
+                    : 'Gửi dòng tin'}
+              </span>
             </button>
-            {!autoTriggerCopilot && (
+            {chatInputMode === 'simulate_customer' && !autoTriggerCopilot && (
               <button
                 type="button"
                 onClick={handleManualRequestResponse}
-                disabled={isLoading || activeSession.messages.length === 0}
+                disabled={isLoading || !activeSession || activeSession.messages.length === 0}
                 className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer shadow-sm"
                 title="Yêu cầu Copilot tổng hợp các tin nhắn trên và soạn bản nháp"
               >
@@ -1310,141 +1782,30 @@ export const ChatView: React.FC = () => {
       {/* ------------------------------------------------------------- */}
       <div
         style={{ width: `${rightWidth}px` }}
-        className="flex-shrink-0 flex flex-col space-y-4 overflow-y-auto"
+        className="flex-shrink-0 flex flex-col space-y-4 overflow-y-auto overscroll-contain"
       >
-        {copilotResponse ? (
+        {hasPendingCopilot ? (
           <>
-            {/* Guardrail & Classification Analysis Card */}
-            <Card title="🛡️ Phân tích Thông minh từ Copilot">
-              <div className="space-y-2.5 text-xs">
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-500">Ý định phân loại:</span>
-                  <Badge variant="info">{copilotResponse.intent?.intent || 'out_of_scope'}</Badge>
-                </div>
-
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-500">Loại đầu vào:</span>
-                  <span className="font-semibold text-slate-700">{copilotResponse.input_type || 'new_question'}</span>
-                </div>
-
-                <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
-                  <span className="text-slate-500">Chốt chặn Guardrail:</span>
-                  <Badge
-                    variant={
-                      copilotResponse.guardrail?.action_type === 'PROCEED_TO_LLM'
-                        ? 'success'
-                        : copilotResponse.guardrail?.action_type === 'DIRECT_REFUND_FORM'
-                          ? 'warning'
-                          : 'danger'
-                    }
-                  >
-                    {copilotResponse.guardrail?.action_type || 'PROCEED_TO_LLM'}
-                  </Badge>
-                </div>
-
-                {/* Dynamic System Components Used in the Most Recent Request */}
-                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-[11px]">
-                  <span className="font-bold text-slate-700 block mb-1 flex items-center justify-between">
-                    <span>⚙️ Thành phần Hệ thống đang dùng:</span>
-                    <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                      Request gần nhất
-                    </span>
-                  </span>
-                  <div className="flex justify-between items-start text-slate-600">
-                    <span className="font-medium text-slate-500">• Phân loại Intent:</span>
-                    <span className="font-semibold text-slate-800 text-right max-w-[210px]">
-                      {componentsUsed.intent_classifier || 'Hybrid NLU (Quy tắc & Semantic Rules)'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-start text-slate-600">
-                    <span className="font-medium text-slate-500">• Tiền xử lý Ngữ cảnh:</span>
-                    <span className="font-semibold text-blue-600 text-right max-w-[210px]">
-                      {componentsUsed.query_rewriter || 'LLM Contextual Query Rewriter'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-start text-slate-600">
-                    <span className="font-medium text-slate-500">• Tra cứu RAG:</span>
-                    <span className="font-semibold text-slate-800 text-right max-w-[210px]">
-                      {componentsUsed.retrieval_engine || 'BM25 + Semantic Vector Retrieval'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-start text-slate-600">
-                    <span className="font-medium text-slate-500">• Sinh Bản nháp:</span>
-                    <span className="font-semibold text-emerald-700 text-right max-w-[210px]">
-                      {componentsUsed.draft_engine || 'Mô hình LLM gpt-oss (openai-gpt-oss-20b)'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-start text-slate-600">
-                    <span className="font-medium text-slate-500">• Chốt chặn An toàn:</span>
-                    <span className="font-semibold text-slate-800 text-right max-w-[210px]">
-                      {componentsUsed.safety_envelope || 'NLI Faithfulness & Financial Hard Gate'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Collapsible Details */}
-                <div>
-                  <button
-                    onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}
-                    className="flex items-center justify-between w-full text-[11px] font-semibold text-blue-600 hover:text-blue-700 pt-1 cursor-pointer"
-                  >
-                    <span>{showAnalysisDetails ? 'Thu gọn chi tiết phân tích' : 'Xem thêm chi tiết kiểm định an toàn'}</span>
-                    {showAnalysisDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-                  </button>
-
-                  {showAnalysisDetails && (
-                    <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1.5 text-[11px] text-slate-600">
-                      {copilotResponse.rewritten_query && (
-                        <p className="bg-white p-2 rounded border border-blue-100 text-blue-900">
-                          <b>Truy vấn đã bổ sung ngữ cảnh:</b> "{copilotResponse.rewritten_query}"
-                        </p>
-                      )}
-                      <p className="italic">
-                        <b>Lý do Guardrail:</b> "{copilotResponse.guardrail?.reason}"
-                      </p>
-                      {copilotResponse.guardrail?.temporal_status && (
-                        <p>
-                          <b>Trạng thái Hiệu lực:</b> {copilotResponse.guardrail.temporal_status}
-                        </p>
-                      )}
-                      <p>
-                        <b>ID tương tác:</b> <span className="font-mono text-[10px]">{copilotResponse.interaction_id}</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </Card>
-
-            {/* Dynamic Order Card (Module 3) */}
-            {copilotResponse.order_data && (
-              <Card title="📦 Tra cứu Đơn hàng (Dynamic Tool Calling)">
-                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs space-y-1.5">
-                  <div className="flex justify-between font-semibold text-slate-800">
-                    <span>Mã đơn: #{copilotResponse.order_data.order_id}</span>
-                    <Badge variant="info">{copilotResponse.order_data.order_status || copilotResponse.order_data.status}</Badge>
-                  </div>
-                  <p className="text-slate-600">
-                    Khách: {copilotResponse.order_data.customer_name} ({copilotResponse.order_data.phone})
-                  </p>
-                  <p className="text-slate-600">
-                    Sản phẩm: {copilotResponse.order_data.items?.map((it: any) => it.name).join(', ')}
-                  </p>
-                  <p className="text-slate-600 font-semibold">
-                    Tổng tiền: {copilotResponse.order_data.total_amount?.toLocaleString('vi-VN')} VND
-                  </p>
-                  {copilotResponse.order_data.estimated_delivery && (
-                    <p className="text-slate-500">
-                      Giao hàng: {copilotResponse.order_data.estimated_delivery} ({copilotResponse.order_data.carrier || 'Tiki Delivery'})
-                    </p>
-                  )}
-                </div>
-              </Card>
-            )}
-
-            {/* CS Draft Response Editor */}
+            {/* CS Draft Response Editor (Placed at top of Column 3 for immediate action!) */}
             <Card title="✍️ Bản nháp Đề xuất cho Nhân viên">
-              {copilotResponse.customer_acknowledgement && (
+              {/* Messenger-style Faded Quoted Customer Question being answered by this draft */}
+              {(() => {
+                const latestCustMsg = [...messages].reverse().find((m) => m.role === 'customer');
+                if (!latestCustMsg) return null;
+                return (
+                  <div className="mb-2.5 px-3 py-2 rounded-xl bg-slate-100/90 border border-slate-200/90 text-[11px] text-slate-600 flex items-start gap-1.5 opacity-90">
+                    <CornerUpLeft className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <span className="font-semibold text-slate-700 block">
+                        Đang trả lời câu hỏi của {currentCustomer.name}:
+                      </span>
+                      <p className="italic text-slate-600 line-clamp-2 mt-0.5">"{latestCustMsg.content}"</p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {copilotResponse?.customer_acknowledgement && (
                 <div className="mb-2.5 p-2 bg-amber-50 rounded-lg border border-amber-100 text-[11px] text-amber-800">
                   <span className="font-semibold block mb-0.5">⚡ Câu đệm đã gửi tự động:</span>
                   <i>"{copilotResponse.customer_acknowledgement}"</i>
@@ -1485,12 +1846,10 @@ export const ChatView: React.FC = () => {
               </div>
 
               {draftMode === 'preview' ? (
-                /* Interactive preview with clickable policy tags (Only 1 box shown!) */
                 <div className="mb-2.5 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs leading-relaxed max-h-56 overflow-y-auto whitespace-pre-wrap text-slate-800 font-sans shadow-inner">
-                  {renderTextWithPolicyLinks(editedDraft, copilotResponse.citations)}
+                  {renderTextWithPolicyLinks(editedDraft, copilotResponse?.citations)}
                 </div>
               ) : (
-                /* Edit Mode: Textarea */
                 <textarea
                   value={editedDraft}
                   onChange={(e) => handleUpdateDraft(e.target.value)}
@@ -1518,8 +1877,138 @@ export const ChatView: React.FC = () => {
               </div>
             </Card>
 
+            {/* Guardrail & Classification Analysis Card */}
+            {copilotResponse && (
+              <Card title="🛡️ Phân tích Thông minh từ Copilot">
+                <div className="space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-500">Ý định phân loại:</span>
+                    <Badge variant="info">{copilotResponse.intent?.intent || 'out_of_scope'}</Badge>
+                  </div>
+
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-500">Loại đầu vào:</span>
+                    <span className="font-semibold text-slate-700">{copilotResponse.input_type || 'new_question'}</span>
+                  </div>
+
+                  <div className="flex items-center justify-between pb-1.5 border-b border-slate-100">
+                    <span className="text-slate-500">Chốt chặn Guardrail:</span>
+                    <Badge
+                      variant={
+                        copilotResponse.guardrail?.action_type === 'PROCEED_TO_LLM'
+                          ? 'success'
+                          : copilotResponse.guardrail?.action_type === 'DIRECT_REFUND_FORM'
+                            ? 'warning'
+                            : 'danger'
+                      }
+                    >
+                      {copilotResponse.guardrail?.action_type || 'PROCEED_TO_LLM'}
+                    </Badge>
+                  </div>
+
+                  {/* Dynamic System Components Used in the Most Recent Request */}
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 space-y-1.5 text-[11px]">
+                    <span className="font-bold text-slate-700 block mb-1 flex items-center justify-between">
+                      <span>⚙️ Thành phần Hệ thống đang dùng:</span>
+                      <span className="text-[10px] text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                        Request gần nhất
+                      </span>
+                    </span>
+                    <div className="flex justify-between items-start text-slate-600">
+                      <span className="font-medium text-slate-500">• Phân loại Intent:</span>
+                      <span className="font-semibold text-slate-800 text-right max-w-[210px]">
+                        {componentsUsed.intent_classifier || 'Hybrid NLU (Quy tắc & Semantic Rules)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start text-slate-600">
+                      <span className="font-medium text-slate-500">• Tiền xử lý Ngữ cảnh:</span>
+                      <span className="font-semibold text-blue-600 text-right max-w-[210px]">
+                        {componentsUsed.query_rewriter || 'LLM Contextual Query Rewriter'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start text-slate-600">
+                      <span className="font-medium text-slate-500">• Tra cứu RAG:</span>
+                      <span className="font-semibold text-slate-800 text-right max-w-[210px]">
+                        {componentsUsed.retrieval_engine || 'BM25 + Semantic Vector Retrieval'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start text-slate-600">
+                      <span className="font-medium text-slate-500">• Sinh Bản nháp:</span>
+                      <span className="font-semibold text-emerald-700 text-right max-w-[210px]">
+                        {componentsUsed.draft_engine || 'Mô hình LLM gpt-oss (openai-gpt-oss-20b)'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-start text-slate-600">
+                      <span className="font-medium text-slate-500">• Chốt chặn An toàn:</span>
+                      <span className="font-semibold text-slate-800 text-right max-w-[210px]">
+                        {componentsUsed.safety_envelope || 'NLI Faithfulness & Financial Hard Gate'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Collapsible Details */}
+                  <div>
+                    <button
+                      onClick={() => setShowAnalysisDetails(!showAnalysisDetails)}
+                      className="flex items-center justify-between w-full text-[11px] font-semibold text-blue-600 hover:text-blue-700 pt-1 cursor-pointer"
+                    >
+                      <span>{showAnalysisDetails ? 'Thu gọn chi tiết phân tích' : 'Xem thêm chi tiết kiểm định an toàn'}</span>
+                      {showAnalysisDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+
+                    {showAnalysisDetails && (
+                      <div className="mt-2 p-2.5 bg-slate-50 rounded-lg border border-slate-100 space-y-1.5 text-[11px] text-slate-600">
+                        {copilotResponse.rewritten_query && (
+                          <p className="bg-white p-2 rounded border border-blue-100 text-blue-900">
+                            <b>Truy vấn đã bổ sung ngữ cảnh:</b> "{copilotResponse.rewritten_query}"
+                          </p>
+                        )}
+                        <p className="italic">
+                          <b>Lý do Guardrail:</b> "{copilotResponse.guardrail?.reason}"
+                        </p>
+                        {copilotResponse.guardrail?.temporal_status && (
+                          <p>
+                            <b>Trạng thái Hiệu lực:</b> {copilotResponse.guardrail.temporal_status}
+                          </p>
+                        )}
+                        <p>
+                          <b>ID tương tác:</b> <span className="font-mono text-[10px]">{copilotResponse.interaction_id}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )}
+
+            {/* Dynamic Order Card (Module 3) */}
+            {copilotResponse?.order_data && (
+              <Card title="📦 Tra cứu Đơn hàng (Dynamic Tool Calling)">
+                <div className="p-3 bg-blue-50/50 rounded-xl border border-blue-100 text-xs space-y-1.5">
+                  <div className="flex justify-between font-semibold text-slate-800">
+                    <span>Mã đơn: #{copilotResponse.order_data.order_id}</span>
+                    <Badge variant="info">{copilotResponse.order_data.order_status || copilotResponse.order_data.status}</Badge>
+                  </div>
+                  <p className="text-slate-600">
+                    Khách: {copilotResponse.order_data.customer_name} ({copilotResponse.order_data.phone})
+                  </p>
+                  <p className="text-slate-600">
+                    Sản phẩm: {copilotResponse.order_data.items?.map((it: any) => it.name).join(', ')}
+                  </p>
+                  <p className="text-slate-600 font-semibold">
+                    Tổng tiền: {copilotResponse.order_data.total_amount?.toLocaleString('vi-VN')} VND
+                  </p>
+                  {copilotResponse.order_data.estimated_delivery && (
+                    <p className="text-slate-500">
+                      Giao hàng: {copilotResponse.order_data.estimated_delivery} ({copilotResponse.order_data.carrier || 'Tiki Delivery'})
+                    </p>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {/* Citations List with "Xem văn bản" button */}
-            {copilotResponse.citations && copilotResponse.citations.length > 0 && (
+            {copilotResponse?.citations && copilotResponse.citations.length > 0 && (
               <Card title="📚 Căn cứ Chính sách Trích xuất">
                 <div className="space-y-2 text-xs">
                   {copilotResponse.citations.map((c) => (
@@ -1552,7 +2041,7 @@ export const ChatView: React.FC = () => {
             )}
           </>
         ) : isLoading ? (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-blue-200/80 shadow-xs">
+          <div className="flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-blue-200/80 shadow-xs">
             <div className="w-12 h-12 mb-3 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center animate-pulse">
               <Bot className="w-6 h-6 animate-bounce" />
             </div>
@@ -1566,14 +2055,54 @@ export const ChatView: React.FC = () => {
             </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-center p-8 bg-white rounded-2xl border border-slate-200 text-slate-400">
-            <Bot className="w-12 h-12 mb-3 text-slate-300 stroke-[1.5]" />
-            <p className="text-sm font-semibold text-slate-700">Khung làm việc Copilot</p>
-            <p className="text-xs mt-1 text-slate-400 max-w-xs">
-              Khi khách hàng gửi câu hỏi, AI Copilot sẽ tự động phân tích ý định, kiểm tra chốt chặn an toàn và soạn sẵn câu trả lời tối ưu tại đây để nhân viên CSKH duyệt.
+          <div className="flex flex-col items-center justify-center text-center p-6 bg-white rounded-2xl border border-slate-200 text-slate-400">
+            <Bot className="w-10 h-10 mb-2 text-blue-500 stroke-[1.5]" />
+            <p className="text-sm font-semibold text-slate-700">Khung làm việc AI Copilot</p>
+            <p className="text-xs mt-1 text-slate-500 max-w-xs">
+              Khi khách hàng gửi câu hỏi (từ trang <b>/customer</b> hoặc tại đây), AI Copilot sẽ tự động phân tích ý định, kiểm tra chốt chặn an toàn và soạn sẵn bản nháp tại đây để nhân viên duyệt gửi.
             </p>
+            {hasUnrespondedCustomerMsg && (
+              <button
+                type="button"
+                onClick={handleManualRequestResponse}
+                className="mt-3 flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>⚡ Kích hoạt Copilot cho tin nhắn gần nhất</span>
+              </button>
+            )}
           </div>
         )}
+
+        {/* Always show Customer Orders & Transactions Card in Column 3 for quick reference */}
+        <Card title={`📦 Đơn hàng & Giao dịch của ${currentCustomer.name} (${customerOrders.length})`}>
+          {customerOrders.length === 0 ? (
+            <p className="text-xs text-slate-400 italic">Khách hàng chưa có đơn hàng nào trên hệ thống.</p>
+          ) : (
+            <div className="space-y-2 text-xs max-h-64 overflow-y-auto pr-1">
+              {customerOrders.map((ord) => (
+                <div
+                  key={ord.order_id}
+                  className="p-2.5 bg-slate-50 rounded-xl border border-slate-200/80 space-y-1"
+                >
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span className="text-blue-700">#{ord.order_id}</span>
+                    <Badge variant="info">{ord.order_status}</Badge>
+                  </div>
+                  <p className="text-slate-700 font-medium">
+                    {ord.product_name || ord.items?.map((i) => i.name).join(', ')}
+                  </p>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-200/60">
+                    <span className="font-semibold text-slate-800">
+                      {ord.total_amount?.toLocaleString('vi-VN')} VND
+                    </span>
+                    <span>{ord.carrier || 'TikiNow'} • {ord.estimated_delivery || ord.created_at || ''}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
 
       {/* Policy Document Inspection Modal */}
@@ -1589,10 +2118,12 @@ export const ChatView: React.FC = () => {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setViewingPolicy(null)}
-                className="text-slate-400 hover:text-slate-600 text-sm font-bold p-1 cursor-pointer"
+                className="w-8 h-8 rounded-full bg-slate-100 hover:bg-red-100 text-slate-500 hover:text-red-600 flex items-center justify-center transition-colors cursor-pointer"
+                title="Đóng cửa sổ xem chính sách (X)"
               >
-                ✕
+                <X className="w-4 h-4" />
               </button>
             </div>
 

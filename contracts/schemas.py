@@ -212,6 +212,7 @@ class PolicyCreateRequest(BaseModel):
     policy: RetrievedDocument
     admin_note: Optional[str] = None
     performed_by: Optional[str] = "Admin"
+    updated_by_staff_id: Optional[str] = None
     reason: Optional[str] = None
 
 
@@ -219,6 +220,7 @@ class PolicyUpdateRequest(BaseModel):
     """Payload to partially update an existing policy with audit tracking."""
     updates: Dict[str, Any]
     performed_by: Optional[str] = "Admin"
+    updated_by_staff_id: Optional[str] = None
     reason: Optional[str] = None
 
 
@@ -271,6 +273,31 @@ class ConversationSessionState(BaseModel):
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
     updated_at: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M:%S"))
+
+
+# -------------------------------------------------------------------
+# 10. Role-Based Access & Entities (Staff & Customer)
+# -------------------------------------------------------------------
+class StaffProfile(BaseModel):
+    """Support staff member responsible for assigned customers and policies."""
+    staff_id: str
+    name: str
+    email: str
+    role: str = "CS Agent"
+    department: str = "Customer Support"
+    created_at: Optional[str] = None
+
+
+class CustomerProfile(BaseModel):
+    """Customer profile linked to orders, chat sessions, and an assigned staff."""
+    customer_id: str
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    assigned_staff_id: Optional[str] = None
+    assigned_staff_name: Optional[str] = None
+    created_at: Optional[str] = None
+
 
 
 

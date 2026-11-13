@@ -76,16 +76,44 @@ def init_db(db_path: Path, mock_orders_path: Optional[Path] = None) -> None:
         );
         """)
 
-        # 3. Dedicated indexes for high-speed sub-millisecond lookups
+        # 3. Staff & Customer tables for Role-Based Access Control (Customer & Staff)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS staff (
+            staff_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            role TEXT NOT NULL DEFAULT 'CS Agent',
+            department TEXT NOT NULL DEFAULT 'Customer Support',
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            customer_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            phone TEXT NULL,
+            email TEXT NULL,
+            assigned_staff_id TEXT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (assigned_staff_id) REFERENCES staff(staff_id)
+        );
+        """)
+
+        # 4. Dedicated indexes for high-speed sub-millisecond lookups
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(phone);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_tracking_code ON orders(tracking_code);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_assigned_staff_id ON customers(assigned_staff_id);")
         conn.commit()
 
-    # 4. Auto-migrate orders from JSON if table is empty
+    # 5. Auto-migrate orders from JSON if table is empty
     if mock_orders_path and mock_orders_path.exists():
         _execute_migration(db_path, mock_orders_path, force=False)
+
+    # 6. Auto-seed staff & customers if empty
+    _seed_staff_and_customers(db_path)
 
 
 def _execute_migration(db_path: Path, mock_orders_path: Path, force: bool = False) -> int:
@@ -141,3 +169,65 @@ def migrate_mock_orders(db_path: Path, mock_orders_path: Path, force: bool = Fal
         return 0
     init_db(db_path)
     return _execute_migration(db_path, mock_orders_path, force=force)
+
+
+def _seed_staff_and_customers(db_path: Path) -> None:
+    """Seed default Staff and derive Customer profiles from existing orders."""
+    default_staff = [
+        ("staff-01", "Nguyễn Minh Anh", "minhanh@tiki-copilot.vn", "Senior CS", "Chăm sóc Đơn hàng & Vận chuyển"),
+        ("staff-02", "Trần Hoàng Nam", "hoangnam@tiki-copilot.vn", "Policy Admin", "Quản lý Chính sách & Khiếu nại"),
+        ("staff-03", "Lê Thảo Vy", "thaovy@tiki-copilot.vn", "CS Agent", "Hỗ trợ Thanh toán & Hoàn tiền"),
+    ]
+    staff_ids = [s[0] for s in default_staff]
+
+    with get_db_connection(db_path) as conn:
+        staff_count = conn.execute("SELECT COUNT(*) FROM staff;").fetchone()[0]
+        if staff_count == 0:
+            conn.executemany(
+                "INSERT OR IGNORE INTO staff (staff_id, name, email, role, department) VALUES (?, ?, ?, ?, ?);",
+                default_staff,
+            )
+
+        cust_count = conn.execute("SELECT COUNT(*) FROM customers;").fetchone()[0]
+        if cust_count == 0:
+            # Derive customers from existing orders table so all mock orders map cleanly
+            order_rows = conn.execute(
+                "SELECT DISTINCT customer_id, customer_name, phone FROM orders WHERE customer_id IS NOT NULL ORDER BY customer_id;"
+            ).fetchall()
+
+            customers_to_insert = []
+            seen_ids = set()
+            for idx, r in enumerate(order_rows):
+                cid = r["customer_id"]
+                if cid and cid not in seen_ids:
+                    seen_ids.add(cid)
+                    cname = r["customer_name"] or cid
+                    phone = r["phone"] or ""
+                    email_slug = cid.lower().replace(" ", "_")
+                    email = f"{email_slug}@customer.tiki.vn"
+                    assigned_staff = staff_ids[idx % len(staff_ids)]
+                    customers_to_insert.append((cid, cname, phone, email, assigned_staff))
+
+            # Ensure core demo customers exist even if orders table is empty
+            fallback_customers = [
+                ("CUST-1100", "Lê Văn Sơn", "0998.708.581", "son.le@customer.tiki.vn", "staff-01"),
+                ("CUST-1002", "Phan Văn An", "0974.716.127", "an.phan@customer.tiki.vn", "staff-02"),
+                ("CUST-1001", "Bùi Thị An", "0938.242.854", "an.bui@customer.tiki.vn", "staff-01"),
+                ("CUST-1003", "Vũ Thanh Linh", "0912.345.678", "linh.vu@customer.tiki.vn", "staff-03"),
+                ("demo-customer", "Bùi Thị An", "0938.242.854", "demo@customer.tiki.vn", "staff-01"),
+            ]
+            for fc in fallback_customers:
+                if fc[0] not in seen_ids:
+                    seen_ids.add(fc[0])
+                    customers_to_insert.append(fc)
+
+            conn.executemany(
+                """
+                INSERT OR IGNORE INTO customers (customer_id, name, phone, email, assigned_staff_id)
+                VALUES (?, ?, ?, ?, ?);
+                """,
+                customers_to_insert,
+            )
+
+        conn.commit()
+

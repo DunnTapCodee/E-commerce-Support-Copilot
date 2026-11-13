@@ -236,13 +236,70 @@ class PersistentStateStore:
                 ),
             )
 
-            # Update session's updated_at
+            # Update session's updated_at (and auto-update title on first customer message if default)
+            if role == "customer" and next_turn_id == 1:
+                clean_txt = content.strip()
+                short_title = f"{clean_txt[:28]}..." if len(clean_txt) > 30 else clean_txt
+                conn.execute(
+                    """
+                    UPDATE conversation_sessions
+                    SET updated_at = ?,
+                        title = CASE WHEN title IN ('Hội thoại mới', 'Hội thoại') THEN ? ELSE title END
+                    WHERE session_id = ?;
+                    """,
+                    (now_str, short_title, session_id),
+                )
+            elif role == "agent" and not is_acknowledgement:
+                # Clear pending copilot draft when an approved agent message is sent
+                conn.execute(
+                    """
+                    UPDATE conversation_sessions
+                    SET updated_at = ?, copilot_draft = NULL, copilot_response_json = NULL
+                    WHERE session_id = ?;
+                    """,
+                    (now_str, session_id),
+                )
+            else:
+                conn.execute(
+                    "UPDATE conversation_sessions SET updated_at = ? WHERE session_id = ?;",
+                    (now_str, session_id),
+                )
+            conn.commit()
+            return next_turn_id
+
+    def set_copilot_draft(
+        self,
+        session_id: str,
+        copilot_draft: str,
+        copilot_response_dict: Optional[Dict[str, Any]] = None,
+    ) -> None:
+        """Persist the generated Copilot draft and full response metadata for Staff review."""
+        now_str = get_system_now_str()
+        resp_json = json.dumps(copilot_response_dict, ensure_ascii=False) if copilot_response_dict else None
+        with get_db_connection(self.db_path) as conn:
             conn.execute(
-                "UPDATE conversation_sessions SET updated_at = ? WHERE session_id = ?;",
+                """
+                UPDATE conversation_sessions
+                SET copilot_draft = ?, copilot_response_json = ?, updated_at = ?
+                WHERE session_id = ?;
+                """,
+                (copilot_draft, resp_json, now_str, session_id),
+            )
+            conn.commit()
+
+    def clear_copilot_draft(self, session_id: str) -> None:
+        """Clear pending Copilot draft when approved or dismissed by Staff."""
+        now_str = get_system_now_str()
+        with get_db_connection(self.db_path) as conn:
+            conn.execute(
+                """
+                UPDATE conversation_sessions
+                SET copilot_draft = NULL, copilot_response_json = NULL, updated_at = ?
+                WHERE session_id = ?;
+                """,
                 (now_str, session_id),
             )
             conn.commit()
-            return next_turn_id
 
     def list_sessions(self) -> List[str]:
         """Return list of active session IDs."""
