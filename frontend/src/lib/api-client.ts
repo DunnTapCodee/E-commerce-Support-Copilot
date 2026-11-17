@@ -29,7 +29,7 @@ export const apiClient = {
   },
 
   // Persistent Session & Turn Management in SQLite
-  async listSessions(customerId?: string): Promise<Array<{ sessionId: string; customerId: string; title: string; createdAt: string; updatedAt: string; messageCount: number }>> {
+  async listSessions(customerId?: string): Promise<Array<{ sessionId: string; customerId: string; title: string; createdAt: string; updatedAt: string; messageCount: number; copilotDraft?: string }>> {
     try {
       const url = customerId ? `${API_BASE}/sessions?customer_id=${customerId}` : `${API_BASE}/sessions`;
       const res = await fetch(url);
@@ -86,13 +86,32 @@ export const apiClient = {
     }
   },
 
-  async saveMessage(sessionId: string, role: string, content: string, isAcknowledgement?: boolean): Promise<void> {
+  async clearSessionDraft(sessionId: string): Promise<void> {
+    try {
+      await fetch(`${API_BASE}/session/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clear_draft: true }),
+      });
+    } catch (err) {
+      console.warn('Clear session draft error:', err);
+    }
+  },
+
+  async saveMessage(
+    sessionId: string,
+    role: string,
+    content: string,
+    isAcknowledgement?: boolean,
+    customerId?: string
+  ): Promise<void> {
     try {
       await fetch(`${API_BASE}/message`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           session_id: sessionId,
+          customer_id: customerId,
           role,
           content,
           is_acknowledgement: Boolean(isAcknowledgement),
@@ -248,13 +267,14 @@ export const apiClient = {
     return res.json();
   },
 
-  async createPolicy(policy: RetrievedDocument, reason?: string): Promise<RetrievedDocument> {
+  async createPolicy(policy: RetrievedDocument, reason?: string, staffId?: string): Promise<RetrievedDocument> {
     const res = await fetch(`${API_BASE}/policy/create`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         policy,
-        performed_by: 'Nhân viên CSKH (Web)',
+        performed_by: staffId || 'Nhân viên CSKH (Web)',
+        updated_by_staff_id: staffId,
         reason: reason || 'Tạo mới qua Web UI',
       }),
     });
@@ -272,13 +292,14 @@ export const apiClient = {
     return res.json();
   },
 
-  async updatePolicy(docId: string, updates: Partial<RetrievedDocument>): Promise<RetrievedDocument> {
+  async updatePolicy(docId: string, updates: Partial<RetrievedDocument>, staffId?: string): Promise<RetrievedDocument> {
     const res = await fetch(`${API_BASE}/policies/${docId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...updates,
-        performed_by: 'Nhân viên CSKH (Web)',
+        performed_by: staffId || 'Nhân viên CSKH (Web)',
+        updated_by_staff_id: staffId,
       }),
     });
     if (!res.ok) {
@@ -287,8 +308,9 @@ export const apiClient = {
     return res.json();
   },
 
-  async deletePolicy(docId: string): Promise<void> {
-    const res = await fetch(`${API_BASE}/policies/${docId}`, {
+  async deletePolicy(docId: string, staffId?: string): Promise<void> {
+    const query = staffId ? `?performed_by=${encodeURIComponent(staffId)}` : '';
+    const res = await fetch(`${API_BASE}/policies/${docId}${query}`, {
       method: 'DELETE',
     });
     if (!res.ok) {
@@ -354,6 +376,68 @@ export const apiClient = {
       throw new Error(`Run Evaluation Error (${res.status}): ${await res.text()}`);
     }
     return res.json();
+  },
+
+  // Role-Based Access & Entities (Staff & Customer)
+  async listStaff(): Promise<Array<{ staff_id: string; name: string; email: string; role: string; department: string }>> {
+    try {
+      const res = await fetch(`${API_BASE}/staff`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.staff || [];
+      }
+    } catch (err) {
+      console.warn('List staff error:', err);
+    }
+    return [];
+  },
+
+  async listCustomers(assignedStaffId?: string): Promise<Array<{
+    customer_id: string;
+    name: string;
+    phone?: string;
+    email?: string;
+    assigned_staff_id?: string;
+    assigned_staff_name?: string;
+  }>> {
+    try {
+      const url = assignedStaffId
+        ? `${API_BASE}/customers?assigned_staff_id=${encodeURIComponent(assignedStaffId)}`
+        : `${API_BASE}/customers`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        return data.customers || [];
+      }
+    } catch (err) {
+      console.warn('List customers error:', err);
+    }
+    return [];
+  },
+
+  async getCustomerOrders(customerId: string): Promise<Array<Record<string, any>>> {
+    try {
+      const res = await fetch(`${API_BASE}/customers/${encodeURIComponent(customerId)}/orders`);
+      if (res.ok) {
+        const data = await res.json();
+        return data.orders || [];
+      }
+    } catch (err) {
+      console.warn('Get customer orders error:', err);
+    }
+    return [];
+  },
+
+  async getCustomerOverview(customerId: string): Promise<any | null> {
+    try {
+      const res = await fetch(`${API_BASE}/customers/${encodeURIComponent(customerId)}/overview`);
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn('Get customer overview error:', err);
+    }
+    return null;
   },
 };
 

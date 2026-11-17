@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import asyncio
 from typing import Any, Dict, Optional
-from services.conversation_service.src.dialogue_state.state import state_store
+from services.conversation_service.src.dialogue_state import state_store
 from services.conversation_service.src.memory.context_summary import ContextSummaryManager
 
 

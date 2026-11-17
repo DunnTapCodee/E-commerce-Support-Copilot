@@ -165,3 +165,45 @@ def trigger_orders_migration(force: bool = False):
     total = migrate_mock_orders(DB_PATH, MOCK_ORDERS_PATH, force=force)
     repo_instance.cache.clear()
     return {"status": "success", "total_migrated": total, "force": force}
+
+
+# -------------------------------------------------------------------
+# Staff & Customer Role-Based Endpoints
+# -------------------------------------------------------------------
+@app.get("/staff")
+def list_staff():
+    """Retrieve all support staff members."""
+    staff = repo_instance.list_staff()
+    return {"total": len(staff), "staff": staff}
+
+
+@app.get("/staff/{staff_id}")
+def get_staff(staff_id: str):
+    """Retrieve a single support staff member."""
+    member = repo_instance.get_staff(staff_id)
+    if not member:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Staff '{staff_id}' not found",
+        )
+    return member
+
+
+@app.get("/customers")
+def list_customers(assigned_staff_id: Optional[str] = None):
+    """Retrieve all customers, optionally filtered by assigned_staff_id."""
+    customers = repo_instance.list_customers(assigned_staff_id=assigned_staff_id)
+    return {"total": len(customers), "assigned_staff_id": assigned_staff_id, "customers": customers}
+
+
+@app.get("/customers/{customer_id}")
+def get_customer(customer_id: str):
+    """Retrieve a single customer profile."""
+    customer = repo_instance.get_customer(customer_id)
+    if not customer:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Customer '{customer_id}' not found",
+        )
+    return customer
+

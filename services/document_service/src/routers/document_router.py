@@ -127,6 +127,8 @@ def get_policy_endpoint(doc_id: str):
 async def create_policy_endpoint(request: PolicyCreateRequest):
     """Save a confirmed policy to knowledge base with automated is_active calculation and audit logging."""
     try:
+        if request.updated_by_staff_id and (not request.performed_by or request.performed_by == "Admin"):
+            request.performed_by = request.updated_by_staff_id
         return await policy_manager.create_policy(request)
     except ValueError as val_err:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(val_err))
@@ -142,7 +144,8 @@ async def create_policy_endpoint(request: PolicyCreateRequest):
 async def update_policy_endpoint(doc_id: str, updates: Dict[str, Any]):
     """Update policy attributes (dates, content, type) with automated is_active recalculation."""
     try:
-        performed_by = updates.pop("performed_by", "Admin")
+        staff_id = updates.pop("updated_by_staff_id", None)
+        performed_by = updates.pop("performed_by", None) or staff_id or "Admin"
         reason = updates.pop("reason", None)
         return await policy_manager.update_policy(
             doc_id=doc_id,

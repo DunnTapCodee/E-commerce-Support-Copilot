@@ -392,6 +392,65 @@ class TelemetryRepository:
             return orders
         return []
 
+    def list_staff(self) -> List[Dict[str, Any]]:
+        """Retrieve all support staff members."""
+        with get_db_connection(self.db_path) as conn:
+            rows = conn.execute(
+                "SELECT staff_id, name, email, role, department, created_at FROM staff ORDER BY staff_id ASC;"
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_staff(self, staff_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a single staff member by ID."""
+        with get_db_connection(self.db_path) as conn:
+            row = conn.execute(
+                "SELECT staff_id, name, email, role, department, created_at FROM staff WHERE staff_id = ? COLLATE NOCASE;",
+                (staff_id.strip(),),
+            ).fetchone()
+            return dict(row) if row else None
+
+    def list_customers(self, assigned_staff_id: Optional[str] = None) -> List[Dict[str, Any]]:
+        """Retrieve customers, optionally filtered by assigned_staff_id."""
+        with get_db_connection(self.db_path) as conn:
+            if assigned_staff_id and assigned_staff_id.strip():
+                rows = conn.execute(
+                    """
+                    SELECT c.customer_id, c.name, c.phone, c.email, c.assigned_staff_id,
+                           s.name AS assigned_staff_name, c.created_at
+                    FROM customers c
+                    LEFT JOIN staff s ON c.assigned_staff_id = s.staff_id
+                    WHERE c.assigned_staff_id = ? COLLATE NOCASE
+                    ORDER BY c.customer_id ASC;
+                    """,
+                    (assigned_staff_id.strip(),),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    """
+                    SELECT c.customer_id, c.name, c.phone, c.email, c.assigned_staff_id,
+                           s.name AS assigned_staff_name, c.created_at
+                    FROM customers c
+                    LEFT JOIN staff s ON c.assigned_staff_id = s.staff_id
+                    ORDER BY c.customer_id ASC;
+                    """
+                ).fetchall()
+            return [dict(r) for r in rows]
+
+    def get_customer(self, customer_id: str) -> Optional[Dict[str, Any]]:
+        """Retrieve a single customer profile with assigned staff details."""
+        with get_db_connection(self.db_path) as conn:
+            row = conn.execute(
+                """
+                SELECT c.customer_id, c.name, c.phone, c.email, c.assigned_staff_id,
+                       s.name AS assigned_staff_name, c.created_at
+                FROM customers c
+                LEFT JOIN staff s ON c.assigned_staff_id = s.staff_id
+                WHERE c.customer_id = ? COLLATE NOCASE;
+                """,
+                (customer_id.strip(),),
+            ).fetchone()
+            return dict(row) if row else None
+
     def get_cache_stats(self) -> Dict[str, Any]:
         """Expose current LRU Cache performance metrics."""
         return self.cache.stats()

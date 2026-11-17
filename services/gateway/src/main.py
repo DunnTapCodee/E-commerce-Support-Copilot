@@ -41,6 +41,7 @@ from services.gateway.src.guardrails import (
     evaluate_response_faithfulness,
 )
 from services.gateway.src.routers.policy_router import router as policy_router
+from services.gateway.src.routers.rbac_router import router as rbac_router
 
 app = FastAPI(
     title="API Gateway Orchestrator",
@@ -60,6 +61,7 @@ clients = MicroserviceClients()
 
 # Mount Modular Routers
 app.include_router(policy_router)
+app.include_router(rbac_router)
 
 
 @app.get("/health")

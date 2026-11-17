@@ -7,12 +7,24 @@ import { Card } from '../../components/ui/Card';
 import { Modal } from '../../components/ui/Modal';
 import { PolicyFilterPreviewModal } from './PolicyFilterPreviewModal';
 
-export const PolicyListView: React.FC = () => {
+interface PolicyListViewProps {
+  currentStaffId?: string;
+}
+
+export const PolicyListView: React.FC<PolicyListViewProps> = ({ currentStaffId }) => {
   const [policies, setPolicies] = useState<RetrievedDocument[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
+
+  // Quick Create state
+  const [newDocId, setNewDocId] = useState('');
+  const [newTitle, setNewTitle] = useState('');
+  const [newCategory, setNewCategory] = useState('return_refund');
+  const [newContent, setNewContent] = useState('');
+  const [newTags, setNewTags] = useState('');
 
   // View state
   const [viewingPolicy, setViewingPolicy] = useState<RetrievedDocument | null>(null);
@@ -20,6 +32,8 @@ export const PolicyListView: React.FC = () => {
 
   // Edit state
   const [editingPolicy, setEditingPolicy] = useState<RetrievedDocument | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editContent, setEditContent] = useState('');
   const [editEffDate, setEditEffDate] = useState('');
   const [editExpDate, setEditExpDate] = useState('');
   const [editType, setEditType] = useState<'permanent' | 'temporary' | 'superseded'>('permanent');
@@ -42,6 +56,8 @@ export const PolicyListView: React.FC = () => {
 
   const handleOpenEdit = (p: RetrievedDocument) => {
     setEditingPolicy(p);
+    setEditTitle(p.title || '');
+    setEditContent(p.content || '');
     setEditEffDate(p.effective_date || '');
     setEditExpDate(p.expiration_date || '');
     setEditType(p.policy_type || 'permanent');
@@ -68,12 +84,18 @@ export const PolicyListView: React.FC = () => {
   const handleSaveEdit = async () => {
     if (!editingPolicy) return;
     try {
-      await apiClient.updatePolicy(editingPolicy.doc_id, {
-        effective_date: editEffDate || null,
-        expiration_date: editExpDate || null,
-        policy_type: editType,
-      });
-      alert(`Đã cập nhật chính sách [${editingPolicy.doc_id}]!`);
+      await apiClient.updatePolicy(
+        editingPolicy.doc_id,
+        {
+          title: editTitle.trim() || editingPolicy.title,
+          content: editContent.trim() || editingPolicy.content,
+          effective_date: editEffDate || null,
+          expiration_date: editExpDate || null,
+          policy_type: editType,
+        },
+        currentStaffId
+      );
+      alert(`Đã cập nhật chính sách [${editingPolicy.doc_id}] và đồng bộ vào RAG!`);
       setEditingPolicy(null);
       fetchPolicies();
     } catch (err: any) {
@@ -81,10 +103,44 @@ export const PolicyListView: React.FC = () => {
     }
   };
 
+  const handleQuickCreate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newDocId.trim() || !newTitle.trim() || !newContent.trim()) {
+      alert('Vui lòng nhập đầy đủ Mã chính sách, Tiêu đề và Nội dung.');
+      return;
+    }
+    try {
+      const doc: RetrievedDocument = {
+        doc_id: newDocId.trim().toUpperCase(),
+        title: newTitle.trim(),
+        category: newCategory,
+        content: newContent.trim(),
+        version: '1.0',
+        is_active: true,
+        policy_type: 'permanent',
+        effective_date: new Date().toISOString().split('T')[0],
+        expiration_date: null,
+        tags: newTags
+          .split(',')
+          .map((t) => t.trim())
+          .filter(Boolean),
+      };
+      await apiClient.createPolicy(doc, 'Tạo mới trực tiếp từ cổng Nhân viên', currentStaffId);
+      setIsQuickCreateOpen(false);
+      setNewDocId('');
+      setNewTitle('');
+      setNewContent('');
+      setNewTags('');
+      fetchPolicies();
+    } catch (err: any) {
+      alert(`Lỗi tạo chính sách: ${err.message}`);
+    }
+  };
+
   const handleDelete = async (docId: string) => {
     if (!window.confirm(`Bạn có chắc chắn muốn xóa chính sách [${docId}]?`)) return;
     try {
-      await apiClient.deletePolicy(docId);
+      await apiClient.deletePolicy(docId, currentStaffId);
       fetchPolicies();
     } catch (err: any) {
       alert(`Lỗi xóa: ${err.message}`);
@@ -115,13 +171,13 @@ export const PolicyListView: React.FC = () => {
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">Quản lý Tri thức & Chính sách</h2>
+          <h2 className="text-xl font-bold text-slate-800">Quản lý Tri thức & Chính sách (Bot Knowledge)</h2>
           <p className="text-xs text-slate-500 mt-0.5">
-            Trích xuất tự động qua AI, quản lý ngày hiệu lực và tự động chuyển đổi trạng thái (Active / Inactive).
+            Thêm, sửa, xóa chính sách và tự động đồng bộ ngay vào bộ nhớ RAG của Chatbot.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={handleSyncActive}
             className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
@@ -130,11 +186,18 @@ export const PolicyListView: React.FC = () => {
             <span>Đối soát mốc ngày</span>
           </button>
           <button
+            onClick={() => setIsQuickCreateOpen(true)}
+            className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Thêm nhanh Chính sách</span>
+          </button>
+          <button
             onClick={() => setIsFilterModalOpen(true)}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
           >
-            <Plus className="w-4 h-4" />
-            <span>Trích xuất chính sách mới</span>
+            <FileText className="w-3.5 h-3.5" />
+            <span>Trích xuất từ File / AI</span>
           </button>
         </div>
       </div>
@@ -262,15 +325,33 @@ export const PolicyListView: React.FC = () => {
         </div>
       </div>
 
-      {/* Edit Date Modal */}
+      {/* Edit Policy Modal */}
       {editingPolicy && (
         <Modal
           isOpen={true}
           onClose={() => setEditingPolicy(null)}
-          title={`✏️ Chỉnh sửa mốc ngày [${editingPolicy.doc_id}]`}
+          title={`✏️ Chỉnh sửa Chính sách [${editingPolicy.doc_id}]`}
         >
-          <div className="space-y-4 text-xs">
-            <p className="text-slate-600 font-semibold">{editingPolicy.title}</p>
+          <div className="space-y-3.5 text-xs">
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Tiêu đề chính sách:</label>
+              <input
+                type="text"
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Nội dung quy định (đồng bộ RAG):</label>
+              <textarea
+                rows={5}
+                value={editContent}
+                onChange={(e) => setEditContent(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 leading-relaxed"
+              />
+            </div>
 
             <div>
               <label className="block text-slate-500 mb-1">Loại văn bản:</label>
@@ -421,6 +502,97 @@ export const PolicyListView: React.FC = () => {
               </button>
             </div>
           </div>
+        </Modal>
+      )}
+
+      {/* Quick Create Policy Modal */}
+      {isQuickCreateOpen && (
+        <Modal
+          isOpen={true}
+          onClose={() => setIsQuickCreateOpen(false)}
+          title="➕ Thêm nhanh Chính sách mới (Đồng bộ RAG)"
+        >
+          <form onSubmit={handleQuickCreate} className="space-y-3.5 text-xs">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Mã chính sách (VD: POL-NEW-01):</label>
+                <input
+                  type="text"
+                  required
+                  value={newDocId}
+                  onChange={(e) => setNewDocId(e.target.value)}
+                  placeholder="POL-RETURN-05"
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono"
+                />
+              </div>
+              <div>
+                <label className="block text-slate-600 font-semibold mb-1">Danh mục:</label>
+                <select
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-200 bg-white"
+                >
+                  <option value="return_refund">return_refund (Đổi trả / Hoàn tiền)</option>
+                  <option value="shipping">shipping (Vận chuyển)</option>
+                  <option value="warranty">warranty (Bảo hành)</option>
+                  <option value="payment">payment (Thanh toán)</option>
+                  <option value="promotions">promotions (Khuyến mãi)</option>
+                  <option value="support">support (Hỗ trợ chung)</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Tiêu đề chính sách:</label>
+              <input
+                type="text"
+                required
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="VD: Chính sách đổi trả miễn phí 30 ngày"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Nội dung chi tiết:</label>
+              <textarea
+                rows={5}
+                required
+                value={newContent}
+                onChange={(e) => setNewContent(e.target.value)}
+                placeholder="Nhập nội dung quy định để Chatbot áp dụng trả lời khách hàng..."
+                className="w-full px-3 py-2 rounded-lg border border-slate-200 leading-relaxed"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-600 font-semibold mb-1">Từ khóa (cách nhau bởi dấu phẩy):</label>
+              <input
+                type="text"
+                value={newTags}
+                onChange={(e) => setNewTags(e.target.value)}
+                placeholder="đổi trả, hoàn tiền, 30 ngày"
+                className="w-full px-3 py-2 rounded-lg border border-slate-200"
+              />
+            </div>
+
+            <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setIsQuickCreateOpen(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl"
+              >
+                Hủy
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-sm"
+              >
+                Lưu & Đồng bộ RAG
+              </button>
+            </div>
+          </form>
         </Modal>
       )}
 

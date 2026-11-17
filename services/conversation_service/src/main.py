@@ -127,6 +127,14 @@ async def update_session(session_id: str, payload: Dict[str, Any]):
     new_title = payload.get("title")
     if new_title:
         state_store.update_session_title(session_id, new_title)
+    if payload.get("clear_draft"):
+        state_store.clear_copilot_draft(session_id)
+    elif "copilot_draft" in payload:
+        state_store.set_copilot_draft(
+            session_id,
+            payload.get("copilot_draft") or "",
+            payload.get("copilot_response"),
+        )
     return {"status": "updated", "session_id": session_id, "title": new_title}
 
 
@@ -141,11 +149,14 @@ async def delete_session(session_id: str):
 async def persist_chat_message(payload: Dict[str, Any]):
     """Persist an approved agent message or customer message to SQLite."""
     sess_id = payload.get("session_id")
+    cust_id = payload.get("customer_id")
     role = payload.get("role", "agent")
     content = payload.get("content", "")
     is_ack = payload.get("is_acknowledgement", False)
     if not sess_id or not content:
         raise HTTPException(status_code=400, detail="Missing session_id or content")
+    # Ensure session exists in SQLite before inserting turn
+    state_store.get_or_create(sess_id, cust_id)
     turn_id = state_store.add_turn_record(
         session_id=sess_id,
         role=role,
@@ -548,7 +559,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
     if not citations and effective_intent not in ("chitchat_greeting", "chitchat_farewell", "human_agent"):
         retrieval_status = "FALLBACK"
 
-    return GatewayResponse(
+    gateway_resp = GatewayResponse(
         interaction_id=interaction_id,
         session_id=session_id,
         customer_acknowledgement=customer_ack,
@@ -564,7 +575,13 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         rewritten_query=prep["rewritten_query"],
         active_facts=state.facts,
         input_type=prep["input_type"],
+        order_data=order_data,
     )
+    try:
+        state_store.set_copilot_draft(session_id, agent_draft, gateway_resp.model_dump())
+    except Exception as exc:
+        print(f"[ConversationService] set_copilot_draft error: {exc}")
+    return gateway_resp
 
 
 @app.post("/api/v1/conversation/chat_stream")
@@ -679,6 +696,31 @@ async def process_chat_turn_stream(request: QueryRequest):
                 "Dạ em chào anh/chị, em đã tiếp nhận yêu cầu của mình. "
                 "Em đang phối hợp với bộ phận kiểm soát đơn hàng để kiểm tra hồ sơ và xử lý chính xác nhất cho anh/chị nhé ạ."
             )
+
+        # Persist Copilot draft & response metadata in SQLite so Staff & Customer views are synced
+        persisted_copilot_resp = {
+            "interaction_id": interaction_id,
+            "session_id": session_id,
+            "customer_acknowledgement": prep["customer_ack"],
+            "draft_text": final_draft,
+            "guardrail": prep["guard"].model_dump(),
+            "intent": {
+                "intent": prep["effective_intent"],
+                "confidence": prep["effective_conf"],
+                "is_in_scope": True if DISABLE_CONFIDENCE_GUARD else (prep["effective_conf"] >= 0.50),
+            },
+            "citations": [c.model_dump() for c in prep["citations"]],
+            "agent_guidance": prep["agent_guidance"],
+            "order_data": order_data,
+            "components_used": meta_payload["dynamic_components"],
+            "rewritten_query": prep["rewritten_query"],
+            "input_type": prep["input_type"],
+            "latency_ms": int((time.perf_counter() - start_time) * 1000),
+        }
+        try:
+            state_store.set_copilot_draft(session_id, final_draft, persisted_copilot_resp)
+        except Exception as exc:
+            print(f"[ConversationService] stream set_copilot_draft error: {exc}")
 
         # Memory & Telemetry Persistence (async task in background)
         asyncio.create_task(
