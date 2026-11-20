@@ -82,4 +82,31 @@ class TestMLIPBehavioralAndSafety(unittest.TestCase):
         # Thorough human review taking 8000ms
         self.assertFalse(detect_rubber_stamping(8000, long_draft, "APPROVE"))
 
+    def test_multi_turn_context_behavioral(self):
+        """Multi-turn follow-up queries with context tags should resolve accurately."""
+        res = self.behav_suite.run_multi_turn_context()
+        self.assertGreaterEqual(res["pass_rate"], 75.0, f"Multi-turn pass rate too low: {res['pass_rate']}%")
+
+    def test_dynamic_order_grounding_oracle(self):
+        """Tier 4 Oracle must pass grounded order numbers/amounts and block hallucinated ones."""
+        from evaluation.oracle_evaluator import TestOracleEvaluator
+
+        order_record = {"order_id": "ORD-1100", "total_amount": 450000, "order_status": "DELIVERED"}
+
+        # 1. Grounded draft matching ORD-1100 and 450.000đ
+        good_res = TestOracleEvaluator.verify_dynamic_order_grounding(
+            draft_text="Dạ đơn hàng ORD-1100 của anh/chị có tổng tiền 450.000đ đã được giao thành công ạ.",
+            order_data=order_record,
+        )
+        self.assertTrue(good_res["passed"], f"Grounded order draft failed: {good_res['violations']}")
+
+        # 2. Hallucinated draft with wrong order_id ORD-9999 and fabricated amount 990.000đ
+        bad_res = TestOracleEvaluator.verify_dynamic_order_grounding(
+            draft_text="Dạ đơn hàng ORD-9999 của anh/chị có tổng tiền 990.000đ đang vận chuyển ạ.",
+            order_data=order_record,
+        )
+        self.assertFalse(bad_res["passed"], "Hallucinated order ID and amount should fail grounding check!")
+        self.assertGreaterEqual(len(bad_res["violations"]), 2)
+
+
 

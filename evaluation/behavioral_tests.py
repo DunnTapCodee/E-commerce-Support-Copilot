@@ -182,10 +182,61 @@ class BehavioralTestSuite:
             "details": details,
         }
 
+    def run_multi_turn_context(self) -> Dict[str, Any]:
+        """Multi-turn Context & Query Rewriter Behavioral Tests:
+        Verifies that follow-up turns with context tags or pronouns resolve to the right intent.
+        """
+        cases = [
+            (
+                "[PREV_INTENT:track_order] [AWAITING:order_id] Mã đơn của mình là ORD-1100",
+                "track_order",
+                "Slot filling follow-up for order tracking",
+            ),
+            (
+                "[PREV_INTENT:track_order] Vậy đơn hàng đó bao giờ thì giao tới nơi vậy shop?",
+                "delivery_time",
+                "Coreference pronoun follow-up shifting to delivery_time",
+            ),
+            (
+                "[PREV_INTENT:delivery_time] Thôi lâu quá hủy đơn hàng đó giúp tôi luôn nhé",
+                "cancel_order",
+                "Multi-turn shift from delivery_time to cancel_order",
+            ),
+            (
+                "[PREV_INTENT:return_policy] Hàng bị vỡ rồi cho mình trả lại sản phẩm này",
+                "return_product",
+                "Multi-turn shift from policy inquiry to concrete return_product request",
+            ),
+        ]
+
+        passed = 0
+        details = []
+        for query, expected_intent, desc in cases:
+            resp: IntentPredictionResponse = self.predictor.predict(query)
+            is_pass = resp.intent == expected_intent
+            if is_pass:
+                passed += 1
+            details.append({
+                "test_name": desc,
+                "query": query,
+                "expected": expected_intent,
+                "predicted": resp.intent,
+                "passed": is_pass,
+            })
+
+        return {
+            "type": "MULTI_TURN (Contextual Follow-up & Coreference Tests)",
+            "total": len(cases),
+            "passed": passed,
+            "pass_rate": round((passed / len(cases)) * 100, 2),
+            "details": details,
+        }
+
     def run_all(self) -> Dict[str, Any]:
         return {
             "mft": self.run_mft(),
             "inv": self.run_inv(),
             "dir": self.run_dir(),
+            "multi_turn": self.run_multi_turn_context(),
         }
 

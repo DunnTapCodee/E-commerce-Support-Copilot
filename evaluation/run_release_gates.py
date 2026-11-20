@@ -29,6 +29,8 @@ from evaluation.oracle_evaluator import TestOracleEvaluator
 from services.telemetry_service.src.metrics import (
     compute_normalized_levenshtein,
     detect_rubber_stamping,
+    detect_telemetry_drift,
+    evaluate_shadow_comparison,
 )
 
 
@@ -118,14 +120,18 @@ def run_all_release_gates() -> Dict[str, Any]:
         blockers.append("Layer 3 Blocker: Chaos resilience test failed (Circuit breaker or Prompt injection)!")
 
     # -------------------------------------------------------------
-    # Layer 4: Production Telemetry & Tri-tier Test Oracles (Ch. 19 & 15)
+    # Layer 4: Production Telemetry, Drift, Shadow & 4-Tier Oracles (Ch. 19 & 15)
     # -------------------------------------------------------------
-    print("\n[Layer 4/4] Running Production Telemetry & Tri-tier Test Oracles...")
+    print("\n[Layer 4/4] Running Production Telemetry, Drift, Shadow & 4-Tier Test Oracles...")
     # Oracle verification
     hard_oracle = TestOracleEvaluator.verify_hard_constraints(
         draft_text="Dạ em chào anh/chị Lê Văn Sơn, đơn hàng ORD-1100 đã được giao thành công [POL-ORD-001].",
         expected_entities={"order_id": "ORD-1100"},
         require_citation=True,
+    )
+    dynamic_grounding = TestOracleEvaluator.verify_dynamic_order_grounding(
+        draft_text="Dạ đơn hàng ORD-1100 của anh có tổng giá trị 450.000đ đã giao thành công ạ.",
+        order_data={"order_id": "ORD-1100", "total_amount": 450000, "order_status": "DELIVERED"},
     )
     rubric_eval = TestOracleEvaluator.evaluate_rubric(
         draft_text=(
@@ -137,17 +143,30 @@ def run_all_release_gates() -> Dict[str, Any]:
         intent="track_order",
     )
 
-    # Telemetry logic test
+    # Telemetry, Drift & Shadow logic test
     ned = compute_normalized_levenshtein("Xin chào anh", "Xin chào anh Sơn")
     is_rubber = detect_rubber_stamping(600, "Dạ em chào quý khách, đơn hàng ORD-1100 đã được giao thành công.", "APPROVE")
+    drift_check = detect_telemetry_drift([
+        {"predicted_intent": "out_of_scope", "intent_confidence": 0.40, "human_action": "EDIT", "edit_distance": 0.80, "is_rubber_stamping": 1}
+    ])
+    shadow_check = evaluate_shadow_comparison(
+        primary_draft="Dạ đơn hàng ORD-1100 đã giao [POL-ORD-001].",
+        shadow_draft="Dạ chào anh, đơn hàng ORD-1100 đã giao thành công theo [POL-ORD-001] nhé ạ.",
+        expected_entities={"order_id": "ORD-1100"},
+    )
 
     print(f" -> Deterministic Oracle Check: {'PASSED' if hard_oracle['passed'] else 'FAILED'}")
+    print(f" -> Dynamic DB Grounding Check: {'PASSED' if dynamic_grounding['passed'] else 'FAILED'}")
     print(f" -> Rubric Evaluation Score:    {rubric_eval['rubric_score_percent']}/100 pts")
     print(f" -> Telemetry Edit Dist Metric: NED={ned:.4f}")
     print(f" -> Rubber-stamping Detection:  {'ACTIVE & VERIFIED' if is_rubber else 'INACTIVE'}")
+    print(f" -> Production Drift Detector:  {'ACTIVE & VERIFIED' if drift_check['drift_detected'] else 'INACTIVE'}")
+    print(f" -> Shadow Mode Evaluator:      {'PROMOTION_READY' if shadow_check['promotion_ready'] else 'BLOCKED'}")
 
     if not hard_oracle["passed"]:
         blockers.append("Layer 4 Blocker: Deterministic Hard Constraints Oracle failed!")
+    if not dynamic_grounding["passed"]:
+        blockers.append("Layer 4 Blocker: Dynamic Order Grounding Oracle failed!")
     if rubric_eval["rubric_score_percent"] < 75:
         warnings.append("Layer 4 Warning: Sample Rubric score below 75 points.")
 

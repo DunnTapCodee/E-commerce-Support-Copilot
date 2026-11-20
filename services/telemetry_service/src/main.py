@@ -12,7 +12,9 @@ if str(ROOT_DIR) not in sys.path:
 
 from contracts.schemas import AuditLogCreate, HumanActionUpdate, OrderCancelRequest, OrderCancelResponse
 from services.telemetry_service.src.database import init_db, migrate_mock_orders
+from services.telemetry_service.src.metrics import detect_telemetry_drift, evaluate_shadow_comparison
 from services.telemetry_service.src.repository import TelemetryRepository
+from pydantic import BaseModel
 
 DB_PATH = Path(os.getenv("DB_PATH", str(ROOT_DIR / "copilot_telemetry.sqlite3")))
 MOCK_ORDERS_PATH = Path(os.getenv("MOCK_ORDERS_PATH", str(ROOT_DIR / "data" / "mock_orders.json")))
@@ -104,6 +106,40 @@ def get_continual_learning_pool(limit: int = 50):
         "status": "success",
         "count": len(repo_instance.get_continual_learning_pool(limit)),
         "samples": repo_instance.get_continual_learning_pool(limit),
+    }
+
+
+class ShadowEvaluationRequest(BaseModel):
+    interaction_id: str
+    primary_draft: str
+    shadow_draft: str
+    expected_entities: Optional[dict] = None
+    primary_latency_ms: float = 0.0
+    shadow_latency_ms: float = 0.0
+
+
+@app.get("/audit/drift")
+def get_telemetry_drift_report(limit: int = 100):
+    """Analyze recent production interactions for Data Drift, Concept Drift, and Automation Bias."""
+    stats = repo_instance.get_stats()
+    recent_logs = stats.get("recent_logs", [])[:limit]
+    return detect_telemetry_drift(recent_logs)
+
+
+@app.post("/audit/shadow/evaluate")
+def evaluate_shadow_deployment(payload: ShadowEvaluationRequest):
+    """Evaluate a Shadow model/prompt candidate against Primary production output (CMU MLIP Ch. 19)."""
+    result = evaluate_shadow_comparison(
+        primary_draft=payload.primary_draft,
+        shadow_draft=payload.shadow_draft,
+        expected_entities=payload.expected_entities,
+        primary_latency_ms=payload.primary_latency_ms,
+        shadow_latency_ms=payload.shadow_latency_ms,
+    )
+    return {
+        "status": "evaluated",
+        "interaction_id": payload.interaction_id,
+        **result,
     }
 
 

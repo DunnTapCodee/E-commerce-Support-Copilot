@@ -129,3 +129,46 @@ class TestOracleEvaluator:
             "passed": not res.hallucination_detected,
         }
 
+    # -------------------------------------------------------------
+    # Tier 4: Dynamic Order Data Grounding Oracle (Module 3 DB Check)
+    # -------------------------------------------------------------
+    @staticmethod
+    def verify_dynamic_order_grounding(
+        draft_text: str,
+        order_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Verify that dynamic database fields (order_id, total_amount, status) in the LLM draft
+        match the ground-truth customer order record 100% without hallucinated numbers or IDs.
+        """
+        violations: List[str] = []
+        expected_order_id = str(order_data.get("order_id", "")).upper().strip()
+        expected_amount = order_data.get("total_amount")
+
+        # 1. Check all ORD-xxxx mentions in draft match expected_order_id
+        mentioned_orders = [m.upper() for m in re.findall(r"ORD-\d+", draft_text, re.IGNORECASE)]
+        if expected_order_id:
+            if expected_order_id not in mentioned_orders:
+                violations.append(f"Missing expected order_id '{expected_order_id}' in draft")
+            for mo in mentioned_orders:
+                if mo != expected_order_id:
+                    violations.append(f"Hallucinated foreign order_id '{mo}' (expected '{expected_order_id}')")
+
+        # 2. Check monetary amounts if mentioned in draft (e.g., 450.000, 450,000, 450000)
+        if expected_amount is not None:
+            expected_int = int(expected_amount)
+            # Find numbers followed by currency indicators (đ, vnd, vnđ, đồng)
+            money_matches = re.findall(r"(\d[\d\.,]{3,})\s*(?:đ|vnd|vnđ|đồng)", draft_text, re.IGNORECASE)
+            for raw_num in money_matches:
+                cleaned = re.sub(r"[^\d]", "", raw_num)
+                if cleaned and int(cleaned) != expected_int:
+                    violations.append(
+                        f"Hallucinated order amount '{raw_num}' (DB total_amount is {expected_int})"
+                    )
+
+        return {
+            "passed": len(violations) == 0,
+            "violations": violations,
+            "checked_order_id": expected_order_id,
+        }
+
+

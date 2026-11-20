@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:unit": "node --test src/lib/__tests__/chat-helpers.test.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.378.0",
