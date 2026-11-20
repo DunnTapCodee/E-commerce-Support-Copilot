@@ -1,0 +1,250 @@
+{"id": "Q0251", "text_en": "where's my stuff lol, order 6612", "intent": "track_order", "style": "mixed_en"}
+{"id": "Q0252", "text_en": "When I return the main product, do I also have to return the free promotional gift that came with it?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0253", "text_en": "The ceramics are smashed to pieces, did the courier not put a fragile label on it or what?", "intent": "delivery_issue", "style": "angry"}
+{"id": "Q0254", "text_en": "Why on earth is shipping to Hue so expensive, it's only 15k in Saigon.", "intent": "shipping_costs", "style": "dialect_central"}
+{"id": "Q0255", "text_en": "Today's the 17th, my order is scheduled for delivery on the 19th, just checking in advance to be sure it's still on schedule?", "intent": "delivery_time", "style": "hard_vs_delivery_issue"}
+{"id": "Q0256", "text_en": "Requesting a refund for the damaged monitor, I paid via Visa.", "intent": "request_refund", "style": "english"}
+{"id": "Q0257", "text_en": "I received a package but it belongs to someone else, even the recipient name is different.", "intent": "delivery_issue", "style": "indirect"}
+{"id": "Q0258", "text_en": "I got a handbag in the wrong color, the shop told me to keep it and get a partial refund, so please refund me 30%", "intent": "request_refund", "style": "indirect"}
+{"id": "Q0259", "text_en": "zalopay payment keeps spinning n spinning then shows an error, so annoying", "intent": "payment_issue", "style": "teencode"}
+{"id": "Q0260", "text_en": "What do you think about the US presidential election?", "intent": "out_of_scope", "style": "politics"}
+{"id": "Q0261", "text_en": "So how come my refund still hasn't come in yet, it's been forever", "intent": "refund_status", "style": "dialect_central"}
+{"id": "Q0262", "text_en": "Where's my money? No goods and my money's gone. Refund me!", "intent": "request_refund", "style": "angry_short"}
+{"id": "Q0263", "text_en": "I paid with my Vietcombank card, 520,000 VND was deducted from my account but the order says it failed.", "intent": "payment_issue", "style": "standard"}
+{"id": "Q0264", "text_en": "so sad, my bf/gf dumped me admin", "intent": "out_of_scope", "style": "chitchat"}
+{"id": "Q0265", "text_en": "I heard PRO members get unlimited free delivery, but I was still charged 16k, please explain.", "intent": "shipping_costs", "style": "standard"}
+{"id": "Q0266", "text_en": "My Mastercard keeps getting declined on Tiki even though the bank says there's no block.", "intent": "payment_issue", "style": "english"}
+{"id": "Q0267", "text_en": "what's a good movie to watch tonight hmm", "intent": "out_of_scope", "style": "chitchat"}
+{"id": "Q0268", "text_en": "I request a refund for order 908172635 because the product arrived completely broken.", "intent": "request_refund", "style": "standard"}
+{"id": "Q0269", "text_en": "Can I combine 2 discount codes in one order?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0270", "text_en": "How many days does it take for a refund to reach MoMo? Just asking to know, I haven't returned anything yet", "intent": "refund_policy", "style": "hard_refund_status"}
+{"id": "Q0271", "text_en": "shipper wanted an extra 20k to deliver up to the 5th floor, is that even allowed", "intent": "delivery_issue", "style": "no_diacritics"}
+{"id": "Q0272", "text_en": "Do you still have this Toshiba rice cooker in white?", "intent": "other_ecommerce", "style": "casual"}
+{"id": "Q0273", "text_en": "status order 1029384 pls", "intent": "track_order", "style": "mixed_en"}
+{"id": "Q0274", "text_en": "whats the rule for exchanging for a new item in the first 7 days", "intent": "return_policy", "style": "no_diacritics"}
+{"id": "Q0275", "text_en": "hehe", "intent": "out_of_scope", "style": "short"}
+{"id": "Q0276", "text_en": "You guys deliver way too slow, I can't wait anymore, CANCEL MY ORDER NOW!", "intent": "cancel_order", "style": "angry"}
+{"id": "Q0277", "text_en": "I'm in Can Tho, is there any post office nearby that accepts Tiki returns?", "intent": "return_product", "style": "standard"}
+{"id": "Q0278", "text_en": "For pre-order items, when are they expected to be in stock and delivered?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0279", "text_en": "The shipper signed for the package himself and dumped it who knows where, and when I called back he blocked my number.", "intent": "delivery_issue", "style": "angry_long"}
+{"id": "Q0280", "text_en": "What's the price of SJC gold per tael today?", "intent": "out_of_scope", "style": "finance"}
+{"id": "Q0281", "text_en": "bought 1 book for 40k and shipping is 20k, half the price of the item, any way to lower it", "intent": "shipping_costs", "style": "teencode"}
+{"id": "Q0282", "text_en": "My son accidentally ordered a 1.5 million VND toy, it hasn't shipped yet. Please cancel it and refund the money to my card.", "intent": "request_refund", "style": "hard_cancel"}
+{"id": "Q0283", "text_en": "With TikiPRO is every order free shipping or are there conditions?", "intent": "shipping_costs", "style": "casual"}
+{"id": "Q0284", "text_en": "Could you help me change the delivery phone number for an order that's being processed?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0285", "text_en": "What's the meaning of life?", "intent": "out_of_scope", "style": "english"}
+{"id": "Q0286", "text_en": "Excuse me, may I ask why the amount charged to my card is 35,000 VND higher than the order total?", "intent": "payment_issue", "style": "polite"}
+{"id": "Q0287", "text_en": "Order #TK-559201: delivery attempt marked failed but driver never called me. pls check", "intent": "delivery_issue", "style": "mixed_en"}
+{"id": "Q0288", "text_en": "Why can't I apply the 50k voucher, it says the code is invalid", "intent": "other_ecommerce", "style": "casual"}
+{"id": "Q0289", "text_en": "Please connect me with your support staff, I need help in English.", "intent": "human_agent", "style": "english"}
+{"id": "Q0290", "text_en": "Return completed successfully but I haven't seen the refund yet, awaiting your response.", "intent": "refund_status", "style": "statement"}
+{"id": "Q0291", "text_en": "I ordered 2 of the same thing by accident, now I want to send 1 back", "intent": "return_product", "style": "standard"}
+{"id": "Q0292", "text_en": "Can I choose a specific delivery time slot, like evening only?", "intent": "delivery_time", "style": "english"}
+{"id": "Q0293", "text_en": "pls do the return for me, so tired", "intent": "return_product", "style": "very_short"}
+{"id": "Q0294", "text_en": "gimme my money back, the dress came all torn to shreds", "intent": "request_refund", "style": "dialect_south"}
+{"id": "Q0295", "text_en": "If the product is delivered in the wrong color, how many days do I have to exchange it?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0296", "text_en": "Money was taken but no order was created, please refund the wrongly deducted amount right away.", "intent": "payment_issue", "style": "hard_boundary_refund"}
+{"id": "Q0297", "text_en": "Yesterday the app said my order left the Binh Duong warehouse, which post office is it at now?", "intent": "track_order", "style": "standard"}
+{"id": "Q0298", "text_en": "What can I use my Tiki Xu for, do they expire?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0299", "text_en": "Is there a fee to exchange shoe sizes admin?", "intent": "return_policy", "style": "casual"}
+{"id": "Q0300", "text_en": "Please guide me on filling in the return reason, should I choose 'defective item' or 'not as described'?", "intent": "return_product", "style": "formal"}
+{"id": "Q0301", "text_en": "trackingg for my oder is broken cant see the locaton, admin pls check", "intent": "track_order", "style": "typo"}
+{"id": "Q0302", "text_en": "For a partial refund of an order, how is the discount voucher split up?", "intent": "refund_policy", "style": "standard"}
+{"id": "Q0303", "text_en": "If I buy a gift for someone and they don't like it, can it be exchanged?", "intent": "return_policy", "style": "indirect"}
+{"id": "Q0304", "text_en": "only got half the order, missing 2 of 6 boxes of milk, shipper said it was split into separate parcels but its been a week n nothing", "intent": "delivery_issue", "style": "teencode"}
+{"id": "Q0305", "text_en": "I need a VAT invoice for my company, how do I do that?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0306", "text_en": "Hello, I would like to check the progress of the refund for order number 120938475.", "intent": "refund_status", "style": "formal"}
+{"id": "Q0307", "text_en": "Is express delivery to Noi Bai airport more expensive than within the inner city?", "intent": "shipping_costs", "style": "standard"}
+{"id": "Q0308", "text_en": "Is it raining in Hanoi today?", "intent": "out_of_scope", "style": "weather"}
+{"id": "Q0309", "text_en": "Will an item that has been used once be refused for return?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0310", "text_en": "I changed my mind, can I still cancel my order before it ships?", "intent": "cancel_order", "style": "english"}
+{"id": "Q0311", "text_en": "I bought a combo of 3 shampoo bottles, 1 leaked out completely. Can I return just that bottle?", "intent": "return_product", "style": "standard"}
+{"id": "Q0312", "text_en": "Is the refund in full or do you deduct a restocking fee?", "intent": "refund_policy", "style": "english"}
+{"id": "Q0313", "text_en": "does returning cost return shipping, if not ill send it today", "intent": "return_product", "style": "hard_shipping"}
+{"id": "Q0314", "text_en": "can the 20% off voucher be used with freeship", "intent": "other_ecommerce", "style": "teencode"}
+{"id": "Q0315", "text_en": "My order shows 'in transit', what stage is that exactly?", "intent": "track_order", "style": "indirect"}
+{"id": "Q0316", "text_en": "I'm not good with these machines, could you give me the hotline number so I can call directly, dear?", "intent": "human_agent", "style": "elderly"}
+{"id": "Q0317", "text_en": "The shop delivered 2 packs of coffee short, I don't need them resent, just refund the missing part.", "intent": "request_refund", "style": "standard"}
+{"id": "Q0318", "text_en": "OTP not coming to my phone no., got a new SIM but same registered number", "intent": "payment_issue", "style": "abbreviation"}
+{"id": "Q0319", "text_en": "What's the ETA on this order?", "intent": "delivery_time", "style": "mixed_en"}
+{"id": "Q0320", "text_en": "Could your company kindly advise which items are not eligible for return or exchange under the policy.", "intent": "return_policy", "style": "formal"}
+{"id": "Q0321", "text_en": "Can I get a red invoice (VAT) after the order is delivered?", "intent": "other_ecommerce", "style": "english"}
+{"id": "Q0322", "text_en": "Please transfer me to a staff member in the orders department.", "intent": "human_agent", "style": "polite"}
+{"id": "Q0323", "text_en": "payment keeps failing, Techcombank visa debit card, switching browsers didnt help either", "intent": "payment_issue", "style": "mixed_en"}
+{"id": "Q0324", "text_en": "I have a birthday party this Saturday, if I order cake-making tools now will they arrive before Saturday?", "intent": "delivery_time", "style": "indirect"}
+{"id": "Q0325", "text_en": "How long until the refund shows up in my account, counted from the approval date or the date I ship the item?", "intent": "refund_policy", "style": "standard"}
+{"id": "Q0326", "text_en": "how much extra for express shipping admin", "intent": "shipping_costs", "style": "teencode"}
+{"id": "Q0327", "text_en": "How much is TikiNOW this month, and how do I cancel the plan?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0328", "text_en": "Is this pot made of 304 or 201 stainless steel, can it be used on an induction stove?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0329", "text_en": "Can I speak to a real person please?", "intent": "human_agent", "style": "english"}
+{"id": "Q0330", "text_en": "Is shipping free for Tiki Trading items or only with a PRO membership?", "intent": "shipping_costs", "style": "english"}
+{"id": "Q0331", "text_en": "Plz cancel #5503321, double order by mistake", "intent": "cancel_order", "style": "english"}
+{"id": "Q0332", "text_en": "How many days until I get it", "intent": "delivery_time", "style": "short"}
+{"id": "Q0333", "text_en": "The OTP from MB Bank arrives so slowly that it's expired by the time I enter it, there's no way to pay.", "intent": "payment_issue", "style": "standard"}
+{"id": "Q0334", "text_en": "After returning, how is the refund sent back? Oh no wait, I meant to ask about the conditions for being allowed to return first.", "intent": "return_policy", "style": "hard_vs_refund_policy"}
+{"id": "Q0335", "text_en": "I want to talk to a living person, not a robot!!!", "intent": "human_agent", "style": "angry_short"}
+{"id": "Q0336", "text_en": "Calculate 15% of 2,350,000 for me", "intent": "out_of_scope", "style": "math"}
+{"id": "Q0337", "text_en": "When can I return an item and when is it only covered by warranty?", "intent": "return_policy", "style": "hard_vs_warranty"}
+{"id": "Q0338", "text_en": "Are refunds for international items (Tiki Global) different from domestic ones?", "intent": "refund_policy", "style": "standard"}
+{"id": "Q0339", "text_en": "Dear Customer Care Department, my package with code 812934571 was lost in transit, I request that your company look into it.", "intent": "delivery_issue", "style": "formal"}
+{"id": "Q0340", "text_en": "wrong delivery status — it says returned to sender but i never refused it", "intent": "delivery_issue", "style": "english"}
+{"id": "Q0341", "text_en": "How can I tell if a product belongs to the 'not eligible for return' group?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0342", "text_en": "It's still within the expected window, I'm not complaining, just asking roughly what day it'll arrive?", "intent": "delivery_time", "style": "hard_vs_delivery_issue"}
+{"id": "Q0343", "text_en": "im in Go Vap, shipper made me walk all the way out to the end of the alley to get it, wouldnt come in, is that ok", "intent": "delivery_issue", "style": "teencode"}
+{"id": "Q0344", "text_en": "Courier was super rude and refused to wait 1 min while I came down.", "intent": "delivery_issue", "style": "english"}
+{"id": "Q0345", "text_en": "f*ing junk, give me my money back", "intent": "request_refund", "style": "angry_short"}
+{"id": "Q0346", "text_en": "Refund pls", "intent": "request_refund", "style": "very_short"}
+{"id": "Q0347", "text_en": "Please explain the standard, fast and express shipping fee levels to me.", "intent": "shipping_costs", "style": "standard"}
+{"id": "Q0348", "text_en": "Cancel order ORD-4410 please", "intent": "cancel_order", "style": "english"}
+{"id": "Q0349", "text_en": "Nvm don't redeliver, just refund straight to my ZaloPay and that's fine", "intent": "request_refund", "style": "mixed_en"}
+{"id": "Q0350", "text_en": "got charged twice, pls check for me", "intent": "payment_issue", "style": "mixed_teencode"}
+{"id": "Q0351", "text_en": "I need a VAT invoice issued for my company, how do I request one?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0352", "text_en": "The baby formula is clumpy and the can looks like it was opened. I'm really worried, I'm requesting a refund for this order.", "intent": "request_refund", "style": "worried"}
+{"id": "Q0353", "text_en": "Search bar on the website returns nothing when I type in Vietnamese, bug?", "intent": "other_ecommerce", "style": "english"}
+{"id": "Q0354", "text_en": "Help me translate 'I love you' into Japanese", "intent": "out_of_scope", "style": "task"}
+{"id": "Q0355", "text_en": "The order delivery was automatically cancelled with the reason 'customer refused' when I never saw anyone come.", "intent": "delivery_issue", "style": "standard"}
+{"id": "Q0356", "text_en": "I ordered books during the 11/11 sale and don't need them anymore. How do I cancel?", "intent": "cancel_order", "style": "standard"}
+{"id": "Q0357", "text_en": "The checkout button won't respond, I keep pressing and it just freezes", "intent": "payment_issue", "style": "dialect_south"}
+{"id": "Q0358", "text_en": "Payment went through, so why am I still getting SMS reminders to pay?", "intent": "payment_issue", "style": "confused"}
+{"id": "Q0359", "text_en": "check shipping status", "intent": "track_order", "style": "short"}
+{"id": "Q0360", "text_en": "Plz give back my 250k VND, product totally fake, order 1029384", "intent": "request_refund", "style": "mixed_en"}
+{"id": "Q0361", "text_en": "tiki app keeps crashing when i open the cart, iphone 13 latest ios", "intent": "other_ecommerce", "style": "bug_report"}
+{"id": "Q0362", "text_en": "What's the return policy for Tiki Global items shipped from abroad?", "intent": "return_policy", "style": "mixed_en"}
+{"id": "Q0363", "text_en": "changed my mind dont wanna buy it anymore can i return it", "intent": "return_policy", "style": "no_diacritics"}
+{"id": "Q0364", "text_en": "When can I no longer cancel an order?", "intent": "cancel_order", "style": "indirect"}
+{"id": "Q0365", "text_en": "How does the transformer model work, explain briefly?", "intent": "out_of_scope", "style": "tech"}
+{"id": "Q0366", "text_en": "Has my refund for order TK-55102 been sent out yet?", "intent": "refund_status", "style": "english_short"}
+{"id": "Q0367", "text_en": "These canned answers aren't helping at all. Please let a real person read my message.", "intent": "human_agent", "style": "frustrated"}
+{"id": "Q0368", "text_en": "May I ask about the return conditions for large appliances like TVs and fridges.", "intent": "return_policy", "style": "standard"}
+{"id": "Q0369", "text_en": "How many people can this rice cooker cook for?", "intent": "other_ecommerce", "style": "product_question"}
+{"id": "Q0370", "text_en": "I want to change the delivery address from District 3 to District 7 for an order being processed.", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0371", "text_en": "The shipper took the COD money and didn't hand over the goods, said he'd come back later and vanished.", "intent": "delivery_issue", "style": "standard"}
+{"id": "Q0372", "text_en": "transfer me to an agent already, the bot isn't getting what i mean", "intent": "human_agent", "style": "mixed_en"}
+{"id": "Q0373", "text_en": "Is the red (VAT) invoice sent with the goods or by email?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0374", "text_en": "My order got lost, been messaging the bot forever for nothing. I need a real person to handle this, no more help links.", "intent": "human_agent", "style": "hard_boundary_delivery"}
+{"id": "Q0375", "text_en": "where's the order now", "intent": "track_order", "style": "short"}
+{"id": "Q0376", "text_en": "Ordered with my card, got charged, but the order still shows 'Payment failed – please try again'. I'm afraid to retry in case I get charged again.", "intent": "payment_issue", "style": "cautious"}
+{"id": "Q0377", "text_en": "customer serviceee, anyone there, i need someone to help", "intent": "human_agent", "style": "teencode"}
+{"id": "Q0378", "text_en": "Oops I put my old address in Thu Duc by mistake, cancel that order for me pls", "intent": "cancel_order", "style": "dialect_south"}
+{"id": "Q0379", "text_en": "i wanna knw where my ordr is", "intent": "track_order", "style": "teencode"}
+{"id": "Q0380", "text_en": "Yesterday I ordered a fridge, paid with my ACB card and 9,490,000 VND was deducted. This morning the order auto-cancelled due to 'payment overdue'. I already paid, so what's overdue?", "intent": "payment_issue", "style": "angry_long"}
+{"id": "Q0381", "text_en": "What time is it?", "intent": "out_of_scope", "style": "chitchat"}
+{"id": "Q0382", "text_en": "What's the maximum time I have to cancel an order after placing it?", "intent": "cancel_order", "style": "standard"}
+{"id": "Q0383", "text_en": "how to cancel order on tiki app", "intent": "cancel_order", "style": "english"}
+{"id": "Q0384", "text_en": "For items ordered from a Mall shop, are returns governed by Tiki's policy or the brand's?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0385", "text_en": "How do I change my account password?", "intent": "other_ecommerce", "style": "english"}
+{"id": "Q0386", "text_en": "Stop my order before it gets packed", "intent": "cancel_order", "style": "indirect"}
+{"id": "Q0387", "text_en": "if the seal is already opened can i still return it admin", "intent": "return_policy", "style": "teencode"}
+{"id": "Q0388", "text_en": "Has my package reached the District 7 post office yet, I want to know where it is right now", "intent": "track_order", "style": "standard"}
+{"id": "Q0389", "text_en": "need it asap for my exam, if i order the reference book today will it come tmrw", "intent": "delivery_time", "style": "teencode"}
+{"id": "Q0390", "text_en": "why is shipping to Phu Quoc so expensive, 85k for 1 shirt", "intent": "shipping_costs", "style": "no_diacritics"}
+{"id": "Q0391", "text_en": "how much is shipping folks", "intent": "shipping_costs", "style": "dialect_south"}
+{"id": "Q0392", "text_en": "What kind of bot doesn't understand anything I ask, just let me talk to a person already", "intent": "human_agent", "style": "dialect_south"}
+{"id": "Q0393", "text_en": "What kind of delivery is this, the seal is torn wide open, did someone open it?", "intent": "delivery_issue", "style": "dialect_central"}
+{"id": "Q0394", "text_en": "when's my stuff gonna get to my place", "intent": "delivery_time", "style": "dialect_south"}
+{"id": "Q0395", "text_en": "I just want to know where my order is, I don't need to cancel or anything.", "intent": "track_order", "style": "statement"}
+{"id": "Q0396", "text_en": "You guys sent me a blender that rattles like a tractor when I turn it on, I can't use it, let me send it back.", "intent": "return_product", "style": "dialect_south"}
+{"id": "Q0397", "text_en": "if i cancel will the money go back to my wallet, but first pls cancel order 33019 for me", "intent": "cancel_order", "style": "hard_vs_refund"}
+{"id": "Q0398", "text_en": "I'm buying a 20 million VND laptop, surely I don't have to pay for delivery too?", "intent": "shipping_costs", "style": "indirect"}
+{"id": "Q0399", "text_en": "Completely wrong product delivered: I ordered a thermos and got a ceramic mug. I request you pick it up and deliver the correct item.", "intent": "return_product", "style": "complaint"}
+{"id": "Q0400", "text_en": "what medicine should i take for wisdom tooth pain", "intent": "out_of_scope", "style": "health"}
+{"id": "Q0401", "text_en": "i transferred 100k more than the order, what happens to the extra", "intent": "payment_issue", "style": "casual"}
+{"id": "Q0402", "text_en": "Is the shipping fee charged per product or for the whole order?", "intent": "shipping_costs", "style": "standard"}
+{"id": "Q0403", "text_en": "I'm torn about buying a 5 million VND vacuum cleaner, but worried it won't suit me. If I try it for a few days and it's not right, does your policy allow returns, or only exchanges for defects?", "intent": "return_policy", "style": "long"}
+{"id": "Q0404", "text_en": "Help me solve this math problem: 2x + 5 = 17", "intent": "out_of_scope", "style": "homework"}
+{"id": "Q0405", "text_en": "What's Vietcombank's US dollar exchange rate today?", "intent": "out_of_scope", "style": "finance"}
+{"id": "Q0406", "text_en": "What are the same-day delivery hours, from what time to what time?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0407", "text_en": "Shipping fee", "intent": "shipping_costs", "style": "short"}
+{"id": "Q0408", "text_en": "If I receive the refund to a bank account, what information do I need to provide?", "intent": "refund_policy", "style": "standard"}
+{"id": "Q0409", "text_en": "No more suggestions, transfer me to customer care.", "intent": "human_agent", "style": "firm"}
+{"id": "Q0410", "text_en": "Is it raining in Saigon today?", "intent": "out_of_scope", "style": "weather"}
+{"id": "Q0411", "text_en": "What is Tiki Xu used for and does it expire?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0412", "text_en": "I'd like to cancel, the seller says it'll take 2 weeks and I need it sooner.", "intent": "cancel_order", "style": "english"}
+{"id": "Q0413", "text_en": "My younger brother shares my card, he said he saw 2 charges for a Tiki order within 1 minute, but I only ordered once.", "intent": "payment_issue", "style": "storytelling"}
+{"id": "Q0414", "text_en": "Will it arrive before Tet?", "intent": "delivery_time", "style": "short"}
+{"id": "Q0415", "text_en": "Account locked for no clear reason, can't log in.", "intent": "other_ecommerce", "style": "statement"}
+{"id": "Q0416", "text_en": "My order shows 'delivered' but my home camera didn't see anyone come all afternoon.", "intent": "delivery_issue", "style": "standard"}
+{"id": "Q0417", "text_en": "did the 50k voucher expire, why cant i use it", "intent": "other_ecommerce", "style": "teencode"}
+{"id": "Q0418", "text_en": "I ordered diapers and milk for my baby, really need them, about how long until they get to Thanh Hoa?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0419", "text_en": "What payment methods get the fastest refund?", "intent": "refund_policy", "style": "english"}
+{"id": "Q0420", "text_en": "Where's my money? Says refunded but nothing", "intent": "refund_status", "style": "short_angry"}
+{"id": "Q0421", "text_en": "bot u got a gf/bf yet", "intent": "out_of_scope", "style": "teencode"}
+{"id": "Q0422", "text_en": "Return policy?", "intent": "return_policy", "style": "short"}
+{"id": "Q0423", "text_en": "It says 'refunded to original payment method' but I paid COD, so where did the money go?", "intent": "refund_status", "style": "confused"}
+{"id": "Q0424", "text_en": "when are u refunding me, i want to file a refund request right now for order 662211", "intent": "request_refund", "style": "no_diacritics"}
+{"id": "Q0425", "text_en": "not getting the OTP when paying by card, tried 5 times already", "intent": "payment_issue", "style": "no_diacritics"}
+{"id": "Q0426", "text_en": "I submitted a return request and still nobody has come to pick it up, it's been 4 days already", "intent": "return_product", "style": "angry"}
+{"id": "Q0427", "text_en": "Dear Customer Care Department, I would like to return the bedding set as the material is not as described.", "intent": "return_product", "style": "formal"}
+{"id": "Q0428", "text_en": "You're so stupid, do you even know how to count from 1 to 10?", "intent": "out_of_scope", "style": "rude"}
+{"id": "Q0429", "text_en": "i ordered a size M shirt but the shop sent XL, can i send it back to swap sizes", "intent": "return_product", "style": "teencode"}
+{"id": "Q0430", "text_en": "Please show me the steps to return on the Tiki app, I can't find that section in the new version", "intent": "return_product", "style": "mixed_en"}
+{"id": "Q0431", "text_en": "When's the cheapest time to order stuff to Dak Nong for shipping, is there any cheaper time slot?", "intent": "shipping_costs", "style": "dialect_south"}
+{"id": "Q0432", "text_en": "The order hasn't been delivered yet, can I change the delivery address from District 1 to District 10?", "intent": "other_ecommerce", "style": "hard_vs_cancel"}
+{"id": "Q0433", "text_en": "real human help", "intent": "human_agent", "style": "very_short"}
+{"id": "Q0434", "text_en": "i want to know how long the refund takes if i paid with an ATM card", "intent": "refund_policy", "style": "no_diacritics"}
+{"id": "Q0435", "text_en": "The VAT invoice info has the wrong tax code, can it be corrected?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0436", "text_en": "Adminnn, got the lipstick and the case is cracked wide open, i took pics, how do i send it back to the shop", "intent": "return_product", "style": "casual"}
+{"id": "Q0437", "text_en": "order 77120034 status keeps flipping between 'delivering' and 'picked up', what's the glitch", "intent": "delivery_issue", "style": "teencode"}
+{"id": "Q0438", "text_en": "ordered last night when will it arrive, in Bien Hoa", "intent": "delivery_time", "style": "no_diacritics"}
+{"id": "Q0439", "text_en": "Payment failed during the flash sale, lost my chance at the cheap price, and my money is on hold. So disappointed.", "intent": "payment_issue", "style": "emotional"}
+{"id": "Q0440", "text_en": "Could you check whether order #TK-00981 has left the warehouse yet.", "intent": "track_order", "style": "standard"}
+{"id": "Q0441", "text_en": "Is a light scratch on a suitcase I just bought enough reason to exchange it, what's the rule?", "intent": "return_policy", "style": "standard"}
+{"id": "Q0442", "text_en": "Is there an extra collection fee for COD orders?", "intent": "shipping_costs", "style": "polite"}
+{"id": "Q0443", "text_en": "Please create a return ticket for my mechanical keyboard, the space bar is stuck.", "intent": "return_product", "style": "standard"}
+{"id": "Q0444", "text_en": "whats the refund status for order #TK90123, app keeps saying processing", "intent": "refund_status", "style": "mixed_en"}
+{"id": "Q0445", "text_en": "Where should I go for a 3-day 2-night trip to Da Lat?", "intent": "out_of_scope", "style": "travel"}
+{"id": "Q0446", "text_en": "The lego set is missing pieces, my kid is crying so much. I want to send the whole set back for a new one.", "intent": "return_product", "style": "emotional"}
+{"id": "Q0447", "text_en": "This is the 4th time I've contacted you about a refund and it still hasn't been resolved. I demand to speak directly with an authorized staff member.", "intent": "human_agent", "style": "hard_boundary_refund"}
+{"id": "Q0448", "text_en": "Why were 2000 of my accumulated xu deducted, I didn't use them", "intent": "other_ecommerce", "style": "hard_boundary"}
+{"id": "Q0449", "text_en": "Is delivery slower than usual during the 12/12 sale, about how long?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0450", "text_en": "Stuff's all busted, can I please get my money back guys", "intent": "request_refund", "style": "casual"}
+{"id": "Q0451", "text_en": "Admin can i ask if the TikiPRO trial includes free 2h delivery", "intent": "shipping_costs", "style": "casual"}
+{"id": "Q0452", "text_en": "Is it true that the yearly PRO plan gets free 2h delivery but the monthly PRO doesn't?", "intent": "shipping_costs", "style": "standard"}
+{"id": "Q0453", "text_en": "Is there staff on chat during business hours? I'd like to get direct support.", "intent": "human_agent", "style": "indirect"}
+{"id": "Q0454", "text_en": "What's the minimum order value for free delivery, a few hundred thousand?", "intent": "shipping_costs", "style": "polite"}
+{"id": "Q0455", "text_en": "I bought on 0% installment via credit card, if I return the item how is the installment handled?", "intent": "refund_policy", "style": "standard"}
+{"id": "Q0456", "text_en": "I'm on Con Dao, my order's been sitting at the Vung Tau warehouse for 2 weeks without moving at all.", "intent": "delivery_issue", "style": "dialect_south"}
+{"id": "Q0457", "text_en": "The product has a software defect, I contacted the shop 3 times with no reply. I am formally requesting a refund.", "intent": "request_refund", "style": "formal"}
+{"id": "Q0458", "text_en": "admin the shipper's number is always unreachable, and still no package", "intent": "delivery_issue", "style": "casual"}
+{"id": "Q0459", "text_en": "The order was cancelled by the shop because it's out of stock, money was charged to my JCB card, when will it be returned? The app says 'refund in progress'.", "intent": "refund_status", "style": "hard_boundary_payment"}
+{"id": "Q0460", "text_en": "forgot my tiki account password, how do i get it back", "intent": "other_ecommerce", "style": "no_diacritics"}
+{"id": "Q0461", "text_en": "laptop has dead pixels right out of the box, i want to return it", "intent": "return_product", "style": "no_diacritics"}
+{"id": "Q0462", "text_en": "Is my TikiNOW order out for delivery or still at the warehouse?", "intent": "track_order", "style": "standard"}
+{"id": "Q0463", "text_en": "2 of the porcelain bowls are broken, I want to send back the broken ones", "intent": "return_product", "style": "dialect_south"}
+{"id": "Q0464", "text_en": "Does refusing the delivery count as cancelling the order, or do I need to cancel in the app first?", "intent": "cancel_order", "style": "hard_vs_return"}
+{"id": "Q0465", "text_en": "The frozen goods arrived completely thawed, the foam box was broken, the meat smells off.", "intent": "delivery_issue", "style": "statement"}
+{"id": "Q0466", "text_en": "Is this washing machine covered by manufacturer warranty or by the shop?", "intent": "other_ecommerce", "style": "hard_vs_return_policy"}
+{"id": "Q0467", "text_en": "Please change the recipient phone number on order ORD-1102 for me", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0468", "text_en": "When will this backpack be back in stock in blue", "intent": "other_ecommerce", "style": "casual"}
+{"id": "Q0469", "text_en": "The shipper keeps putting it off again and again, 3 days now and still won't deliver to me in District 7.", "intent": "delivery_issue", "style": "standard"}
+{"id": "Q0470", "text_en": "delivered 5 days late and not a single apology msg, what kind of service is this", "intent": "delivery_issue", "style": "angry"}
+{"id": "Q0471", "text_en": "What's the fastest way to cure a headache?", "intent": "out_of_scope", "style": "health"}
+{"id": "Q0472", "text_en": "about how many more days", "intent": "delivery_time", "style": "short"}
+{"id": "Q0473", "text_en": "How many days to return?", "intent": "return_policy", "style": "short"}
+{"id": "Q0474", "text_en": "Hey, the latex mattress is too big for me to take to the post office myself, can someone come pick it up for the return?", "intent": "return_product", "style": "casual"}
+{"id": "Q0475", "text_en": "If my order is split into several parcels, will they be delivered the same day or each on a different day?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0476", "text_en": "dude im so sad, my bf/gf left me 😢", "intent": "out_of_scope", "style": "teencode_chitchat"}
+{"id": "Q0477", "text_en": "I was told the refund was sent but the bank returned it due to a wrong account number, so where is that money now?", "intent": "refund_status", "style": "complex"}
+{"id": "Q0478", "text_en": "i transferred with the correct reference but the order is still 'awaiting payment', why", "intent": "payment_issue", "style": "teencode"}
+{"id": "Q0479", "text_en": "The partial refund for the missing item in my combo order was confirmed, may I ask whether it's been transferred yet?", "intent": "refund_status", "style": "standard"}
+{"id": "Q0480", "text_en": "The other day a staff member called saying the refund was approved, it's been over a week and no Tiki Xu credited, no cash either. I need to know exactly where it is.", "intent": "refund_status", "style": "long"}
+{"id": "Q0481", "text_en": "Hey, my order was supposed to come yesterday and now the app says 'delivery failed', but I was home all day!", "intent": "delivery_issue", "style": "mixed_en"}
+{"id": "Q0482", "text_en": "Drop this order for me", "intent": "cancel_order", "style": "short"}
+{"id": "Q0483", "text_en": "Do you support video calls with staff, I want to show them the condition of the item directly.", "intent": "human_agent", "style": "indirect"}
+{"id": "Q0484", "text_en": "iPhone 15 Pro Max 256GB in titanium still in stock?", "intent": "other_ecommerce", "style": "casual"}
+{"id": "Q0485", "text_en": "Please refund the shipping fee for order TK88812 since it was express delivery but arrived 2 days late", "intent": "request_refund", "style": "hard_shipping"}
+{"id": "Q0486", "text_en": "I ordered 3 books on 11/12, I'd like to know where the order is now.", "intent": "track_order", "style": "standard"}
+{"id": "Q0487", "text_en": "What time is Vietnam vs Thailand tonight?", "intent": "out_of_scope", "style": "sports"}
+{"id": "Q0488", "text_en": "How do I reinstall Windows 11 when the computer is stuck on the logo?", "intent": "out_of_scope", "style": "tech"}
+{"id": "Q0489", "text_en": "I've tried paying with both Viettel Money and an ATM card but both say 'Transaction timed out'.", "intent": "payment_issue", "style": "standard"}
+{"id": "Q0490", "text_en": "I was wondering, does Tiki accept returns if there's only the plastic bag left and no box?", "intent": "return_policy", "style": "indirect"}
+{"id": "Q0491", "text_en": "What's Tiki Xu for and when does it expire?", "intent": "other_ecommerce", "style": "standard"}
+{"id": "Q0492", "text_en": "admin i ordered the wrong phone case color, how do i pack it to send back", "intent": "return_product", "style": "teencode"}
+{"id": "Q0493", "text_en": "Stuff got here and the box was soaking wet, guess the shipper rode in the rain without covering it", "intent": "delivery_issue", "style": "dialect_south"}
+{"id": "Q0494", "text_en": "Last month I got free shipping but this month the same order costs 25k, did the policy change?", "intent": "shipping_costs", "style": "indirect"}
+{"id": "Q0495", "text_en": "How many more days does delivery to the mountainous areas of Lao Cai usually take compared to the city?", "intent": "delivery_time", "style": "standard"}
+{"id": "Q0496", "text_en": "how long do refunds usually take for credit card payments?", "intent": "refund_policy", "style": "english"}
+{"id": "Q0497", "text_en": "What's your return policy like, can I return electronics I bought?", "intent": "return_policy", "style": "dialect_central"}
+{"id": "Q0498", "text_en": "pls explain the 'order processing fee' line, is that part of shipping fee?", "intent": "shipping_costs", "style": "mixed_en"}
+{"id": "Q0499", "text_en": "Has my order shipped yet, order #7733001", "intent": "track_order", "style": "mixed_en"}
+{"id": "Q0500", "text_en": "The policy says 'except in special cases' – what are those special cases?", "intent": "return_policy", "style": "indirect"}
