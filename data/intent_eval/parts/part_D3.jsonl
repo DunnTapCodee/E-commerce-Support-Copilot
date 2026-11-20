@@ -1,0 +1,65 @@
+{"text": "Cho tôi nói chuyện với nhân viên chăm sóc khách hàng.", "intent": "human_agent", "style": "standard"}
+{"text": "ad ơi cho e gặp người thật đc ko", "intent": "human_agent", "style": "casual"}
+{"text": "toi muon gap tong dai vien", "intent": "human_agent", "style": "no_diacritics"}
+{"text": "Gặp nhân viên.", "intent": "human_agent", "style": "short"}
+{"text": "Can I speak to a real person please?", "intent": "human_agent", "style": "english"}
+{"text": "Số hotline của Tiki là bao nhiêu vậy?", "intent": "human_agent", "style": "standard"}
+{"text": "chán bot quá r, chuyển e qua nv đi", "intent": "human_agent", "style": "teencode"}
+{"text": "Kính đề nghị quý công ty bố trí một nhân viên trực tiếp liên hệ với tôi để giải quyết sự việc.", "intent": "human_agent", "style": "formal"}
+{"text": "TÔI KHÔNG MUỐN NÓI CHUYỆN VỚI MÁY NỮA! ĐƯA NGƯỜI THẬT RA ĐÂY!", "intent": "human_agent", "style": "angry_caps"}
+{"text": "transfer me to agent đi, bot trả lời ko đúng ý", "intent": "human_agent", "style": "mixed_en"}
+{"text": "Mình đã hỏi bot ba lần mà toàn trả lời vòng vo. Giờ chỉ cần có ai đó là con người gọi lại cho mình theo số 0903xxx123.", "intent": "human_agent", "style": "frustrated_long"}
+{"text": "Bot gì mà hỏi gì cũng hổng hiểu, cho tui gặp người đi mà", "intent": "human_agent", "style": "dialect_south"}
+{"text": "Đơn của tôi bị giao sai mà bot cứ bảo xem chính sách. Tôi không cần chính sách, tôi cần một nhân viên xử lý trực tiếp.", "intent": "human_agent", "style": "hard_boundary_complaint"}
+{"text": "Có ai trực không ạ? Em cần nói chuyện với người.", "intent": "human_agent", "style": "polite"}
+{"text": "nhan vien dau het roi, chuyen may cho nguoi that di", "intent": "human_agent", "style": "no_diacritics_angry"}
+{"text": "I've been chatting with this bot for 20 minutes. Escalate to a human supervisor now.", "intent": "human_agent", "style": "english_angry"}
+{"text": "Bác không rành mấy cái máy này, cho bác số điện thoại tổng đài để bác gọi trực tiếp được không cháu?", "intent": "human_agent", "style": "elderly"}
+{"text": "live chat với CSKH ở đâu vậy", "intent": "human_agent", "style": "casual"}
+{"text": "Tôi muốn khiếu nại và yêu cầu gặp quản lý.", "intent": "human_agent", "style": "formal_short"}
+{"text": "người thật ơi cứu", "intent": "human_agent", "style": "very_short"}
+{"text": "Thôi khỏi trả lời tự động nữa, kết nối với tư vấn viên giúp em.", "intent": "human_agent", "style": "standard"}
+{"text": "Mình cần ai đó gọi điện lại, chuyện này phức tạp không nhắn qua chat được.", "intent": "human_agent", "style": "indirect"}
+{"text": "Chị ơi cho em xin số zalo hay sđt của bên CSKH với ạ", "intent": "human_agent", "style": "casual"}
+{"text": "Is there a phone number I can call for customer service in Vietnam?", "intent": "human_agent", "style": "english"}
+{"text": "Đây là lần thứ 4 tôi liên hệ về việc hoàn tiền mà chưa được giải quyết. Tôi yêu cầu được nói chuyện trực tiếp với một nhân viên có thẩm quyền.", "intent": "human_agent", "style": "hard_boundary_refund"}
+{"text": "Bot ngu quá, gọi nhân viên ra đây", "intent": "human_agent", "style": "rude"}
+{"text": "Mần răng để gặp được nhân viên tư vấn hè?", "intent": "human_agent", "style": "dialect_central"}
+{"text": "Ủa có cách nào chat với người không hay toàn máy trả lời vậy?", "intent": "human_agent", "style": "casual_question"}
+{"text": "Tôi là khách hàng VIP, đề nghị chuyển cuộc hội thoại sang bộ phận hỗ trợ ưu tiên có người trực.", "intent": "human_agent", "style": "formal"}
+{"text": "cskh oiiii, có ai ko, e cần ng hỗ trợ", "intent": "human_agent", "style": "teencode"}
+{"text": "Thôi để tôi gọi tổng đài cho nhanh, số mấy?", "intent": "human_agent", "style": "impatient"}
+{"text": "Mấy câu trả lời mẫu này không giúp được gì. Làm ơn để một người thật đọc tin nhắn của tôi.", "intent": "human_agent", "style": "frustrated"}
+{"text": "Please connect me with your support staff, I need help in English.", "intent": "human_agent", "style": "english"}
+{"text": "Tui hổng muốn nói chiện với máy, kêu ai đó ra đây coi", "intent": "human_agent", "style": "dialect_south"}
+{"text": "Giờ hành chính thì có nhân viên trực chat không bạn? Mình muốn được hỗ trợ trực tiếp.", "intent": "human_agent", "style": "indirect"}
+{"text": "chuyen sang nhan vien ho tro giup minh", "intent": "human_agent", "style": "no_diacritics"}
+{"text": "Mẹ tôi đặt hàng bị lừa nhận hàng giả, bà rất buồn. Tôi muốn gặp nhân viên để trình bày cụ thể chứ không muốn bấm qua bấm lại menu nữa.", "intent": "human_agent", "style": "emotional_long"}
+{"text": "Cho xin email hoặc hotline khiếu nại chính thức.", "intent": "human_agent", "style": "short_formal"}
+{"text": "Lỗi này bot không xử lý được đâu, đẩy lên cho người phụ trách giùm.", "intent": "human_agent", "style": "casual"}
+{"text": "Agent please", "intent": "human_agent", "style": "english_short"}
+{"text": "Hỗ trợ viên nào đó liên hệ lại với tôi trước 5h chiều nay nhé.", "intent": "human_agent", "style": "request"}
+{"text": "Tôi đã nghe tổng đài 1900 6035 chờ máy 15 phút không ai bắt. Có cách nào khác để gặp nhân viên không?", "intent": "human_agent", "style": "frustrated"}
+{"text": "e muốn gặp nhân viên trực ca để báo vấn đề ạ", "intent": "human_agent", "style": "casual"}
+{"text": "Đề nghị cung cấp kênh liên hệ trực tiếp với bộ phận giải quyết khiếu nại.", "intent": "human_agent", "style": "formal"}
+{"text": "Bot ơi bạn dễ thương nhưng mình cần gặp con người thật nha 😅", "intent": "human_agent", "style": "friendly"}
+{"text": "Call me back please, sđt 0912 345 678, cần nhân viên tư vấn gấp.", "intent": "human_agent", "style": "mixed_en"}
+{"text": "Muốn gặp người sống chứ không phải robot!!!", "intent": "human_agent", "style": "angry_short"}
+{"text": "Không cần gợi ý nữa, chuyển tôi cho bộ phận chăm sóc khách hàng.", "intent": "human_agent", "style": "firm"}
+{"text": "Thấy bảo có nút 'Chat với nhân viên' mà em tìm hoài không thấy ở đâu ạ", "intent": "human_agent", "style": "indirect"}
+{"text": "Đơn bị thất lạc, nhắn bot nãy giờ vô ích. Tôi cần người thật xử lý, không cần thêm link hướng dẫn.", "intent": "human_agent", "style": "hard_boundary_delivery"}
+{"text": "Cho gặp supervisor, cái bot này loop hoài một câu", "intent": "human_agent", "style": "mixed_en"}
+{"text": "nv cskh đâu rồi, gọi hoài ko ai nghe máy", "intent": "human_agent", "style": "abbreviation"}
+{"text": "Hông biết có anh chị nhân viên nào rảnh hông, em muốn hỏi trực tiếp á", "intent": "human_agent", "style": "dialect_south"}
+{"text": "Is there a human I can talk to? This automated thing isn't working for me.", "intent": "human_agent", "style": "english"}
+{"text": "Cho xin hotline", "intent": "human_agent", "style": "very_short"}
+{"text": "Tôi sẽ không trả lời chatbot nữa. Hãy cử người liên hệ với tôi.", "intent": "human_agent", "style": "statement"}
+{"text": "Xin phép được trao đổi với chuyên viên tư vấn, vấn đề của tôi khá nhạy cảm.", "intent": "human_agent", "style": "formal"}
+{"text": "tổng đài viên ơi, nghe máy đi mà", "intent": "human_agent", "style": "casual"}
+{"text": "Trả hàng bị từ chối vô lý, tôi muốn một nhân viên xem lại hồ sơ chứ không phải câu trả lời tự động.", "intent": "human_agent", "style": "hard_boundary_return"}
+{"text": "Lam on cho toi noi chuyen voi nguoi phu trach, khong phai bot", "intent": "human_agent", "style": "no_diacritics"}
+{"text": "Bên mình có hỗ trợ gọi video với nhân viên không, mình muốn cho xem tình trạng hàng trực tiếp.", "intent": "human_agent", "style": "indirect"}
+{"text": "Ai đó làm ơn tiếp nhận vụ này giùm, nói chuyện với máy mệt lắm rồi", "intent": "human_agent", "style": "tired"}
+{"text": "I want to file a complaint with a manager, not a chatbot.", "intent": "human_agent", "style": "english"}
+{"text": "Nhờ chuyển máy cho nhân viên bộ phận đơn hàng giúp tôi.", "intent": "human_agent", "style": "polite"}
+{"text": "Thui hong hỏi bot nữa đâu, kêu chị nhân viên hôm qua chat với em ra đi", "intent": "human_agent", "style": "dialect_south"}

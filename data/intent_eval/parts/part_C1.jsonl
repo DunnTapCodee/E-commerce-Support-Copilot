@@ -1,0 +1,130 @@
+{"text": "Tôi muốn trả lại chiếc áo khoác vì size không vừa, làm sao tạo yêu cầu đổi trả ạ?", "intent": "return_product", "style": "standard"}
+{"text": "shop ơi e muốn gửi trả cái nồi chiên không dầu, nó bị móp 1 góc", "intent": "return_product", "style": "casual"}
+{"text": "cho minh hoi cach tao yeu cau tra hang tren app voi", "intent": "return_product", "style": "no_diacritics"}
+{"text": "Trả hàng đơn 812345671 giúp em", "intent": "return_product", "style": "short"}
+{"text": "How do I send back the headphones I ordered last week? They don't fit my ears.", "intent": "return_product", "style": "english"}
+{"text": "ad oi e đặt nhầm màu ốp lưng r, giờ muốn hoàn về thì đóng gói ntn", "intent": "return_product", "style": "teencode"}
+{"text": "Kính gửi bộ phận chăm sóc khách hàng, tôi xin được hoàn trả bộ chăn ga gối do chất liệu không đúng như mô tả.", "intent": "return_product", "style": "formal"}
+{"text": "Mấy ông giao cho tui cái máy xay sinh tố mà bật lên nó kêu rè rè như máy cày, tui hổng xài nổi, cho tui gửi trả lại đi.", "intent": "return_product", "style": "dialect_south"}
+{"text": "Shipper có tới tận nhà lấy hàng trả không hay em phải tự mang ra bưu cục?", "intent": "return_product", "style": "indirect"}
+{"text": "Mình đã bấm 'Yêu cầu trả hàng' nhưng không biết in phiếu gửi ở đâu", "intent": "return_product", "style": "standard"}
+{"text": "Em nhận được cuốn sách bị rách mất mấy trang giữa, em muốn đổi cuốn khác hoặc trả lại luôn.", "intent": "return_product", "style": "standard"}
+{"text": "trả hàng kiểu gì vậy trời, bấm hoài không thấy nút", "intent": "return_product", "style": "angry_short"}
+{"text": "Can I return a phone case if I already opened the package? I want to ship it back today.", "intent": "return_product", "style": "english"}
+{"text": "Tôi năm nay 68 tuổi, không rành điện thoại. Con tôi đặt cho tôi cái máy đo huyết áp nhưng đo sai hoài, nhờ các cháu hướng dẫn tôi cách gửi trả lại.", "intent": "return_product", "style": "elderly_formal"}
+{"text": "giày bị lệch size, 1 chiếc 40 1 chiếc 41 =)) em return dc ko shop", "intent": "return_product", "style": "teencode"}
+{"text": "Đơn #TK-20391 mình nhận thiếu 1 hộp, phần còn lại thì sai mẫu, mình muốn gửi trả toàn bộ.", "intent": "return_product", "style": "standard"}
+{"text": "Nhờ tạo phiếu trả cho em cái bàn phím cơ, phím space bị kẹt.", "intent": "return_product", "style": "standard"}
+{"text": "Thật sự quá thất vọng! Mua cái váy để đi đám cưới bạn thân, mở ra thì đường may bung hết, màu thì khác xa hình. Giờ không kịp nữa rồi, tôi chỉ muốn trả lại cái váy này ngay, chỉ tôi cách gửi về.", "intent": "return_product", "style": "angry_long"}
+{"text": "Hàng trả về thì có cần giữ nguyên hộp với tem mác không, em lỡ xé hộp rồi mà vẫn muốn gửi lại", "intent": "return_product", "style": "hard_return_policy"}
+{"text": "dia chi kho de gui tra hang o dau vay ad", "intent": "return_product", "style": "no_diacritics"}
+{"text": "I wanna return this item pls, wrong model, đơn 556677889", "intent": "return_product", "style": "mixed_en"}
+{"text": "Bé nhà mình không chịu ăn loại sữa này, hộp còn nguyên seal, mình gửi trả được không ạ, thủ tục ra sao?", "intent": "return_product", "style": "indirect"}
+{"text": "Tủ lạnh mini giao tới không lạnh. Tôi đề nghị Tiki cử người tới thu hồi sản phẩm.", "intent": "return_product", "style": "formal"}
+{"text": "Mần răng để trả cái quạt ni hè, quạt quay không được", "intent": "return_product", "style": "dialect_central"}
+{"text": "Ê trả hàng xong thì đóng thùng bằng gì, có cần băng keo Tiki không", "intent": "return_product", "style": "casual"}
+{"text": "sạc dự phòng phồng pin, sợ cháy nổ, cho em trả gấp", "intent": "return_product", "style": "urgent"}
+{"text": "Tôi đã đăng ký trả hàng hôm qua, hôm nay shipper gọi tôi không nghe máy, giờ làm sao hẹn lại lịch lấy hàng?", "intent": "return_product", "style": "standard"}
+{"text": "Bộ lego thiếu mảnh, con tôi khóc quá trời. Tôi muốn gửi lại cả bộ để đổi bộ mới.", "intent": "return_product", "style": "emotional"}
+{"text": "Đồng hồ thông minh không kết nối bluetooth được, tạo đơn hoàn trả giúp mình nhé", "intent": "return_product", "style": "standard"}
+{"text": "Is there a drop-off point in Hanoi where I can leave my return parcel?", "intent": "return_product", "style": "english"}
+{"text": "trả hàng nha", "intent": "return_product", "style": "very_short"}
+{"text": "Mình k cần hoàn tiền vội, chỉ cần gửi trả lại cái máy hút bụi này trước đã vì nó chiếm chỗ quá", "intent": "return_product", "style": "hard_request_refund"}
+{"text": "Cho hỏi trong 7 ngày mình đổi ý không muốn dùng nữa thì giờ gửi lại cái loa này như thế nào?", "intent": "return_product", "style": "hard_return_policy"}
+{"text": "Sản phẩm giao sai hoàn toàn: đặt bình giữ nhiệt mà nhận được cái ly sứ. Yêu cầu thu hồi và giao lại đúng hàng.", "intent": "return_product", "style": "complaint"}
+{"text": "Ad ơiiii, nhận đc cái son mà vỏ nứt toác, e chụp hình rồi, giờ gửi về shop kiểu j ạ", "intent": "return_product", "style": "casual"}
+{"text": "Em đang ở Cần Thơ, có bưu cục nào nhận hàng trả của Tiki gần đây không?", "intent": "return_product", "style": "standard"}
+{"text": "laptop bi chet diem anh ngay khi mo hop, toi muon tra lai", "intent": "return_product", "style": "no_diacritics"}
+{"text": "Vui lòng hướng dẫn tôi điền lý do trả hàng, tôi chọn 'hàng lỗi' hay 'không như mô tả'?", "intent": "return_product", "style": "formal"}
+{"text": "trả lại cái quần đi, mặc vô chật ních", "intent": "return_product", "style": "short"}
+{"text": "Đã gửi yêu cầu trả hàng mà mãi chưa thấy ai qua lấy, đợi 4 ngày rồi đó", "intent": "return_product", "style": "angry"}
+{"text": "Mua combo 3 chai dầu gội, 1 chai bị đổ hết ra ngoài. Em muốn trả riêng chai đó thôi có được không?", "intent": "return_product", "style": "standard"}
+{"text": "Hey, item came damaged, box crushed. Need to arrange a pickup for return.", "intent": "return_product", "style": "english"}
+{"text": "Chị ơi, cái nệm cao su to quá em không tự đem ra bưu điện được, có ai qua chở đi trả giùm em không?", "intent": "return_product", "style": "casual"}
+{"text": "e mún đổi trả cái tai nghe vì 1 bên ko có tiếng á", "intent": "return_product", "style": "teencode"}
+{"text": "Lỡ làm mất hóa đơn giấy rồi, tôi vẫn muốn gửi trả hàng thì cần chuẩn bị gì?", "intent": "return_product", "style": "standard"}
+{"text": "Mấy cái chén sứ bể 2 cái, tui muốn gởi trả mấy cái bể đó", "intent": "return_product", "style": "dialect_south"}
+{"text": "Đồ chơi cho bé có mùi nhựa rất nặng, tôi lo ngại an toàn nên muốn gửi trả ngay.", "intent": "return_product", "style": "standard"}
+{"text": "Làm ơn chỉ em các bước return trên app Tiki, version mới em không tìm thấy mục đó", "intent": "return_product", "style": "mixed_en"}
+{"text": "Hàng trả về em ghi mã đơn ở ngoài thùng hay bỏ giấy vào trong?", "intent": "return_product", "style": "short_question"}
+{"text": "Mua cái ghế công thái học 3tr2 mà ngồi 2 hôm tay vịn gãy luôn. Không chấp nhận được. Tôi trả lại, các bạn sắp xếp xe đến lấy.", "intent": "return_product", "style": "angry_long"}
+{"text": "Mình đặt 2 cái giống nhau do bấm nhầm, giờ muốn gửi lại 1 cái", "intent": "return_product", "style": "standard"}
+{"text": "trả hàng có mất phí ship chiều về không, nếu không thì mình gửi luôn hôm nay", "intent": "return_product", "style": "hard_shipping"}
+{"text": "Order 4471-882 – wrong color. Please help me create a return request.", "intent": "return_product", "style": "english"}
+{"text": "Cái máy lọc không khí kêu to quá ngủ không được, tôi gửi về được chứ?", "intent": "return_product", "style": "indirect"}
+{"text": "Thưa quý công ty, gia đình tôi nhận nhầm kiện hàng của người khác, xin hỏi tôi gửi trả lại theo cách nào?", "intent": "return_product", "style": "elderly_formal"}
+{"text": "ốp điện thoại bị ố vàng sau 3 ngày, mún trả", "intent": "return_product", "style": "teencode"}
+{"text": "Chào bạn, mình cần hủy yêu cầu trả hàng cũ và tạo lại yêu cầu mới vì chọn sai sản phẩm.", "intent": "return_product", "style": "standard"}
+{"text": "nhan duoc hop rong, khong co san pham. muon gui tra lai cai hop va bao cao", "intent": "return_product", "style": "no_diacritics"}
+{"text": "Có thể gom 2 đơn khác nhau vào cùng 1 thùng để trả không?", "intent": "return_product", "style": "standard"}
+{"text": "Cái nồi cơm điện dùng tới lần thứ hai thì nắp không đóng được nữa, tôi muốn gửi lại để kiểm tra và trả.", "intent": "return_product", "style": "standard"}
+{"text": "trả hàng giùm cái, mệt quá", "intent": "return_product", "style": "very_short"}
+{"text": "Kem chống nắng dùng bị nổi mẩn, da em đang đỏ rát. Hộp còn hơn nửa, em muốn trả lại sản phẩm này.", "intent": "return_product", "style": "emotional"}
+{"text": "mik đặt áo sz M mà shop gửi XL, giờ gửi lại đổi sz đc hok", "intent": "return_product", "style": "teencode"}
+{"text": "Trường hợp sản phẩm cồng kềnh như tủ quần áo thì việc trả lại sẽ do ai vận chuyển?", "intent": "return_product", "style": "hard_return_policy"}
+{"text": "Mình đã đóng gói xong rồi, giờ dán nhãn trả hàng lên đâu?", "intent": "return_product", "style": "short_question"}
+{"text": "Tiền hoàn về tài khoản nào khi mình thanh toán bằng MoMo vậy?", "intent": "refund_policy", "style": "standard"}
+{"text": "Nói chung bên Tiki hoàn tiền bao lâu thì tới vậy, thẻ Visa với ví điện tử có khác nhau không?", "intent": "refund_policy", "style": "standard"}
+{"text": "how long do refunds usually take for credit card payments?", "intent": "refund_policy", "style": "english"}
+{"text": "dat COD ma tra hang thi tien hoan ve dau?", "intent": "refund_policy", "style": "no_diacritics"}
+{"text": "Mã giảm giá đã dùng có được hoàn lại khi trả hàng không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Phí vận chuyển có được hoàn lại không ad", "intent": "refund_policy", "style": "short"}
+{"text": "Mua trả góp 0% qua thẻ tín dụng, nếu trả hàng thì khoản trả góp xử lý sao?", "intent": "refund_policy", "style": "standard"}
+{"text": "Cho tôi hỏi chính sách hoàn tiền của Tiki như thế nào, tôi muốn tìm hiểu trước khi mua món đồ đắt tiền.", "intent": "refund_policy", "style": "formal"}
+{"text": "hoàn tiền vào Tiki Xu hay về ngân hàng v shop", "intent": "refund_policy", "style": "casual"}
+{"text": "Thanh toán ZaloPay thì hoàn trong mấy ngày làm việc?", "intent": "refund_policy", "style": "standard"}
+{"text": "Mình có thể chọn nhận tiền hoàn về tài khoản ngân hàng thay vì về ví không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Refund có tính cuối tuần với ngày lễ không hay chỉ ngày làm việc?", "intent": "refund_policy", "style": "mixed_en"}
+{"text": "Nếu đơn bị hủy trước khi giao thì tiền trả trước có được hoàn tự động không hay mình phải yêu cầu?", "intent": "refund_policy", "style": "hard_cancel"}
+{"text": "Is the refund in full or do you deduct a restocking fee?", "intent": "refund_policy", "style": "english"}
+{"text": "e thắc mắc là hoàn tiền thì đc hoàn 100% hay bị trừ phí j ko ạ", "intent": "refund_policy", "style": "teencode"}
+{"text": "Các cháu cho bác hỏi, bác trả tiền mặt lúc nhận hàng, nếu sau này trả lại hàng thì bác lấy tiền lại bằng cách nào?", "intent": "refund_policy", "style": "elderly_formal"}
+{"text": "Mua hàng bằng thẻ ghi nợ nội địa Napas thì quy trình hoàn tiền mất bao nhiêu lâu", "intent": "refund_policy", "style": "standard"}
+{"text": "Trường hợp hoàn 1 phần đơn hàng thì voucher giảm giá chia ra tính sao?", "intent": "refund_policy", "style": "standard"}
+{"text": "Thẻ tín dụng mình khóa rồi thì tiền hoàn sẽ đi đâu, có mất luôn không?", "intent": "refund_policy", "style": "worried"}
+{"text": "Cho mình hỏi khái quát: hoàn tiền về Tiki Xu có quy đổi 1:1 không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Mấy ngày thì tiền hoàn về MoMo, mình hỏi trước để biết thôi chứ chưa trả gì cả", "intent": "refund_policy", "style": "hard_refund_status"}
+{"text": "Điều kiện để được hoàn tiền là gì vậy shop", "intent": "refund_policy", "style": "casual"}
+{"text": "Nếu sản phẩm được tặng kèm quà thì khi hoàn tiền có bị trừ giá trị quà không?", "intent": "refund_policy", "style": "standard"}
+{"text": "chinh sach hoan tien cho don tra gop the nao", "intent": "refund_policy", "style": "no_diacritics"}
+{"text": "Tôi đọc trên mạng thấy người ta nói hoàn tiền Tiki mất cả tháng, có đúng không, quy định chính thức là bao nhiêu ngày?", "intent": "refund_policy", "style": "indirect"}
+{"text": "What payment methods get the fastest refund?", "intent": "refund_policy", "style": "english"}
+{"text": "Mua bằng Apple Pay thì hoàn về đâu ạ", "intent": "refund_policy", "style": "short"}
+{"text": "Nếu shop hết hàng và hủy đơn thì quy định hoàn tiền như nào", "intent": "refund_policy", "style": "standard"}
+{"text": "Phí bảo hiểm hàng hóa có được hoàn chung với tiền hàng không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Bạn ơi giải thích giúp mình quy trình hoàn tiền từ lúc trả hàng tới lúc nhận tiền gồm những bước gì", "intent": "refund_policy", "style": "standard"}
+{"text": "hoàn tiền thẻ visa 7-14 ngày hay 30 ngày v ạ", "intent": "refund_policy", "style": "casual"}
+{"text": "Đơn dùng TikiNOW, phí thành viên có hoàn không khi trả hàng?", "intent": "refund_policy", "style": "standard"}
+{"text": "Khi trả hàng do lỗi người bán thì ai chịu phí ship, có hoàn phí ship lúc mua không?", "intent": "refund_policy", "style": "hard_return_policy"}
+{"text": "Hoàn tiền cho hàng quốc tế (Tiki Global) có khác hàng trong nước không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Mình thanh toán một nửa bằng Xu một nửa bằng thẻ, lúc hoàn sẽ chia ra thế nào?", "intent": "refund_policy", "style": "standard"}
+{"text": "Refund policy cho flash sale có áp dụng giống hàng thường ko", "intent": "refund_policy", "style": "mixed_en"}
+{"text": "Thưa bộ phận hỗ trợ, tôi muốn biết rõ thời hạn hoàn tiền tối đa theo cam kết của Tiki đối với ví điện tử.", "intent": "refund_policy", "style": "formal"}
+{"text": "hoàn tiền có mất phí giao dịch ngân hàng ko", "intent": "refund_policy", "style": "teencode"}
+{"text": "Nếu tôi nhận hoàn tiền vào tài khoản ngân hàng, cần cung cấp những thông tin gì?", "intent": "refund_policy", "style": "standard"}
+{"text": "Mua trả góp qua Home Credit rồi trả lại hàng, hợp đồng trả góp có tự hủy không, tiền đã đóng hoàn ra sao?", "intent": "refund_policy", "style": "standard"}
+{"text": "Tiki hoàn tiền tự động hay phải tự liên hệ mới được hoàn ạ?", "intent": "refund_policy", "style": "standard"}
+{"text": "Can a refund be sent to a different bank account than the one I paid with?", "intent": "refund_policy", "style": "english"}
+{"text": "Mình hỏi chung chung thôi: hàng đã kích hoạt bảo hành điện tử rồi thì có được hoàn tiền không?", "intent": "refund_policy", "style": "indirect"}
+{"text": "Đơn COD bị từ chối nhận thì có phải hoàn gì không, hay chỉ hủy thôi?", "intent": "refund_policy", "style": "hard_cancel"}
+{"text": "Thông thường hoàn tiền về ShopeePay hay Viettel Money thì Tiki có hỗ trợ không?", "intent": "refund_policy", "style": "standard"}
+{"text": "nếu mình được hoàn tiền thì Tiki Xu tích được từ đơn đó có bị thu hồi không", "intent": "refund_policy", "style": "casual"}
+{"text": "Ủa vậy hoàn tiền mà ngân hàng chậm thì ai chịu trách nhiệm, Tiki hay ngân hàng, quy định ghi sao?", "intent": "refund_policy", "style": "indirect"}
+{"text": "Hàng đổi mới thay vì hoàn tiền, có quy định được chọn không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Mua bằng gift card Tiki thì khi hoàn tiền có trả lại vào gift card không", "intent": "refund_policy", "style": "standard"}
+{"text": "toi muon biet hoan tien mat bao lau neu thanh toan bang the ATM", "intent": "refund_policy", "style": "no_diacritics"}
+{"text": "Chị ơi, bên mình hoàn tiền có giới hạn số tiền tối đa không, ví dụ đơn 20tr", "intent": "refund_policy", "style": "casual"}
+{"text": "Do you refund in VND or in the original currency for international cards?", "intent": "refund_policy", "style": "english"}
+{"text": "Hoàn tiền cho đơn mua bằng Tiki Xu có hoàn lại Xu hay đổi thành tiền?", "intent": "refund_policy", "style": "standard"}
+{"text": "Trả hàng một phần trong đơn có ưu đãi mua 2 tặng 1, tiền được hoàn tính theo giá nào?", "intent": "refund_policy", "style": "standard"}
+{"text": "Tui hỏi chút, hoàn tiền về thẻ thì coi ở sao kê dòng tên gì vậy?", "intent": "refund_policy", "style": "dialect_south"}
+{"text": "Mọi người hay nói là hoàn tiền sau khi kho nhận hàng trả, vậy chính xác là sau bao nhiêu ngày kể từ khi kho kiểm tra?", "intent": "refund_policy", "style": "long"}
+{"text": "Có quy định nào về hoàn tiền khi giá sản phẩm giảm sau khi mình mua không?", "intent": "refund_policy", "style": "standard"}
+{"text": "voucher freeship có được trả lại sau khi hoàn đơn hok", "intent": "refund_policy", "style": "teencode"}
+{"text": "Hoàn tiền về ví MoMo hay ZaloPay thì nhanh hơn chuyển khoản phải không?", "intent": "refund_policy", "style": "standard"}
+{"text": "Tôi chỉ muốn hiểu nguyên tắc: tiền hoàn sẽ về đúng phương thức thanh toán ban đầu, đúng không?", "intent": "refund_policy", "style": "formal"}
+{"text": "pay later Tiki (mua trước trả sau) mà hoàn đơn thì khoản nợ được xóa ko", "intent": "refund_policy", "style": "mixed_en"}
+{"text": "Hàng điện tử mở seal rồi thì chính sách hoàn tiền có khác không", "intent": "refund_policy", "style": "hard_return_policy"}
+{"text": "Bao lâu thì tiền hoàn hiện trong tài khoản, tính từ ngày duyệt hay ngày gửi hàng?", "intent": "refund_policy", "style": "standard"}
+{"text": "In general, if I'm charged twice by mistake, how is the extra amount refunded and how long?", "intent": "refund_policy", "style": "hard_payment_english"}
+{"text": "Shop ơi tiền hoàn có bị tính thuế gì không 😅", "intent": "refund_policy", "style": "casual"}

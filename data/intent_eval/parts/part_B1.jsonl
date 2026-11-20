@@ -1,0 +1,128 @@
+{"text": "Đơn hàng của tôi báo giao thành công từ hôm qua nhưng tôi chưa hề nhận được gói nào cả.", "intent": "delivery_issue", "style": "standard"}
+{"text": "shop ơi shipper gọi có 1 cuộc rồi báo khách ko nghe máy, trong khi e cầm đt cả ngày", "intent": "delivery_issue", "style": "casual"}
+{"text": "hen giao thu 5 ma gio thu 3 tuan sau van chua thay dau, tre qua roi", "intent": "delivery_issue", "style": "no_diacritics"}
+{"text": "Thùng hàng tới nơi bị móp méo một góc, nồi cơm điện bên trong nứt vỏ luôn.", "intent": "delivery_issue", "style": "standard"}
+{"text": "Mất hàng rồi à?", "intent": "delivery_issue", "style": "short"}
+{"text": "My parcel says delivered but nothing is at my door. Neighbours didn't get it either.", "intent": "delivery_issue", "style": "english"}
+{"text": "Tôi thật sự rất bực. Đặt máy lọc không khí cho mẹ từ ngày 2/11, cam kết giao 2 ngày, giờ đã 17/11 vẫn chưa có. Mỗi lần gọi tổng đài đều bảo đang xử lý. Mẹ tôi bị hen suyễn, đang cần gấp!", "intent": "delivery_issue", "style": "angry_long"}
+{"text": "ông shipper nói chuyện mất dạy vl, còn chửi tui vì xuống lấy hàng chậm 2 phút", "intent": "delivery_issue", "style": "angry"}
+{"text": "Kính gửi bộ phận chăm sóc khách hàng, kiện hàng mã 812934571 của tôi đã bị thất lạc trong quá trình vận chuyển, đề nghị quý công ty kiểm tra.", "intent": "delivery_issue", "style": "formal"}
+{"text": "đh 77120034 trạng thái cứ nhảy qua lại giữa 'đang giao' với 'đã lấy hàng', bị lỗi gì z", "intent": "delivery_issue", "style": "teencode"}
+{"text": "Hàng dzìa tới nơi mà hộp ướt nhẹp hết trơn, chắc ship đi mưa ko che", "intent": "delivery_issue", "style": "dialect_south"}
+{"text": "Shipper cứ hẹn lần hẹn lữa, ba ngày nay không chịu giao cho tôi ở Q.7.", "intent": "delivery_issue", "style": "standard"}
+{"text": "Mình nhận được gói hàng nhưng đó là của người khác, tên người nhận cũng khác luôn.", "intent": "delivery_issue", "style": "indirect"}
+{"text": "Giao hàng kiểu chi mà tem niêm phong rách toang, ai bóc ra rồi à?", "intent": "delivery_issue", "style": "dialect_central"}
+{"text": "Tracking stuck at 'in transit' for 9 days, way past the promised date. Something is wrong.", "intent": "delivery_issue", "style": "english"}
+{"text": "Đơn bị hủy giao tự động với lý do 'khách từ chối nhận' trong khi tôi chưa thấy ai tới.", "intent": "delivery_issue", "style": "standard"}
+{"text": "ad ơi sđt shipper gọi hoài thuê bao, hàng thì ko thấy", "intent": "delivery_issue", "style": "casual"}
+{"text": "Bác ở Hà Giang, cháu đặt giúp bác cái quạt sưởi mà quá hẹn cả tuần chưa thấy bưu tá mang lên.", "intent": "delivery_issue", "style": "elderly"}
+{"text": "Giao trễ hẹn.", "intent": "delivery_issue", "style": "short"}
+{"text": "hàng bị để ngoài cổng ko ai ký nhận, giờ mất tiêu rồi, ai chịu trách nhiệm", "intent": "delivery_issue", "style": "angry"}
+{"text": "Tôi đã tra mã vận đơn rồi, nó báo phát thất bại 3 lần nhưng tôi ở nhà suốt, không ai gọi cả.", "intent": "delivery_issue", "style": "hard_vs_track"}
+{"text": "Mọi người ơi, em nhận được hộp rỗng ruột, bên trong không có tai nghe nào hết á 😭", "intent": "delivery_issue", "style": "emotional"}
+{"text": "shipper doi them 20k phi moi chiu giao len tang 5, co dung quy dinh ko", "intent": "delivery_issue", "style": "no_diacritics"}
+{"text": "Package arrived crushed, the box was torn open by the courier. What now?", "intent": "delivery_issue", "style": "english"}
+{"text": "Bên vận chuyển ghi nhận đã giao cho 'người thân' nhưng nhà tôi chỉ có mình tôi.", "intent": "delivery_issue", "style": "indirect"}
+{"text": "Tui ở Côn Đảo, đơn nằm ở kho Vũng Tàu 2 tuần nay hông thấy nhúc nhích gì hết trơn.", "intent": "delivery_issue", "style": "dialect_south"}
+{"text": "Sao lại thế này, hàng của em bị chuyển nhầm ra tận Đà Nẵng trong khi địa chỉ là Cần Thơ?", "intent": "delivery_issue", "style": "standard"}
+{"text": "giao dc nửa đơn thôi, thiếu mất 2 hộp sữa trong 6 hộp, shipper bảo tách kiện mà 1 tuần rồi ko thấy", "intent": "delivery_issue", "style": "teencode"}
+{"text": "Thái độ nhân viên giao hàng quá tệ, ném hàng qua hàng rào rồi bỏ đi.", "intent": "delivery_issue", "style": "angry"}
+{"text": "Order #TK-559201: delivery attempt marked failed but driver never called me. pls check", "intent": "delivery_issue", "style": "mixed_en"}
+{"text": "Đơn mình hiện 'đã giao' nhưng camera nhà mình không thấy ai đến cả buổi chiều.", "intent": "delivery_issue", "style": "standard"}
+{"text": "kiện hàng bị bóc ra dán lại bằng băng keo khác màu, nghi bị tráo hàng", "intent": "delivery_issue", "style": "casual"}
+{"text": "Chu choa, đơn chi mà đi lạc mãi, hẹn 3 bữa giờ 10 bữa rồi.", "intent": "delivery_issue", "style": "dialect_central"}
+{"text": "Cho hỏi tại sao đơn của tôi bị trả về kho người bán khi tôi chưa từ chối nhận?", "intent": "delivery_issue", "style": "standard"}
+{"text": "Tôi không cần biết đơn ở đâu, tôi chỉ muốn biết vì sao trễ 6 ngày so với cam kết 2h của TikiNOW.", "intent": "delivery_issue", "style": "hard_vs_track"}
+{"text": "Màn hình laptop nứt do quá trình vận chuyển, hộp ngoài bị đè bẹp.", "intent": "delivery_issue", "style": "statement"}
+{"text": "Courier was super rude and refused to wait 1 min while I came down.", "intent": "delivery_issue", "style": "english"}
+{"text": "mấy bữa nay ship cứ báo 'địa chỉ không tìm thấy' trong khi nhà e ngay mặt đường", "intent": "delivery_issue", "style": "teencode"}
+{"text": "Đơn quá hạn giao", "intent": "delivery_issue", "style": "short"}
+{"text": "Anh shipper tự ký nhận thay rồi bỏ hàng ở đâu không rõ, tôi gọi lại thì anh ấy chặn số.", "intent": "delivery_issue", "style": "angry_long"}
+{"text": "Thưa quý Tiki, gói hàng gửi tới huyện đảo Lý Sơn của tôi bị ngấm nước biển, sách vở bên trong hư hỏng hết.", "intent": "delivery_issue", "style": "formal"}
+{"text": "dat 2 kien ma chi nhan dc 1, kien con lai mat tich", "intent": "delivery_issue", "style": "no_diacritics"}
+{"text": "Ủa sao trạng thái báo đơn đã giao lúc 3h sáng, giờ đó ai mà nhận hàng?", "intent": "delivery_issue", "style": "casual"}
+{"text": "Giao hàng chậm quá trời, cả tuần trễ hẹn rồi, chán Tiki ghê.", "intent": "delivery_issue", "style": "dialect_south"}
+{"text": "Shipper lấy tiền COD xong không đưa hàng, bảo quay lại sau rồi mất hút.", "intent": "delivery_issue", "style": "standard"}
+{"text": "Hàng đông lạnh đến nơi đã rã đá hết, thùng xốp bị vỡ, thịt bốc mùi.", "intent": "delivery_issue", "style": "statement"}
+{"text": "Minh can khieu nai ve viec giao hang, nguoi giao noi nang coc can va doa nat.", "intent": "delivery_issue", "style": "no_diacritics"}
+{"text": "Hey, my order was supposed to come yesterday và giờ app báo 'giao không thành công', nhưng I was home all day!", "intent": "delivery_issue", "style": "mixed_en"}
+{"text": "Tôi thấy lạ là đơn nhảy sang trạng thái 'hoàn hàng' dù chưa có cuộc gọi nào.", "intent": "delivery_issue", "style": "indirect"}
+{"text": "Bưu kiện tới mà tem vận chuyển dán tên tôi nhưng bên trong là đồ chơi trẻ em chứ không phải chảo chống dính.", "intent": "delivery_issue", "style": "standard"}
+{"text": "Sáng giờ đơn hiển thị 'shipper đang đến' tới 8 tiếng mà chẳng thấy ai, có vấn đề gì không ạ?", "intent": "delivery_issue", "style": "hard_vs_track"}
+{"text": "Đồ gốm sứ vỡ tan tành, bên giao hàng không dán nhãn hàng dễ vỡ hay sao?", "intent": "delivery_issue", "style": "angry"}
+{"text": "Lại trễ nữa hả trời!!", "intent": "delivery_issue", "style": "short"}
+{"text": "Con trai tôi đặt hộ, trên app báo đã giao nhưng ông bà già ở nhà cả ngày không thấy ai bấm chuông cả.", "intent": "delivery_issue", "style": "elderly"}
+{"text": "e ở Gò Vấp, shipper bắt e ra tận đầu hẻm lấy, ko chịu vô, vậy có đc ko", "intent": "delivery_issue", "style": "teencode"}
+{"text": "The tracking shows my package was delivered to Hải Phòng but I live in Hà Nội.", "intent": "delivery_issue", "style": "english"}
+{"text": "Nhà mềnh ở Nghệ An, đơn bảo ra bưu cục lấy mà không ai báo trước, giờ nó hoàn về rồi.", "intent": "delivery_issue", "style": "dialect_central"}
+{"text": "Mình đã nhận hàng nhưng có vẻ ai đó dùng thử rồi, máy cạo râu dính lông, hộp ngoài bị rách do vận chuyển.", "intent": "delivery_issue", "style": "standard"}
+{"text": "Tiki ơi, gói hàng 'đã đến bưu cục' từ 10 ngày trước rồi đứng im luôn, thất lạc rồi đúng không?", "intent": "delivery_issue", "style": "casual"}
+{"text": "Yêu cầu xác minh lại người ký nhận đơn 3301-882-19 vì chữ ký không phải của tôi.", "intent": "delivery_issue", "style": "formal"}
+{"text": "giao muon 5 ngay ma ko 1 tin nhan xin loi, dich vu kieu gi vay", "intent": "delivery_issue", "style": "angry"}
+{"text": "Tôi chờ hàng mãi, cuối cùng bưu tá nói xe bị cháy, hàng mất hết, vậy giờ tôi phải làm sao?", "intent": "delivery_issue", "style": "story"}
+{"text": "shipper giao hàng mà đòi xem trước đồ trong hộp của tôi rồi mới đưa, kỳ cục", "intent": "delivery_issue", "style": "casual"}
+{"text": "wrong delivery status — it says returned to sender but i never refused it", "intent": "delivery_issue", "style": "english"}
+{"text": "Dạ cho em hỏi, gói hàng tới nơi bị thủng một lỗ to, chai dầu gội chảy hết ra ngoài, lỗi do bên giao đúng không ạ?", "intent": "delivery_issue", "style": "polite"}
+{"text": "Phí ship bao nhiêu vậy shop?", "intent": "shipping_costs", "style": "short"}
+{"text": "Đơn bao nhiêu tiền thì được miễn phí vận chuyển ạ?", "intent": "shipping_costs", "style": "standard"}
+{"text": "sao phi ship ra Phu Quoc mac vay, 85k cho 1 cai ao", "intent": "shipping_costs", "style": "no_diacritics"}
+{"text": "Mình có TikiPRO thì đơn nào cũng freeship hả hay có điều kiện gì?", "intent": "shipping_costs", "style": "casual"}
+{"text": "How much does express 2-hour delivery cost in HCMC?", "intent": "shipping_costs", "style": "english"}
+{"text": "ship hỏa tốc tính thêm bn tiền v ad", "intent": "shipping_costs", "style": "teencode"}
+{"text": "Kính hỏi, phí vận chuyển được tính theo cân nặng hay theo khoảng cách ạ?", "intent": "shipping_costs", "style": "formal"}
+{"text": "Tôi thấy vô lý khi cái tủ lạnh mua 7 triệu mà tiền vận chuyển tính tận 300 nghìn.", "intent": "shipping_costs", "style": "angry"}
+{"text": "Đặt chung 2 sản phẩm của 2 nhà bán khác nhau thì có bị tính 2 lần phí giao hàng không?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Tiền ship nhiêu dị bà con", "intent": "shipping_costs", "style": "dialect_south"}
+{"text": "Ê, mã freeship 30k của tui nhập vô ko trừ được, đơn trên 150k rồi mà, điều kiện là gì vậy?", "intent": "shipping_costs", "style": "casual"}
+{"text": "Is shipping free for Tiki Trading items or only with a PRO membership?", "intent": "shipping_costs", "style": "english"}
+{"text": "Gửi hàng lên Mèo Vạc, Hà Giang thì cước giao bao nhiêu hả cháu?", "intent": "shipping_costs", "style": "elderly"}
+{"text": "Tháng trước tôi đặt freeship mà tháng này cùng đơn đó lại mất 25k, chính sách thay đổi à?", "intent": "shipping_costs", "style": "indirect"}
+{"text": "mua 1 cuốn sách 40k mà ship 20k, bằng nửa tiền hàng, có cách nào giảm ko", "intent": "shipping_costs", "style": "teencode"}
+{"text": "TikiPRO bao nhiêu tiền một tháng và được mấy lượt miễn phí ship?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Nếu giao nhanh trong ngày thì tốn phí thêm hay vẫn như giao tiêu chuẩn? Mình không quan tâm mấy ngày tới, chỉ hỏi giá.", "intent": "shipping_costs", "style": "hard_vs_delivery_time"}
+{"text": "Phí giao hàng cồng kềnh như sofa tính thế nào nhỉ?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Mắc chi mà ship ra Huế mắc rứa, trong Sài Gòn có 15k à.", "intent": "shipping_costs", "style": "dialect_central"}
+{"text": "freeship extra là cái j z mn", "intent": "shipping_costs", "style": "teencode"}
+{"text": "Shipping fee", "intent": "shipping_costs", "style": "short"}
+{"text": "Mình muốn biết đơn hàng 99k có được miễn ship không hay phải mua thêm cho đủ?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Có phải đơn của Tiki Trading thì miễn phí vận chuyển còn hàng từ shop ngoài thì không?", "intent": "shipping_costs", "style": "standard"}
+{"text": "shipping cost hiện 0đ ở giỏ hàng nhưng đến bước thanh toán lại nhảy lên 32k, why?", "intent": "shipping_costs", "style": "mixed_en"}
+{"text": "Đơn COD có bị thu thêm phí thu hộ không ạ?", "intent": "shipping_costs", "style": "polite"}
+{"text": "Tôi là khách hàng lâu năm, mua hàng đều đặn mỗi tháng mà chưa bao giờ được ưu đãi phí giao hàng. Có chương trình gì cho người như tôi không?", "intent": "shipping_costs", "style": "long"}
+{"text": "cuoc van chuyen ra dao Cat Ba la bao nhieu", "intent": "shipping_costs", "style": "no_diacritics"}
+{"text": "Hỏi chút thôi: đổi địa chỉ từ Quận 1 sang Thủ Đức thì tiền ship có tăng không?", "intent": "shipping_costs", "style": "casual"}
+{"text": "Ad cho e hỏi gói TikiPRO dùng thử có được miễn phí giao 2h không ạ", "intent": "shipping_costs", "style": "casual"}
+{"text": "Why am I charged a shipping fee when the banner says FREESHIP for everything?", "intent": "shipping_costs", "style": "english"}
+{"text": "Phí ship tính trên từng sản phẩm hay cả đơn vậy?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Mua máy giặt có tốn tiền chở lên lầu 4 không, hay phí giao đã bao gồm?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Giá ship đắt kinh khủng!!! 60k cho cái ốp điện thoại???", "intent": "shipping_costs", "style": "angry"}
+{"text": "Xin hỏi phí giao hàng quốc tế với hàng Tiki Global là bao nhiêu?", "intent": "shipping_costs", "style": "formal"}
+{"text": "Đơn trên 300k bên mình có freeship không shop?", "intent": "shipping_costs", "style": "casual"}
+{"text": "Bọn tui ở Bạc Liêu, đặt đồ hoài mà tiền chở hổng bao giờ dưới 30 ngàn, sao kỳ vậy?", "intent": "shipping_costs", "style": "dialect_south"}
+{"text": "Mình hủy TikiPRO rồi thì mấy đơn đang đặt có bị tính lại phí vận chuyển không?", "intent": "shipping_costs", "style": "hard_vs_cancel"}
+{"text": "tiki now 2h phí nhiêu", "intent": "shipping_costs", "style": "teencode"}
+{"text": "Giải thích giùm tôi các mức phí vận chuyển tiêu chuẩn, nhanh và hỏa tốc.", "intent": "shipping_costs", "style": "standard"}
+{"text": "Mã giảm phí ship có dùng chung với mã giảm giá sản phẩm được không?", "intent": "shipping_costs", "style": "standard"}
+{"text": "Does Tiki charge more for delivery to rural areas?", "intent": "shipping_costs", "style": "english"}
+{"text": "Đặt đồ về Đắk Nông chừng nào thì đỡ tốn phí ship nhất, có khung giờ nào rẻ hơn hông?", "intent": "shipping_costs", "style": "dialect_south"}
+{"text": "Chả hiểu sao hôm nay phí giao lại cao gấp đôi hôm qua với cùng địa chỉ.", "intent": "shipping_costs", "style": "indirect"}
+{"text": "Dạ cho cô hỏi, cô mua thuốc bổ cho ông nhà thì có phải trả tiền gửi không con?", "intent": "shipping_costs", "style": "elderly"}
+{"text": "Free ship ko?", "intent": "shipping_costs", "style": "short"}
+{"text": "Thấy bảo thành viên PRO giao miễn phí không giới hạn, nhưng tôi vẫn bị trừ 16k, giải thích hộ.", "intent": "shipping_costs", "style": "standard"}
+{"text": "Shop ơi tiền ship đơn này nhiêu, mình chưa cần biết khi nào tới đâu, hỏi giá trước đã.", "intent": "shipping_costs", "style": "hard_vs_delivery_time"}
+{"text": "phi ship hang nang tren 20kg co bi tinh phu phi khong", "intent": "shipping_costs", "style": "no_diacritics"}
+{"text": "Mình là sinh viên nên tính từng đồng, muốn hỏi có cách nào gom đơn để chỉ trả một lần phí giao không?", "intent": "shipping_costs", "style": "long"}
+{"text": "Ship tới Đà Lạt bao nhiêu tiền vậy shop", "intent": "shipping_costs", "style": "casual"}
+{"text": "Delivery charge cho đơn 2h ở Hà Nội là flat rate hay tính theo km?", "intent": "shipping_costs", "style": "mixed_en"}
+{"text": "Tại sao trả hàng tôi lại phải chịu phí vận chuyển chiều về? Chính sách phí ship hoàn là sao?", "intent": "shipping_costs", "style": "hard_vs_return"}
+{"text": "Ủa phí vận chuyển bị tính 2 lần trong 1 đơn hả?", "intent": "shipping_costs", "style": "casual"}
+{"text": "Bên mình miễn phí giao hàng cho đơn từ mấy trăm nghìn trở lên vậy ạ?", "intent": "shipping_costs", "style": "polite"}
+{"text": "Vì sao Tiki thu phí giao hàng trong khi sàn khác miễn phí hết?", "intent": "shipping_costs", "style": "indirect"}
+{"text": "Nghe nói ngày 11/11 ship 0đ toàn sàn, có thật không hay chỉ một số shop?", "intent": "shipping_costs", "style": "standard"}
+{"text": "e nhập mã freeship mà nó báo 'chưa đủ điều kiện', đk là sao ạ", "intent": "shipping_costs", "style": "teencode"}
+{"text": "Cước hỏa tốc ra sân bay Nội Bài có đắt hơn trong nội thành không?", "intent": "shipping_costs", "style": "standard"}
+{"text": "What's the minimum order value for free shipping?", "intent": "shipping_costs", "style": "english"}
+{"text": "Thôi khỏi nói nhiều, cho cái bảng giá ship đi.", "intent": "shipping_costs", "style": "blunt"}
+{"text": "Hàng gửi từ kho Bình Dương ra Lạng Sơn tính phí vận chuyển ra răng rứa?", "intent": "shipping_costs", "style": "dialect_central"}
+{"text": "Mua laptop giá 20 triệu chẳng lẽ còn phải trả tiền giao à?", "intent": "shipping_costs", "style": "indirect"}
+{"text": "Có đúng là đăng ký PRO năm thì được miễn phí giao 2h còn PRO tháng thì không?", "intent": "shipping_costs", "style": "standard"}

@@ -1,0 +1,65 @@
+{"text": "Đơn hàng 238475611 của tôi đã được duyệt hoàn tiền từ 3 ngày trước nhưng tài khoản vẫn chưa nhận được tiền, nhờ kiểm tra giúp.", "intent": "refund_status", "style": "standard"}
+{"text": "shop ơi tiền hoàn của em tới đâu rồi ạ", "intent": "refund_status", "style": "casual"}
+{"text": "ad oi tien hoan ve chua vay, cho hoai ko thay", "intent": "refund_status", "style": "no_diacritics"}
+{"text": "Hoàn tiền xong chưa?", "intent": "refund_status", "style": "short"}
+{"text": "Hi, my refund was approved last week but I still haven't seen the money on my Visa card. Can you check the status?", "intent": "refund_status", "style": "english"}
+{"text": "Tôi trả hàng chiếc nồi chiên không dầu, bên kho đã xác nhận nhận hàng hôm thứ Hai. Vậy bao giờ tiền về ví Tiki của tôi?", "intent": "refund_status", "style": "standard"}
+{"text": "e đc báo hoàn tiền thành công r mà check vcb ko thấy j hết trơn", "intent": "refund_status", "style": "teencode"}
+{"text": "Kính gửi bộ phận chăm sóc khách hàng, tôi năm nay đã ngoài 60, có yêu cầu hoàn lại 450.000 đồng cho đơn bị hủy, xin hỏi đến nay đã xử lý tới bước nào rồi ạ?", "intent": "refund_status", "style": "formal_elderly"}
+{"text": "Mười ngày rồi đó!!! Hoàn tiền kiểu gì mà mười ngày chưa thấy một đồng, các người giữ tiền của tôi làm gì vậy?", "intent": "refund_status", "style": "angry"}
+{"text": "refund status cho đơn #TK90123 sao rồi bạn, app ghi processing mãi", "intent": "refund_status", "style": "mixed_en"}
+{"text": "Trạng thái hoàn tiền đơn 77812 hiện ghi 'Đã hoàn tiền' mà ngân hàng Techcombank chưa báo biến động số dư, là sao ạ?", "intent": "refund_status", "style": "standard"}
+{"text": "Bữa giờ chờ tiền hoàn mòn mỏi luôn á, coi giùm em coi nó kẹt ở đâu dzậy", "intent": "refund_status", "style": "dialect_south"}
+{"text": "Tiền hoàn về thẻ tín dụng thì mấy ngày mới nhận được? Mình hủy đơn hôm 12, đã có thông báo hoàn rồi.", "intent": "refund_status", "style": "hard_boundary_policy"}
+{"text": "Cho mình hỏi khoản 1.290.000đ hoàn lại vào MoMo đã chuyển đi chưa, mình chưa thấy giao dịch nào.", "intent": "refund_status", "style": "standard"}
+{"text": "hoan tien don 50921 dang o buoc nao vay ad", "intent": "refund_status", "style": "no_diacritics"}
+{"text": "Mình đã gửi yêu cầu hoàn tiền rồi, không cần gửi lại đâu, chỉ muốn biết bao giờ tiền về thôi.", "intent": "refund_status", "style": "hard_boundary_request"}
+{"text": "Is there a tracking number or reference for my refund? Bank says nothing incoming yet.", "intent": "refund_status", "style": "english"}
+{"text": "Hôm trước nhân viên gọi bảo đã duyệt hoàn, giờ hơn tuần rồi mà Tiki Xu cũng không thấy cộng, tiền mặt cũng không. Tôi cần biết chính xác đang ở đâu.", "intent": "refund_status", "style": "long"}
+{"text": "Tiền đâu? Hoàn rồi mà ko thấy", "intent": "refund_status", "style": "short_angry"}
+{"text": "ủa sao app báo refund done mà MB bank e vẫn 0đ biến động z", "intent": "refund_status", "style": "teencode"}
+{"text": "Em hủy đơn sữa bột cho con vì giao trễ, Tiki bảo 5-7 ngày làm việc sẽ hoàn. Nay là ngày làm việc thứ 9 rồi chị ơi, con em đang cần tiền mua đồ, chị kiểm tra giúp em với, em lo quá.", "intent": "refund_status", "style": "emotional_long"}
+{"text": "Mã yêu cầu hoàn tiền RF-2024-88123, nhờ xác nhận tình trạng xử lý.", "intent": "refund_status", "style": "formal_short"}
+{"text": "Đã trả hàng thành công nhưng chưa thấy hoàn tiền, mong phản hồi.", "intent": "refund_status", "style": "statement"}
+{"text": "Lâu quá à nghen, tiền hoàn của tui sao chưa dô tài khoản", "intent": "refund_status", "style": "dialect_south"}
+{"text": "Tiền hoàn của tôi có bị trừ phí gì không mà số về ví chỉ 300k thay vì 350k? Đơn đã được hoàn hôm qua.", "intent": "refund_status", "style": "hard_boundary_policy"}
+{"text": "chao shop, minh muon biet tien hoan cho don 3321009 da chuyen ve vietcombank chua", "intent": "refund_status", "style": "no_diacritics"}
+{"text": "Bên mình hoàn qua ví hay qua thẻ ATM vậy? Vì mình check cả 2 nơi đều chưa có, đơn hủy từ thứ 5 tuần trước.", "intent": "refund_status", "style": "indirect"}
+{"text": "Refund for order 4419-22 still pending after 14 days. What's going on?", "intent": "refund_status", "style": "english_angry"}
+{"text": "Đơn trả hàng tai nghe đã chuyển trạng thái 'hoàn tất' mà tiền vẫn bặt vô âm tín.", "intent": "refund_status", "style": "standard"}
+{"text": "Lừa đảo à? Duyệt hoàn tiền xong rồi im luôn, tôi sẽ báo lên Bộ Công Thương nếu mai chưa nhận được tiền!", "intent": "refund_status", "style": "angry"}
+{"text": "Bạn ơi tiền hoàn bị chuyển nhầm vào ví ZaloPay cũ của mình phải không, mình kiểm tra không thấy ở đâu cả.", "intent": "refund_status", "style": "casual"}
+{"text": "cho e hỏi hoàn tiền mất bao lâu nữa ạ, e đã đc duyệt từ hôm 3/11", "intent": "refund_status", "style": "casual"}
+{"text": "Xin chào, tôi muốn kiểm tra tiến độ hoàn tiền cho đơn hàng số 120938475.", "intent": "refund_status", "style": "formal"}
+{"text": "Ngân hàng nói phía Tiki chưa chuyển, Tiki nói đã chuyển. Rốt cuộc tiền hoàn của tôi đang nằm ở đâu?", "intent": "refund_status", "style": "frustrated"}
+{"text": "tiền hoàn vẫn đang \"chờ xử lý\" hoài, có ai xử lý ko vậy trời", "intent": "refund_status", "style": "casual_annoyed"}
+{"text": "Mình nhận được email hoàn tiền thành công kèm mã giao dịch FT24318xxxx, nhưng sao kê ACB không có. Có thể gửi chứng từ chuyển khoản không?", "intent": "refund_status", "style": "detailed"}
+{"text": "My refund went to Tiki wallet instead of my card? I don't see it in either, please check.", "intent": "refund_status", "style": "english"}
+{"text": "Dạ cho cô hỏi, cô trả lại cái quạt rồi, tiền người ta trả lại cô chưa con?", "intent": "refund_status", "style": "elderly_casual"}
+{"text": "Chời ơi đợi tiền hoàn mà như đợi người yêu cũ quay lại vậy đó, hoài hổng thấy", "intent": "refund_status", "style": "humorous"}
+{"text": "Hoàn tiền một phần cho món bị thiếu trong đơn combo đã được xác nhận, xin hỏi đã chuyển khoản chưa?", "intent": "refund_status", "style": "standard"}
+{"text": "hoàn tiền tới đâu rồi ạ. đơn 66120", "intent": "refund_status", "style": "short"}
+{"text": "Vẫn chưa nhận, đã 7 ngày làm việc kể từ khi Tiki báo hoàn.", "intent": "refund_status", "style": "statement"}
+{"text": "Sao tiền hoàn về Tiki Xu mà không về tài khoản ngân hàng như mình chọn? Và hiện tại xu cũng chưa cộng nữa.", "intent": "refund_status", "style": "hard_boundary"}
+{"text": "Đơn bị shop hủy do hết hàng, tiền đã trừ bên thẻ JCB, giờ khi nào trả lại vậy? Trên app ghi 'đang hoàn tiền'.", "intent": "refund_status", "style": "hard_boundary_payment"}
+{"text": "Plz check refund cho e, đơn 8812xxx, đợi lâu wa r", "intent": "refund_status", "style": "mixed_teencode"}
+{"text": "Ơ thế yêu cầu hoàn tiền của mình bị từ chối hay vẫn đang xét duyệt vậy? Không thấy cập nhật gì.", "intent": "refund_status", "style": "standard"}
+{"text": "Tui hỏi lần thứ ba rồi nè: tiền hoàn đơn máy xay sinh tố đâu?", "intent": "refund_status", "style": "annoyed"}
+{"text": "hoàn tiền rồi mà sao ví tiki vẫn 0đ nhỉ", "intent": "refund_status", "style": "casual"}
+{"text": "Anh chị vui lòng cho biết thời điểm dự kiến tiền hoàn được ghi có vào tài khoản Sacombank của tôi.", "intent": "refund_status", "style": "formal"}
+{"text": "Hoan tien da duoc phe duyet ngay 5/11 nhung toi chua nhan, so tien 2,5 trieu", "intent": "refund_status", "style": "no_diacritics"}
+{"text": "Ê bot, tiền hoàn của tao đâu", "intent": "refund_status", "style": "rude_short"}
+{"text": "Em trả 2 cuốn sách bị rách, shipper lấy rồi, hệ thống báo nhận hàng hoàn. Giờ em chỉ cần biết tiền hoàn về khi nào thôi ạ.", "intent": "refund_status", "style": "standard"}
+{"text": "Mấy hôm nay ngày nào em cũng mở app xem tiền hoàn mà chưa thấy, có bị lỗi gì không ạ?", "intent": "refund_status", "style": "worried"}
+{"text": "Does the refund take longer for Napas cards? Mine was approved on Monday and nothing yet.", "intent": "refund_status", "style": "english"}
+{"text": "Tôi được thông báo tiền hoàn đã gửi về nhưng bị ngân hàng trả lại vì sai số tài khoản, vậy giờ khoản tiền đó đang ở đâu?", "intent": "refund_status", "style": "complex"}
+{"text": "Trên app đơn của mình hiển thị 'Hoàn tiền thất bại', vậy là sao, tiền đã về chưa?", "intent": "refund_status", "style": "standard"}
+{"text": "Rứa răng chừ tiền hoàn chưa về hè, đợi lâu quá trời", "intent": "refund_status", "style": "dialect_central"}
+{"text": "Hông biết tiền hoàn bị kẹt chỗ nào luôn, nhờ bạn tra cứu giùm mình nha", "intent": "refund_status", "style": "dialect_south"}
+{"text": "Cần cập nhật tình trạng hoàn tiền gấp, sắp hết hạn thanh toán thẻ tín dụng rồi.", "intent": "refund_status", "style": "urgent"}
+{"text": "Lần trước hoàn 2 ngày là có, lần này cả tuần chưa thấy, có gì bất thường không?", "intent": "refund_status", "style": "comparative"}
+{"text": "rfd đơn 99012 về chưa shop", "intent": "refund_status", "style": "abbreviation"}
+{"text": "Nhân viên hứa hoàn trong 24h, giờ đã 72h. Tôi muốn biết tiền đang ở khâu nào.", "intent": "refund_status", "style": "firm"}
+{"text": "Mình thấy ghi 'đã hoàn tiền về phương thức thanh toán ban đầu' nhưng mình trả bằng COD mà, vậy tiền đi đâu rồi?", "intent": "refund_status", "style": "confused"}
+{"text": "Has my refund for order TK-55102 been sent out yet?", "intent": "refund_status", "style": "english_short"}
+{"text": "Nay mùng 17 rồi, tiền hoàn đơn tháng trước vẫn chưa thấy đâu hết trơn á.", "intent": "refund_status", "style": "casual"}

@@ -1,0 +1,65 @@
+{"text": "Tôi thanh toán bằng thẻ Vietcombank, tài khoản đã bị trừ 520.000đ nhưng đơn hàng báo thất bại.", "intent": "payment_issue", "style": "standard"}
+{"text": "shop ơi e bị trừ tiền 2 lần cho cùng 1 đơn nè", "intent": "payment_issue", "style": "casual"}
+{"text": "ko nhan dc ma OTP khi thanh toan the, thu 5 lan roi", "intent": "payment_issue", "style": "no_diacritics"}
+{"text": "Quét QR không được", "intent": "payment_issue", "style": "short"}
+{"text": "I was charged but the order didn't go through. Transaction ID 9928811. Please help.", "intent": "payment_issue", "style": "english"}
+{"text": "MoMo báo giao dịch thành công mà app Tiki lại ghi chưa thanh toán, đơn sắp bị hủy rồi.", "intent": "payment_issue", "style": "standard"}
+{"text": "thanh toán zalopay cứ quay vòng vòng r báo lỗi, ức chế ghê", "intent": "payment_issue", "style": "teencode"}
+{"text": "Kính gửi Quý công ty, tôi đã thực hiện giao dịch chuyển khoản 3.150.000 đồng nhưng hệ thống chưa ghi nhận. Đề nghị kiểm tra.", "intent": "payment_issue", "style": "formal"}
+{"text": "Trừ tiền tôi HAI LẦN rồi đấy! 1 triệu 8 mỗi lần! Làm ăn kiểu gì vậy hả?!", "intent": "payment_issue", "style": "angry"}
+{"text": "payment failed hoài, card Techcombank visa debit, đổi browser cũng ko được", "intent": "payment_issue", "style": "mixed_en"}
+{"text": "Giao dịch đang ở trạng thái 'pending' từ tối qua, tiền ngân hàng thì đã bị giữ.", "intent": "payment_issue", "style": "standard"}
+{"text": "Trả tiền bằng thẻ mà nó cứ báo 'thẻ không hợp lệ' hoài, thẻ tui xài mấy chỗ khác vẫn bình thường mà", "intent": "payment_issue", "style": "dialect_south"}
+{"text": "Đặt hàng xong bị trừ tiền mà đơn biến mất luôn, trả lại tiền cho tôi hoặc tạo lại đơn đi.", "intent": "payment_issue", "style": "hard_boundary_refund"}
+{"text": "Mã OTP từ MB Bank về chậm quá, nhập vào thì hết hạn, không cách nào thanh toán được.", "intent": "payment_issue", "style": "standard"}
+{"text": "e chuyển khoản đúng nd rồi mà đơn vẫn 'chờ thanh toán' là sao ạ", "intent": "payment_issue", "style": "teencode"}
+{"text": "Paid twice for the same order by accident? No — the app double-charged me after it froze. Need this fixed.", "intent": "payment_issue", "style": "english_angry"}
+{"text": "Lúc bấm thanh toán app bị văng, mở lại thì thấy ngân hàng đã trừ tiền, nhưng trong 'Đơn hàng của tôi' không có đơn nào. Tôi không biết phải làm sao, số tiền khá lớn, gần 7 triệu.", "intent": "payment_issue", "style": "long_worried"}
+{"text": "lỗi thanh toán", "intent": "payment_issue", "style": "very_short"}
+{"text": "Thẻ tín dụng của tôi bị từ chối dù hạn mức còn nhiều, mã lỗi 05.", "intent": "payment_issue", "style": "standard"}
+{"text": "Dạ cháu ơi, bác bấm trả tiền rồi mà nó cứ báo đỏ đỏ không thành công, tiền trong tài khoản thì bị trừ rồi.", "intent": "payment_issue", "style": "elderly"}
+{"text": "Tiki ơi, ví ShopeePay hông liên kết được hay sao mà thanh toán cứ lỗi hoài", "intent": "payment_issue", "style": "casual"}
+{"text": "ma giao dich FT2431512345 bi tru tien nhung tiki khong nhan", "intent": "payment_issue", "style": "no_diacritics"}
+{"text": "Tôi bị trừ thêm 1 khoản 49k lạ sau khi thanh toán đơn hôm qua, không rõ phí gì.", "intent": "payment_issue", "style": "standard"}
+{"text": "The QR code expires before my banking app even loads it. Can't pay at all.", "intent": "payment_issue", "style": "english"}
+{"text": "Thanh toán trả góp qua thẻ HSBC báo lỗi 'Giao dịch bị từ chối bởi ngân hàng phát hành', tiền thì bị tạm giữ.", "intent": "payment_issue", "style": "hard_boundary_other"}
+{"text": "Bực mình thật sự, đặt 3 lần đều trừ tiền rồi báo lỗi, giờ tài khoản tôi bị treo 3 khoản.", "intent": "payment_issue", "style": "angry"}
+{"text": "ơ sao số dư MoMo bị trừ mà đơn vẫn chưa xác nhận vậy", "intent": "payment_issue", "style": "casual"}
+{"text": "Nhờ đối soát giao dịch ngày 14/11, 21:03, số tiền 890.000đ qua VNPay.", "intent": "payment_issue", "style": "formal_short"}
+{"text": "Mình nhập mã OTP đúng mà hệ thống báo sai, thử lại thì bị khóa thanh toán online.", "intent": "payment_issue", "style": "standard"}
+{"text": "bị charge 2 lần r, check giúp e với", "intent": "payment_issue", "style": "mixed_teencode"}
+{"text": "Chuyển khoản thiếu nội dung đơn hàng thì tiền có bị mất không? Mình chuyển 640k rồi mà đơn chưa được xác nhận thanh toán.", "intent": "payment_issue", "style": "worried"}
+{"text": "Cái nút thanh toán bấm hổng ăn, bấm hoài nó đứng hình luôn", "intent": "payment_issue", "style": "dialect_south"}
+{"text": "Ngân hàng báo giao dịch đã thành công, Tiki báo giao dịch thất bại. Ai đúng?", "intent": "payment_issue", "style": "indirect"}
+{"text": "Thẻ Napas nội địa báo 'Không đủ điều kiện thanh toán trực tuyến', tôi đã đăng ký Internet Banking rồi.", "intent": "payment_issue", "style": "standard"}
+{"text": "My Mastercard keeps getting declined on Tiki even though the bank says there's no block.", "intent": "payment_issue", "style": "english"}
+{"text": "Hôm qua đặt đơn tủ lạnh, thanh toán bằng thẻ ACB bị trừ 9.490.000đ. Sáng nay đơn tự hủy vì 'quá hạn thanh toán'. Tôi đã trả tiền rồi mà quá hạn cái gì?", "intent": "payment_issue", "style": "angry_long"}
+{"text": "thanh toan bang the bi loi 3D secure, khong hien trang xac thuc", "intent": "payment_issue", "style": "no_diacritics"}
+{"text": "Sao tiền trong ví Tiki của tôi bị trừ mà không có đơn hàng nào tương ứng?", "intent": "payment_issue", "style": "standard"}
+{"text": "Em bấm 'Thanh toán' mà nó nhảy qua trang trắng xoá rồi đứng luôn ạ.", "intent": "payment_issue", "style": "casual"}
+{"text": "Trừ tiền rồi mà không lên đơn, các bạn hoàn trả lại ngay khoản bị trừ oan đó giúp mình.", "intent": "payment_issue", "style": "hard_boundary_refund"}
+{"text": "Mấy bữa nay thanh toán bằng ví nào cũng lỗi, có phải hệ thống đang bảo trì không?", "intent": "payment_issue", "style": "indirect"}
+{"text": "tk e bị trừ 2tr1 nhưng đơn vẫn hiện unpaid", "intent": "payment_issue", "style": "teencode"}
+{"text": "Xin lỗi cho tôi hỏi, tại sao số tiền trừ trong thẻ lại cao hơn tổng đơn hàng 35.000 đồng?", "intent": "payment_issue", "style": "polite"}
+{"text": "Mã QR VietQR quét ra sai số tiền, hiển thị 0đ.", "intent": "payment_issue", "style": "standard"}
+{"text": "Transaction stuck at 'processing' for 2 hours, money already deducted from Vietinbank.", "intent": "payment_issue", "style": "english"}
+{"text": "Ủa sao điện thoại không nhận được tin nhắn mã xác thực vậy, đợi cả chục phút", "intent": "payment_issue", "style": "casual"}
+{"text": "Liên kết thẻ Sacombank thất bại, báo lỗi 'Thông tin thẻ không chính xác' mặc dù tôi nhập đúng hết.", "intent": "payment_issue", "style": "standard"}
+{"text": "tui chuyển khoản dư 100k so với đơn, giờ phần dư đó tính sao", "intent": "payment_issue", "style": "casual"}
+{"text": "Đang flash sale mà thanh toán lỗi, mất suất mua giá rẻ, tiền thì bị giữ. Quá thất vọng.", "intent": "payment_issue", "style": "emotional"}
+{"text": "Thanh toán bằng Apple Pay không được, cứ báo 'Payment not completed'.", "intent": "payment_issue", "style": "mixed_en"}
+{"text": "Bị trừ tiền nhưng đơn lỗi. Hoàn hay tạo đơn mới?", "intent": "payment_issue", "style": "short_boundary"}
+{"text": "Xin hỏi, giao dịch của tôi bị ngân hàng đánh dấu nghi ngờ gian lận khi mua trên Tiki, tôi phải làm gì để thanh toán được?", "intent": "payment_issue", "style": "formal"}
+{"text": "Thằng em tui xài chung thẻ, nó nói thấy 2 lần trừ tiền đơn Tiki trong 1 phút, tui chỉ đặt có 1 lần thôi.", "intent": "payment_issue", "style": "storytelling"}
+{"text": "Hệ thống báo 'Giao dịch đang chờ xác nhận từ ngân hàng' gần một ngày rồi.", "intent": "payment_issue", "style": "statement"}
+{"text": "OTP ko về số đt, đã đổi sim mới nhưng đăng ký cùng số", "intent": "payment_issue", "style": "abbreviation"}
+{"text": "Can't complete payment with MoMo, it says 'merchant not found'.", "intent": "payment_issue", "style": "english_short"}
+{"text": "Đặt đơn bằng thẻ, bị trừ tiền, đơn vẫn hiện 'Thanh toán thất bại – vui lòng thử lại'. Tôi không dám thử lại sợ trừ lần nữa.", "intent": "payment_issue", "style": "cautious"}
+{"text": "trời đất ơi trừ 3 lần tiền luôn ạ, cíu e", "intent": "payment_issue", "style": "teencode_panic"}
+{"text": "Thanh toán thành công rồi mà sao vẫn nhận SMS nhắc thanh toán?", "intent": "payment_issue", "style": "confused"}
+{"text": "Tôi dùng thẻ Visa phát hành ở nước ngoài, thanh toán bị từ chối liên tục.", "intent": "payment_issue", "style": "standard"}
+{"text": "Mần răng mà trả tiền cứ báo lỗi hoài rứa", "intent": "payment_issue", "style": "dialect_central"}
+{"text": "Số dư bị trừ, đơn bị hủy, chưa ai nói gì với tôi cả.", "intent": "payment_issue", "style": "terse"}
+{"text": "Mình thanh toán xong mới thấy app bị trừ nhầm phí vận chuyển 2 lần trong 1 giao dịch.", "intent": "payment_issue", "style": "standard"}
+{"text": "Bank báo successful, Tiki báo failed. Đơn số 1209xxxx. Xử lý giúp.", "intent": "payment_issue", "style": "mixed_en"}
+{"text": "Đã thử thanh toán qua cả Viettel Money lẫn thẻ ATM nhưng đều báo 'Hết thời gian giao dịch'.", "intent": "payment_issue", "style": "standard"}
