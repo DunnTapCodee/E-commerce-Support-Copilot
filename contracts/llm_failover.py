@@ -6,21 +6,53 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, AsyncGenerator, Dict, List, Optional
+from pathlib import Path
+import ssl
+from typing import Any, AsyncGenerator, Dict, List, Optional, Union
 import httpx
 import requests
 
 logger = logging.getLogger("contracts.llm_failover")
 
-# Default API Keys provided for gpt-oss-20b
-DEFAULT_KEYS = [
-    "sk-6b62dfadc0fa9e74980de017ec926c48817aaeb0e3442449e95d2d52439d127e",
-    "sk-9ab538e009ab78639e177b0703b78476c74511874de5c39d5fc6a7a1d786977a",
-]
+
+def _resolve_ca_bundle() -> Optional[str]:
+    """Return optional CA bundle path from standard environment variables."""
+    ca_bundle = (
+        os.getenv("LLM_CA_BUNDLE")
+        or os.getenv("REQUESTS_CA_BUNDLE")
+        or os.getenv("SSL_CERT_FILE")
+        or ""
+    ).strip()
+    if not ca_bundle:
+        return None
+    if not Path(ca_bundle).is_file():
+        raise FileNotFoundError(f"Configured CA bundle file not found: {ca_bundle}")
+    return ca_bundle
+
+
+def get_tls_verify_for_requests() -> Union[bool, str]:
+    """Return TLS verification option for requests (True by default, or CA bundle path)."""
+    return _resolve_ca_bundle() or True
+
+
+def get_tls_verify_for_httpx() -> Union[bool, ssl.SSLContext]:
+    """Return TLS verification option for httpx (True by default, or SSLContext with CA bundle)."""
+    ca_bundle = _resolve_ca_bundle()
+    if ca_bundle:
+        return ssl.create_default_context(cafile=ca_bundle)
+    return True
+
+
+def is_external_llm_disabled() -> bool:
+    """Return True when external LLM network calls are explicitly disabled."""
+    return os.getenv("DISABLE_EXTERNAL_LLM", "").strip().lower() in ("1", "true", "yes")
 
 
 def get_available_api_keys() -> List[str]:
-    """Retrieve list of active and backup OpenAI-compatible API keys."""
+    """Retrieve OpenAI-compatible API keys strictly from environment variables."""
+    if is_external_llm_disabled():
+        return []
+
     keys: List[str] = []
     # 1. Check comma-separated env var
     env_keys = os.getenv("OPENAI_API_KEYS", "")
@@ -39,11 +71,6 @@ def get_available_api_keys() -> List[str]:
     if backup and backup not in keys:
         keys.append(backup)
 
-    # 3. Add default production keys if not already present
-    for dk in DEFAULT_KEYS:
-        if dk not in keys:
-            keys.append(dk)
-
     return keys
 
 
@@ -56,6 +83,9 @@ async def call_chat_completion_with_failover(
     """Execute chat completion with automatic failover across multiple keys."""
     url = f"{(base_url or os.getenv('OPENAI_BASE_URL', 'https://api.xah.io/v1')).rstrip('/')}/chat/completions"
     keys = get_available_api_keys()
+    if not keys:
+        logger.debug("[LLMFailover] No OpenAI-compatible API keys available; skipping request.")
+        return None
 
     base_headers = dict(headers or {})
     base_headers["Content-Type"] = "application/json"
@@ -68,7 +98,7 @@ async def call_chat_completion_with_failover(
         masked_key = f"{key[:8]}...{key[-4:]}"
 
         try:
-            async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
+            async with httpx.AsyncClient(timeout=timeout, verify=get_tls_verify_for_httpx()) as client:
                 resp = await client.post(url, json=payload, headers=req_headers)
                 if resp.status_code == 200:
                     data = resp.json()
@@ -109,6 +139,9 @@ def call_chat_completion_sync_with_failover(
     """Synchronous chat completion with automatic failover (for sync classifiers)."""
     url = f"{(base_url or os.getenv('OPENAI_BASE_URL', 'https://api.xah.io/v1')).rstrip('/')}/chat/completions"
     keys = get_available_api_keys()
+    if not keys:
+        logger.debug("[LLMFailover Sync] No OpenAI-compatible API keys available; skipping request.")
+        return None
 
     base_headers = dict(headers or {})
     base_headers["Content-Type"] = "application/json"
@@ -119,7 +152,13 @@ def call_chat_completion_sync_with_failover(
         masked_key = f"{key[:8]}...{key[-4:]}"
 
         try:
-            resp = requests.post(url, json=payload, headers=req_headers, timeout=timeout, verify=False)
+            resp = requests.post(
+                url,
+                json=payload,
+                headers=req_headers,
+                timeout=timeout,
+                verify=get_tls_verify_for_requests(),
+            )
             if resp.status_code == 200:
                 data = resp.json()
                 choices = data.get("choices", [])
@@ -149,6 +188,9 @@ async def stream_chat_completion_with_failover(
     """Stream chat completion tokens (Server-Sent Events) with initial connection failover."""
     url = f"{(base_url or os.getenv('OPENAI_BASE_URL', 'https://api.xah.io/v1')).rstrip('/')}/chat/completions"
     keys = get_available_api_keys()
+    if not keys:
+        logger.debug("[LLMFailover Stream] No OpenAI-compatible API keys available; skipping stream.")
+        return
 
     base_headers = dict(headers or {})
     base_headers["Content-Type"] = "application/json"
@@ -162,7 +204,7 @@ async def stream_chat_completion_with_failover(
         masked_key = f"{key[:8]}...{key[-4:]}"
 
         try:
-            async with httpx.AsyncClient(timeout=timeout, verify=False) as client:
+            async with httpx.AsyncClient(timeout=timeout, verify=get_tls_verify_for_httpx()) as client:
                 async with client.stream("POST", url, json=req_payload, headers=req_headers) as resp:
                     if resp.status_code != 200:
                         err_bytes = await resp.aread()

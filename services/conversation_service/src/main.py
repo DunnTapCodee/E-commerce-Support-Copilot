@@ -33,6 +33,7 @@ from services.conversation_service.src.config import (
     DISABLE_CONFIDENCE_GUARD,
     FAITHFULNESS_THRESHOLD,
     INTENT_CONFIDENCE_THRESHOLD,
+    OPENAI_MODEL,
     PORT,
 )
 from services.conversation_service.src.clients import (
@@ -298,9 +299,10 @@ async def execute_dialogue_preprocessing(
     if isinstance(results[1], Exception):
         print(f"[ConversationService] Intent Service concurrent error: {results[1]}")
         ml_intent_resp = IntentPredictionResponse(
-            intent=state.active_intent or "unknown_query",
-            confidence=0.50 if state.active_intent else 0.0,
-            is_in_scope=bool(state.active_intent),
+            intent="unknown_query",
+            confidence=0.0,
+            is_in_scope=False,
+            model_name="unavailable_fallback",
             all_probabilities={},
         )
     else:
@@ -313,24 +315,40 @@ async def execute_dialogue_preprocessing(
     else:
         rewritten_query, rewrite_method = results[2]
 
-    # Intent Transition & Arbitration
-    effective_intent, effective_conf, switched = await IntentTracker.resolve_intent_transition(
-        customer_query,
-        input_type,
-        new_facts,
-        ml_intent_resp,
-        state,
+    # Intent Transition & Arbitration (fail closed when intent backend is unavailable)
+    intent_unavailable = (
+        getattr(ml_intent_resp, "model_name", None) == "unavailable_fallback"
+        or (ml_intent_resp.intent == "unknown_query" and not ml_intent_resp.is_in_scope)
     )
-    state.active_intent = effective_intent
+    if intent_unavailable:
+        effective_intent = "unknown_query"
+        effective_conf = 0.0
+        final_intent_resp = IntentPredictionResponse(
+            intent="unknown_query",
+            confidence=0.0,
+            is_in_scope=False,
+            all_probabilities={},
+            language=getattr(ml_intent_resp, "language", None) or "vi",
+            model_name=getattr(ml_intent_resp, "model_name", None) or "unavailable_fallback",
+        )
+    else:
+        effective_intent, effective_conf, switched = await IntentTracker.resolve_intent_transition(
+            customer_query,
+            input_type,
+            new_facts,
+            ml_intent_resp,
+            state,
+        )
+        state.active_intent = effective_intent
 
-    final_intent_resp = IntentPredictionResponse(
-        intent=effective_intent,
-        confidence=round(effective_conf, 4),
-        is_in_scope=True if DISABLE_CONFIDENCE_GUARD else (effective_conf >= 0.50),
-        all_probabilities=ml_intent_resp.all_probabilities if ml_intent_resp else {effective_intent: effective_conf},
-        language="vi",
-        model_name="hybrid_dialogue_tracker",
-    )
+        final_intent_resp = IntentPredictionResponse(
+            intent=effective_intent,
+            confidence=round(effective_conf, 4),
+            is_in_scope=True if DISABLE_CONFIDENCE_GUARD else (effective_conf >= 0.50),
+            all_probabilities=ml_intent_resp.all_probabilities if ml_intent_resp else {effective_intent: effective_conf},
+            language="vi",
+            model_name=getattr(ml_intent_resp, "model_name", None) or "hybrid_dialogue_tracker",
+        )
 
     effective_query_for_rag = rewritten_query if (input_type not in {"chitchat"} and rewritten_query) else customer_query
 
@@ -371,11 +389,19 @@ async def execute_dialogue_preprocessing(
 
     # Dynamic Components Labels
     intent_model_name = getattr(ml_intent_resp, "model_name", None) or ""
-    intent_model_label = (
-        "Mô hình LLM gpt-oss (openai-gpt-oss-20b)"
-        if ml_intent_resp and ("gpt-oss" in intent_model_name.lower() or ml_intent_resp.confidence >= 0.75)
-        else "NLU Hybrid (Quy tắc & Semantic Rules)"
-    )
+    intent_name_lower = intent_model_name.lower()
+    if intent_model_name == "unavailable_fallback":
+        intent_model_label = "Fallback An toàn (Không khả dụng LLM/ML)"
+    elif intent_model_name == "semantic_rule_fallback":
+        intent_model_label = "NLU Semantic Rules Fallback"
+    elif intent_model_name in ("legacy_baseline", "module1_model") or any(
+        k in intent_name_lower for k in ("sklearn", "onnx", "minilm", "logistic", "linearsvc", "tfidf")
+    ):
+        intent_model_label = f"ML Intent Fallback ({intent_model_name})"
+    elif intent_model_name:
+        intent_model_label = f"LLM Intent Classifier ({intent_model_name})"
+    else:
+        intent_model_label = "NLU Intent Classifier"
     rewriter_label = (
         f"LLM Query Rewriter ({rewrite_method})"
         if rewrite_method in ("llm_query_rewriter", "llm_policy_rewriter", "llm_order_rewriter", "llm_hybrid_rewriter")
@@ -497,8 +523,9 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
             )
             gen_mode = "blocked_safety_envelope"
 
+    active_openai_model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
     draft_label = (
-        "Mô hình LLM gpt-oss (openai-gpt-oss-20b)"
+        f"LLM Draft Engine ({active_openai_model})"
         if gen_mode in ("proceed_to_llm", "copilot_gpt_oss") and not agent_draft.startswith("Dạ em cảm ơn anh/chị! Nếu mình có bất kỳ")
         else "Template CSKH & Macro An toàn"
     )

@@ -22,7 +22,7 @@ GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMI
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "openai-gpt-oss-20b")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
 
 INTENT_DESCRIPTIONS: Dict[str, str] = {
     "track_order": "Tra cứu thông tin, vị trí, giá tiền, tổng thanh toán, kiểm tra lại đơn, hóa đơn VAT, sản phẩm, tiến độ, trạng thái xử lý hoặc theo dõi bưu kiện đơn hàng (ví dụ: 'đơn ORD-1003 đang ở đâu', 'đơn hàng của mình bao nhiêu tiền', 'tôi muốn kiểm tra lại đơn', 'xuất hóa đơn VAT')",
@@ -121,7 +121,14 @@ class LLMIntentClassifier:
 
     def _call_openai_compatible(self, query: str, api_key: Optional[str] = None) -> Optional[IntentPredictionResponse]:
         """Call OpenAI-compatible chat completion for intent classification with multi-key failover."""
-        from contracts.llm_failover import call_chat_completion_sync_with_failover
+        from contracts.llm_failover import (
+            call_chat_completion_sync_with_failover,
+            get_available_api_keys,
+            is_external_llm_disabled,
+        )
+
+        if is_external_llm_disabled() or not get_available_api_keys():
+            return None
 
         base_url = os.getenv("OPENAI_BASE_URL", OPENAI_BASE_URL).rstrip("/")
         model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
@@ -167,6 +174,11 @@ class LLMIntentClassifier:
 
     def _call_gemini(self, query: str) -> Optional[IntentPredictionResponse]:
         """Send prompt to Gemini 2.5 Flash and parse structured JSON."""
+        from contracts.llm_failover import get_tls_verify_for_requests, is_external_llm_disabled
+
+        if is_external_llm_disabled() or not self.api_key:
+            return None
+
         payload = {
             "systemInstruction": {
                 "parts": [{"text": INTENT_SYSTEM_PROMPT}]
@@ -186,7 +198,12 @@ class LLMIntentClassifier:
         }
 
         url = f"{GEMINI_API_URL}?key={self.api_key}"
-        resp = requests.post(url, json=payload, timeout=self.timeout, verify=False)
+        resp = requests.post(
+            url,
+            json=payload,
+            timeout=self.timeout,
+            verify=get_tls_verify_for_requests(),
+        )
 
         if resp.status_code == 200:
             data = resp.json()
@@ -318,7 +335,14 @@ class LLMIntentClassifier:
         # 16. Out of scope (weather, math, general trivia, unrelated chat)
         return self._build_resp("out_of_scope", 0.90, query, is_in_scope=False)
 
-    def _build_resp(self, intent: str, conf: float, query: str, is_in_scope: bool = True) -> IntentPredictionResponse:
+    def _build_resp(
+        self,
+        intent: str,
+        conf: float,
+        query: str,
+        is_in_scope: bool = True,
+        model_name: str = "semantic_rule_fallback",
+    ) -> IntentPredictionResponse:
         """Construct IntentPredictionResponse with language detection."""
         is_vi = bool(re.search(r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", query.lower()))
         return IntentPredictionResponse(
@@ -326,6 +350,6 @@ class LLMIntentClassifier:
             confidence=conf,
             is_in_scope=is_in_scope and intent in TARGET_INTENTS and intent != OOS_LABEL,
             language="vi" if is_vi else "en",
-            model_name="llm_intent_classifier",
+            model_name=model_name,
             all_probabilities={intent: conf},
         )

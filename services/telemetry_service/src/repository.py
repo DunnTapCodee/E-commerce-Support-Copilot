@@ -1,10 +1,11 @@
 """Repository handling CRUD operations for telemetry_logs and high-performance order queries."""
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
 from typing import Any, Dict, List, Optional
 
-from contracts.schemas import AuditLogCreate, HumanActionUpdate
+from contracts.schemas import AuditLogCreate, HumanActionUpdate, get_system_now
 from services.telemetry_service.src.cache import OrderLRUCache, normalize_phone
 from services.telemetry_service.src.database import get_db_connection
 from services.telemetry_service.src.metrics import (
@@ -12,6 +13,20 @@ from services.telemetry_service.src.metrics import (
     detect_rubber_stamping,
     is_continual_learning_candidate,
 )
+
+
+def _parse_timestamp_utc(ts: Optional[str], naive_tz: timezone = timezone.utc) -> datetime:
+    """Parse ISO (+07:00/Z) or naive legacy SQLite timestamp into UTC datetime for chronological sorting."""
+    if not ts or not isinstance(ts, str):
+        return datetime.min.replace(tzinfo=timezone.utc)
+    cleaned = ts.strip()
+    try:
+        parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=naive_tz)
+        return parsed.astimezone(timezone.utc)
+    except ValueError:
+        return datetime.min.replace(tzinfo=timezone.utc)
 
 
 class TelemetryRepository:
@@ -23,15 +38,17 @@ class TelemetryRepository:
         self.cache = OrderLRUCache(max_size=cache_size)
 
     def insert_audit_log(self, record: AuditLogCreate) -> None:
-        """Insert or update initial interaction log."""
+        """Insert or update initial interaction log with explicit +07:00 timestamp."""
+        now_ts = get_system_now()
         with get_db_connection(self.db_path) as conn:
             conn.execute(
                 """
                 INSERT INTO telemetry_logs
-                (interaction_id, customer_query, predicted_intent, intent_confidence,
+                (interaction_id, timestamp, customer_query, predicted_intent, intent_confidence,
                  guardrail_action, retrieved_doc_ids, raw_draft_text, latency_ms)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(interaction_id) DO UPDATE SET
+                 timestamp=excluded.timestamp,
                  customer_query=excluded.customer_query,
                  predicted_intent=excluded.predicted_intent,
                  intent_confidence=excluded.intent_confidence,
@@ -42,6 +59,7 @@ class TelemetryRepository:
                 """,
                 (
                     record.interaction_id,
+                    now_ts,
                     record.customer_query,
                     record.predicted_intent,
                     record.intent_confidence,
@@ -172,9 +190,14 @@ class TelemetryRepository:
                 """
             ).fetchall()
 
-            records = conn.execute(
-                "SELECT * FROM telemetry_logs ORDER BY timestamp DESC LIMIT 50;"
+            raw_records = conn.execute(
+                "SELECT * FROM telemetry_logs ORDER BY rowid DESC LIMIT 200;"
             ).fetchall()
+            records = sorted(
+                (dict(r) for r in raw_records),
+                key=lambda r: _parse_timestamp_utc(r.get("timestamp"), naive_tz=timezone.utc),
+                reverse=True,
+            )[:50]
 
         actions_map = {row["human_action"]: row["count"] for row in action_counts}
         guardrail_map = {row["guardrail_action"]: row["count"] for row in guardrail_counts}
@@ -204,7 +227,7 @@ class TelemetryRepository:
             "continual_learning_pool_count": cl_count,
             "average_latency_ms": round(float(avg_latency), 2),
             "avg_latency_ms": round(float(avg_latency), 2),
-            "recent_records": [dict(r) for r in records],
+            "recent_records": records,
             "cache_stats": self.cache.stats(),
         }
 
@@ -217,12 +240,17 @@ class TelemetryRepository:
                        raw_draft_text, final_sent_text, edit_distance, timestamp
                 FROM telemetry_logs
                 WHERE is_continual_learning = 1
-                ORDER BY timestamp DESC
+                ORDER BY rowid DESC
                 LIMIT ?;
                 """,
-                (limit,),
+                (max(limit * 4, 200),),
             ).fetchall()
-            return [dict(r) for r in rows]
+            sorted_rows = sorted(
+                (dict(r) for r in rows),
+                key=lambda r: _parse_timestamp_utc(r.get("timestamp"), naive_tz=timezone.utc),
+                reverse=True,
+            )
+            return sorted_rows[:limit]
 
     # -------------------------------------------------------------------
     # Module 3: High-Performance Indexed SQLite + LRU Cached Order Lookups
@@ -357,10 +385,10 @@ class TelemetryRepository:
             conn.execute(
                 """
                 UPDATE orders
-                SET order_status = 'Cancelled', can_cancel = 0, updated_at = CURRENT_TIMESTAMP
+                SET order_status = 'Cancelled', can_cancel = 0, updated_at = ?
                 WHERE order_id = ?;
                 """,
-                (real_order_id,),
+                (get_system_now(), real_order_id),
             )
             conn.commit()
 

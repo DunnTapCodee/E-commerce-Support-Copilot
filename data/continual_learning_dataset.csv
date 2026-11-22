@@ -4,7 +4,7 @@ id,source_strategy,raw_user_query,training_input,intent_label,confidence,human_v
 aa806641-91ad-49c2-b079-3e41f2a0f7fd,1_standalone,Kiểm tra tiến độ đơn hàng ORD-1003 giúp tôi,Kiểm tra tiến độ đơn hàng ORD-1003 giúp tôi,track_order,0.94,0,AUTO_LLM,2026-10-29 10:54:18
 df271464-e28d-4e5b-9c37-4873ca45694b,1_standalone,Kiem tra don ORD-2024-001 giup minh,Kiem tra don ORD-2024-001 giup minh,track_order,0.95,0,AUTO_LLM,2026-11-05 14:41:57
 f9f8fe38-4c8a-4626-a764-7264ac3db608,1_standalone_switch,"Xin chào shop, shop có chính sách đổi trả hàng không?","Xin chào shop, shop có chính sách đổi trả hàng không?",return_policy,0.96,0,AUTO_LLM,2026-11-05 14:48:56
-5db5e152-f3f4-40fb-8bf1-cb7727a4783e,1_standalone,Kiểm tra đơn hàng ORD-2024-001,Kiểm tra đơn hàng ORD-2024-001,track_order,0.96,0,AUTO_LLM,2026-11-05 14:50:40
+5db5e152-f3f4-40fb-8bf1-cb7727a4783e,1_standalone,Kiểm tra đơn hàng ORD-2024-001,Kiểm tra đơn hàng ORD-2024-001,track_order,0.96,0,AUTO_LLM,2026-11-05 14:50:40 
 3cb891a5-ff98-43e7-907b-5bd6f82d91e8,1_standalone,hi,hi,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-05 14:53:29
 334a0c56-7439-4ddc-b0b0-ef33dcab1545,1_standalone,đơn hàng của mình bao nhiêu tiền nhỉ,đơn hàng của mình bao nhiêu tiền nhỉ,track_order,0.98,1,AUDITED_HUMAN,2026-11-05 14:54:14
 db2b44ad-e2fd-4ba0-b363-cadf4454192b,1_standalone,helllllo,helllllo,chitchat_greeting,0.98,1,AUDITED_HUMAN,2026-11-05 14:55:33
@@ -79,3 +79,6 @@ a1647c30-f663-479e-9452-3332a67c944c,1_standalone_switch,chuyển máy cho nhân
 58807018-09cc-4f1a-8732-951204be0e1d,1_standalone,kiểm tra đơn ORD-1002 bao giờ giao tới nơi,kiểm tra đơn ORD-1002 bao giờ giao tới nơi,delivery_time,0.94,0,AUTO_LLM,2026-11-08 02:57:58
 40c69fd2-9e52-493c-b883-87618f2eb1ae,1_standalone,đơn hàng của mình bao giờ tới,đơn hàng của mình bao giờ tới,delivery_time,0.96,0,AUTO_LLM,2026-11-10 16:13:31
 test-auto-sync-1,3_rewritten,cho tôi hủy đơn hàng ORD-1002,Yêu cầu hủy đơn hàng ORD-1002 của khách hàng.,cancel_order,0.98,1,AUDITED_HUMAN,2026-11-12 12:15:37
+197b58de-dc32-4bc5-9ff3-30cf1274999d,1_standalone,alo,alo,chitchat_greeting,0.95,0,AUTO_LLM,2026-11-15 19:09:17
+e5129e47-7ad8-4884-b522-3ff1fc115068,3_rewritten,đơn hàng của mình đến đâu r nhỉ,Vị trí và trạng thái vận chuyển hiện tại của đơn hàng ORD-1001 là gì?,track_order,0.95,0,AUTO_LLM,2026-11-15 19:09:59
+5ff47fd4-1f72-4ff0-af26-52610b74ed0d,3_rewritten,mai hoặc ngày kia mình ko nhận đc rồi,Xin cập nhật thời gian giao hàng mới cho đơn hàng ORD-1001 vì không thể nhận vào ngày mai hoặc ngày kia.,delivery_issue,0.88,0,AUTO_LLM,2026-11-15 19:11:17

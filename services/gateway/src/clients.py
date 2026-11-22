@@ -58,7 +58,19 @@ class MicroserviceClients:
             )
             resp.raise_for_status()
             data = resp.json()
-            return [RetrievedDocument(**doc) for doc in data.get("documents", [])]
+            if isinstance(data, list):
+                docs = data
+            elif isinstance(data, dict):
+                docs = data.get("documents", [])
+                if not isinstance(docs, list):
+                    raise ValueError(
+                        f"Unexpected 'documents' payload type from RAG retrieve: {type(docs).__name__}"
+                    )
+            else:
+                raise ValueError(
+                    f"Unexpected JSON payload type from RAG retrieve: {type(data).__name__}"
+                )
+            return [RetrievedDocument(**doc) for doc in docs]
 
     async def generate_draft(
         self, query: str, citations: List[RetrievedDocument]

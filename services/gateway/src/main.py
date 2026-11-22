@@ -238,7 +238,11 @@ async def process_copilot_query(
         suggested_reply=draft_text,
         agent_guidance=guardrail_decision.reason if not guardrail_decision.allow_llm else None,
         components_used={
-            "intent_classifier": "Gateway Heuristic Fallback",
+            "intent_classifier": (
+                "Gateway Safe Escalation (Intent Service Unavailable)"
+                if intent_service_error
+                else f"Intent Service ({intent_resp.model_name or intent_resp.intent})"
+            ),
             "query_rewriter": "Direct Customer Query",
             "retrieval_engine": f"Direct Policy Retrieval ({len(citations)} tài liệu)" if citations else "Không kích hoạt",
             "draft_engine": "Gateway Fallback Pipeline",

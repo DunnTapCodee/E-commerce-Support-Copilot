@@ -12,8 +12,9 @@ import httpx
 
 from contracts.llm_failover import (
     call_chat_completion_with_failover,
-    stream_chat_completion_with_failover,
     get_available_api_keys,
+    get_tls_verify_for_httpx,
+    stream_chat_completion_with_failover,
 )
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
@@ -23,7 +24,7 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "openai-gpt-oss-20b")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
 
 
 class CopilotDraftEngine:
@@ -98,7 +99,7 @@ class CopilotDraftEngine:
                 "gemini-2.0-flash",
                 "gemini-1.5-flash",
             ]
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=10.0, verify=get_tls_verify_for_httpx()) as client:
                 for model in dict.fromkeys(candidate_models):
                     url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
                     try:
@@ -254,16 +255,17 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
             citations=citations,
         )
 
+        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
         gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
 
-        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b via api.xah.io with failover)
-        if get_available_api_keys():
+        # 1. Primary: OpenAI-compatible (CKEY.VN via api.xah.io/v1 with multi-key failover)
+        if provider in ("openai_compatible", "openai", "auto") and get_available_api_keys():
             draft = await cls._call_openai_compatible(prompt)
             if draft:
                 return draft
 
-        # 2. Secondary: Gemini API if OpenAI is degraded / quota exceeded
-        if gemini_key:
+        # 2. Secondary: Gemini API only when provider explicitly allows Gemini
+        if provider in ("gemini", "auto") and gemini_key:
             draft = await cls._call_gemini(prompt, gemini_key)
             if draft:
                 return draft
@@ -311,8 +313,9 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
             citations=citations,
         )
 
+        provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
         yielded_any = False
-        if get_available_api_keys():
+        if provider in ("openai_compatible", "openai", "auto") and get_available_api_keys():
             async for token in cls._stream_openai_compatible(prompt):
                 yielded_any = True
                 yield token

@@ -50,3 +50,5 @@ artifacts/models/intent_eval_en/
 # Frontend build & dependencies
 frontend/node_modules/
 frontend/dist/
+
+docs/lectures

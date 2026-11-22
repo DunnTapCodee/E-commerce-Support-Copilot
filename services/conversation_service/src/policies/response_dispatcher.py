@@ -127,8 +127,20 @@ class ResponsePolicyDispatcher:
                 "out_of_scope_abstain",
             )
 
-        # Case 3: Confidence thấp hoặc Ngoài phạm vi
-        if not DISABLE_CONFIDENCE_GUARD and (confidence < INTENT_CONFIDENCE_THRESHOLD or not intent_resp.is_in_scope):
+        # Case 3: Confidence thấp hoặc Ngoài phạm vi / Dịch vụ phân loại không khả dụng
+        if not intent_resp.is_in_scope or intent_name == "unknown_query":
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason="Không xác định được ý định hợp lệ hoặc dịch vụ phân loại tạm gián đoạn; chuyển nhân viên xử lý.",
+            )
+            draft = (
+                "Dạ em chào anh/chị! Em đã tiếp nhận thông tin yêu cầu của mình. "
+                "Em đang chuyển tiếp để nhân viên kiểm tra chi tiết và hỗ trợ anh/chị ngay đây ạ."
+            )
+            return guard, draft, None, AGENT_GUIDANCE["low_confidence"], "blocked_intent_unavailable"
+
+        if not DISABLE_CONFIDENCE_GUARD and confidence < INTENT_CONFIDENCE_THRESHOLD:
             guard = GuardrailResult(
                 allow_llm=False,
                 action_type="ESCALATE_HUMAN",

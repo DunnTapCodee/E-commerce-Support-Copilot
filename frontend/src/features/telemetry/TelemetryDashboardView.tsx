@@ -130,7 +130,7 @@ export const TelemetryDashboardView: React.FC = () => {
                     return (
                       <tr key={r.interaction_id || idx} className="hover:bg-slate-50/80 transition-colors">
                         <td className="py-2.5 px-3 font-mono text-[11px] text-slate-400 whitespace-nowrap">
-                          {r.timestamp ? formatSystemTimeWithSeconds(r.timestamp) : 'N/A'}
+                          {r.timestamp ? formatSystemTimeWithSeconds(r.timestamp, { assumeUtcForNaive: true }) : 'N/A'}
                         </td>
                         <td className="py-2.5 px-3 max-w-[240px] truncate font-medium text-slate-800" title={r.customer_query}>
                           {r.customer_query}

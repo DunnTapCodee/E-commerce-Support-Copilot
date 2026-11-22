@@ -1,10 +1,23 @@
 """Pytest integration for CMU MLIP Behavioral & Guardrail Test Suite."""
 import unittest
+from unittest.mock import patch
 from evaluation.behavioral_tests import BehavioralTestSuite
 from evaluation.guardrail_evaluator import GuardrailEvaluator
 
 
 class TestMLIPBehavioralAndSafety(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls._env_patch = patch.dict(
+            "os.environ",
+            {"DISABLE_EXTERNAL_LLM": "true", "INTENT_BACKEND": "llm"},
+        )
+        cls._env_patch.start()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._env_patch.stop()
+
     def setUp(self):
         self.behav_suite = BehavioralTestSuite()
         self.guard_eval = GuardrailEvaluator()

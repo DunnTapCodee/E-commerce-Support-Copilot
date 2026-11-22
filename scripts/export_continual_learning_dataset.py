@@ -12,11 +12,33 @@ import csv
 import json
 import os
 from pathlib import Path
+import re
 import sqlite3
 from typing import Any, Dict, List, Optional
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 DEFAULT_CSV_PATH = ROOT_DIR / "data" / "continual_learning_dataset.csv"
+
+_RE_EMAIL = re.compile(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b")
+_RE_PHONE = re.compile(
+    r"(?:(?:\+?84|0)[.\s-]*(?:3|5|7|8|9)(?:[.\s-]*\d){8})\b|\b0\d{3}[.\s-]+\d{3}[.\s-]+\d{3}\b"
+)
+_RE_LONG_DIGITS = re.compile(r"(?<!ORD-)(?<!#)\b\d{9,16}\b")
+
+
+def redact_pii(text: str) -> str:
+    """Redact phone numbers, emails, and long numeric IDs before exporting queries to CSV."""
+    if not text:
+        return text
+    redacted = _RE_EMAIL.sub("[REDACTED_EMAIL]", text)
+    redacted = _RE_PHONE.sub("[REDACTED_PHONE]", redacted)
+    redacted = _RE_LONG_DIGITS.sub("[REDACTED_NUMBER]", redacted)
+    return redacted
+
+
+def is_csv_export_disabled() -> bool:
+    """Return True when runtime continual-learning CSV export is explicitly disabled."""
+    return os.getenv("DISABLE_CONTINUAL_LEARNING_CSV_EXPORT", "").strip().lower() in ("1", "true", "yes")
 
 
 def get_db_path(db_name: str) -> Path:
@@ -199,10 +221,13 @@ def append_single_interaction_to_csv(
     output_path: Optional[Path] = None,
 ) -> None:
     """Real-time instant sync: appends turn directly to CSV on every UI interaction."""
+    if is_csv_export_disabled():
+        return
+
     out_file = output_path or DEFAULT_CSV_PATH
     out_file.parent.mkdir(parents=True, exist_ok=True)
 
-    clean_q = " ".join((customer_query or "").split())
+    clean_q = redact_pii(" ".join((customer_query or "").split()))
     if not clean_q or not predicted_intent:
         return
 
@@ -216,9 +241,10 @@ def append_single_interaction_to_csv(
         ]
     )
 
-    if rewritten_query and rewritten_query.strip() and rewritten_query.strip() != clean_q:
+    clean_rewritten = redact_pii(rewritten_query.strip()) if rewritten_query and rewritten_query.strip() else ""
+    if clean_rewritten and clean_rewritten != clean_q:
         strategy = "3_rewritten"
-        training_input = rewritten_query.strip()
+        training_input = clean_rewritten
     else:
         strategy = "1_standalone"
         training_input = clean_q
@@ -249,7 +275,7 @@ def append_single_interaction_to_csv(
     if exists:
         return
 
-    from datetime import datetime
+    from contracts.schemas import get_vn_now
     row = {
         "id": interaction_id,
         "source_strategy": strategy,
@@ -259,7 +285,7 @@ def append_single_interaction_to_csv(
         "confidence": round(confidence, 4),
         "human_verified": 1 if human_action in ("APPROVE", "EDIT") else 0,
         "human_action": human_action,
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": get_vn_now().strftime("%Y-%m-%d %H:%M:%S"),
     }
 
     file_is_new = not out_file.exists() or out_file.stat().st_size == 0

@@ -22,7 +22,7 @@ RAG_SERVICE_URL = os.getenv("RAG_SERVICE_URL", "http://127.0.0.1:8002")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or ""
 OPENAI_API_KEY_BACKUP = os.getenv("OPENAI_API_KEY_BACKUP") or ""
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "deepseek-v4.1-flash"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "mainnewnol/gpt-oss-120b"
 
 PORT = int(os.getenv("DOCUMENT_SERVICE_PORT", "8004"))
 

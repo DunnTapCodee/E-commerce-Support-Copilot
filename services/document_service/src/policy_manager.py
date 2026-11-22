@@ -2,7 +2,7 @@
 import json
 import os
 import uuid
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 import httpx
@@ -12,6 +12,8 @@ from contracts.schemas import (
     PolicyCreateRequest,
     PolicyRollbackRequest,
     RetrievedDocument,
+    get_system_now,
+    get_vn_today,
 )
 from services.document_service.src.config import (
     AUDIT_LOGS_PATH,
@@ -46,7 +48,7 @@ def calculate_active_status(
       - temporary without dates: False
       - Otherwise: True
     """
-    ref_date = reference_date or date.today()
+    ref_date = reference_date or get_vn_today()
 
     if isinstance(doc, dict):
         policy_type = (doc.get("policy_type") or "permanent").lower()
@@ -148,7 +150,7 @@ class PolicyManager:
         """Create and append an audit log entry."""
         entry = PolicyAuditLogEntry(
             log_id=f"LOG-{uuid.uuid4().hex[:10].upper()}",
-            timestamp=(datetime.now() + timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S"),
+            timestamp=get_system_now(),
             doc_id=doc_id,
             doc_title=doc_title,
             action=action,
@@ -348,7 +350,7 @@ class PolicyManager:
           - True -> False: 'AUTO_EXPIRE'
           - False -> True: 'AUTO_ACTIVATE'
         """
-        ref_date = reference_date or date.today()
+        ref_date = reference_date or get_vn_today()
         docs = self.load_policies()
         changed_docs = []
 

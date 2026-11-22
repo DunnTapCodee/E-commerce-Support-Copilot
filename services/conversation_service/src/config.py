@@ -19,7 +19,7 @@ GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "openai-gpt-oss-20b")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
 
 FINANCIAL_INTENTS = {"request_refund", "payment_issue"}
 

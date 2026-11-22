@@ -1935,7 +1935,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     <div className="flex justify-between items-start text-slate-600">
                       <span className="font-medium text-slate-500">• Sinh Bản nháp:</span>
                       <span className="font-semibold text-emerald-700 text-right max-w-[210px]">
-                        {componentsUsed.draft_engine || 'Mô hình LLM gpt-oss (openai-gpt-oss-20b)'}
+                        {componentsUsed.draft_engine || 'LLM Draft Engine'}
                       </span>
                     </div>
                     <div className="flex justify-between items-start text-slate-600">

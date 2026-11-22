@@ -1,13 +1,44 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
 import uuid
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
 
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:  # pragma: no cover
+    ZoneInfo = None  # type: ignore[assignment]
+    ZoneInfoNotFoundError = Exception  # type: ignore[assignment]
 
-def get_system_now(fmt: str = "%Y-%m-%d %H:%M:%S") -> str:
-    """System time shifted by +12 hours as required."""
-    return (datetime.now() + timedelta(hours=12)).strftime(fmt)
+
+def _resolve_vn_timezone():
+    if ZoneInfo is not None:
+        try:
+            return ZoneInfo("Asia/Ho_Chi_Minh")
+        except ZoneInfoNotFoundError:
+            pass
+    return timezone(timedelta(hours=7), name="Asia/Ho_Chi_Minh")
+
+
+VN_TZ = _resolve_vn_timezone()
+
+
+def get_vn_now() -> datetime:
+    """Return timezone-aware current datetime in Vietnam time (Asia/Ho_Chi_Minh, UTC+7)."""
+    return datetime.now(VN_TZ)
+
+
+def get_vn_today() -> date:
+    """Return current calendar date in Vietnam time (Asia/Ho_Chi_Minh, UTC+7)."""
+    return get_vn_now().date()
+
+
+def get_system_now(fmt: Optional[str] = None) -> str:
+    """Return current Vietnam timestamp (ISO 8601 with +07:00 offset by default)."""
+    now = get_vn_now()
+    if fmt:
+        return now.strftime(fmt)
+    return now.isoformat(timespec="seconds")
 
 
 # -------------------------------------------------------------------
@@ -272,7 +303,7 @@ class ConversationSessionState(BaseModel):
     is_live_chat: bool = False
     turns: List[ConversationTurnItem] = Field(default_factory=list)
     context_summary: Optional[str] = None
-    updated_at: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M:%S"))
+    updated_at: str = Field(default_factory=get_system_now)
 
 
 # -------------------------------------------------------------------

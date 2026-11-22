@@ -1,15 +1,14 @@
 """Dialogue state management for multi-turn sessions."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
-from contracts.schemas import ConversationTurnItem
+from contracts.schemas import ConversationTurnItem, get_system_now
 
 
 def get_system_now_str() -> str:
-    return (datetime.now() + timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S")
+    return get_system_now()
 
 
 class ConversationState(BaseModel):

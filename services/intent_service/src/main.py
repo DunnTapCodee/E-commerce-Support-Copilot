@@ -38,7 +38,10 @@ app = FastAPI(title='Bilingual Intent Service', version='2.0.0', lifespan=lifesp
 def health_check():
     healthy = predictor_instance is not None and predictor_instance.is_loaded
     return {'status': 'healthy' if healthy else 'degraded', 'service': 'intent_service',
-            'model_loaded': healthy, 'routing_mode': os.getenv('INTENT_ROUTING_MODE', 'router'),
+            'model_loaded': healthy,
+            'ml_artifacts_loaded': predictor_instance.has_ml_artifacts if predictor_instance is not None else False,
+            'intent_backend': predictor_instance.intent_backend if predictor_instance is not None else None,
+            'routing_mode': os.getenv('INTENT_ROUTING_MODE', 'router'),
             'models': predictor_instance.models if healthy else {}, 'error': load_error}
 
 

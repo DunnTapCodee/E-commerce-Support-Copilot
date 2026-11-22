@@ -7,7 +7,11 @@ from typing import List, Optional
 import httpx
 
 from contracts.schemas import RAGGenerateResponse, RetrievedDocument
-from contracts.llm_failover import call_chat_completion_with_failover, get_available_api_keys
+from contracts.llm_failover import (
+    call_chat_completion_with_failover,
+    get_available_api_keys,
+    get_tls_verify_for_httpx,
+)
 
 # Auto-load .env if not in environment
 _env_file = Path(__file__).resolve().parent.parent.parent.parent / ".env"
@@ -63,7 +67,7 @@ GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMI
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or ""
 OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "openai-gpt-oss-20b"
+OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "mainnewnol/gpt-oss-120b"
 
 
 class LLMGenerator:
@@ -128,8 +132,8 @@ class LLMGenerator:
             except Exception as exc:
                 print(f"[LLMGenerator] OpenAI-compatible call failed: {exc}. Trying fallback...")
 
-        # Strategy 2: Gemini Direct Generation with candidate model fallback
-        if (provider in ("gemini", "auto", "openai_compatible")) and gemini_key:
+        # Strategy 2: Gemini Direct Generation (only when provider explicitly selects gemini or auto)
+        if (provider in ("gemini", "auto")) and gemini_key:
             try:
                 draft_text = await self._call_gemini(query, citations, gemini_key)
                 if draft_text:
@@ -243,7 +247,10 @@ YÊU CẦU BẮT BUỘC:
             }
         }
 
-        async with httpx.AsyncClient(timeout=float(max(self.timeout_seconds - 2, 5)), verify=False) as client:
+        async with httpx.AsyncClient(
+            timeout=float(max(self.timeout_seconds - 2, 5)),
+            verify=get_tls_verify_for_httpx(),
+        ) as client:
             for model_name in get_candidate_models():
                 api_url = get_gemini_api_url(model_name)
                 try:

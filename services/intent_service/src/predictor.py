@@ -5,7 +5,9 @@ import os
 import time
 from pathlib import Path
 
+import logging
 import numpy as np
+from contracts.llm_failover import is_external_llm_disabled
 from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.llm_classifier import LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
@@ -14,6 +16,7 @@ from services.intent_service.src.normalizer import normalize_vietnamese_query
 from services.intent_service.src.router import LanguageRouter
 
 ROOT = Path(__file__).resolve().parents[3]
+logger = logging.getLogger(__name__)
 
 
 def softmax(logits):
@@ -93,14 +96,18 @@ BACKENDS = {'sklearn': SklearnBackend, 'onnx_transformer': OnnxTransformerBacken
 class IntentPredictor:
     """Bilingual runtime inference engine supporting Module 1 router and legacy baselines."""
 
-    def __init__(self, model_source=None, routing_mode=None):
+    def __init__(self, model_source=None, routing_mode=None, intent_backend=None):
         raw_source = model_source or os.getenv('INTENT_MODEL_DIR', str(ROOT / 'artifacts/models/intent'))
         self.model_dir = Path(raw_source)
         self.routing_mode = routing_mode or os.getenv('INTENT_ROUTING_MODE', 'router')
         if self.routing_mode not in {'router', 'multilingual'}:
             raise ValueError('INTENT_ROUTING_MODE must be router or multilingual')
 
-        self.intent_backend = os.getenv("INTENT_BACKEND", "llm").lower()
+        self.intent_backend = (intent_backend or os.getenv("INTENT_BACKEND", "llm")).lower()
+        if self.intent_backend not in {"llm", "hybrid", "ml"}:
+            raise ValueError(
+                f"Unsupported INTENT_BACKEND '{self.intent_backend}'. Expected one of: llm, hybrid, ml."
+            )
         self.llm_classifier = LLMIntentClassifier()
 
         self.backends = {}
@@ -169,20 +176,33 @@ class IntentPredictor:
                     pass
 
     @property
+    def has_ml_artifacts(self) -> bool:
+        """Return True when at least one local ML artifact backend is loaded."""
+        return bool(self.backends) or (self.legacy_model is not None)
+
+    @property
     def models(self):
+        openai_model = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
+        ml_models = (
+            {lang: meta["method"] for lang, meta in self.metadata.items()}
+            if (not self.is_legacy and self.metadata)
+            else ({"legacy": "baseline_sklearn"} if self.legacy_model is not None else {})
+        )
         if self.intent_backend == "llm":
-            return {"llm": "gemini-2.5-flash"}
+            info: dict = {"primary": f"openai_compatible:{openai_model}"}
+            if ml_models:
+                info["ml_fallback"] = ml_models
+            return info
         if self.intent_backend == "hybrid":
-            base = {lang: meta['method'] for lang, meta in self.metadata.items()} if (not self.is_legacy and self.metadata) else {"legacy": "baseline_sklearn"}
-            base["fallback"] = "llm_gemini"
-            return base
-        if not self.is_legacy and self.metadata:
-            return {lang: meta['method'] for lang, meta in self.metadata.items()}
-        return {"legacy": "baseline_sklearn"} if self.legacy_model else {}
+            return {
+                "primary": f"openai_compatible:{openai_model}",
+                "ml_fallback": ml_models if ml_models else "unavailable",
+            }
+        return ml_models
 
     @property
     def is_loaded(self):
-        return (self.intent_backend in {"llm", "hybrid"}) or bool(self.backends) or (self.legacy_model is not None)
+        return (self.intent_backend in {"llm", "hybrid"}) or self.has_ml_artifacts
 
     def _predict_ml(self, query: str) -> IntentPredictionResponse:
         """Execute legacy/module 1 ML model pipeline with unaccented normalizer."""
@@ -264,27 +284,51 @@ class IntentPredictor:
                 latency_ms=(time.perf_counter() - start) * 1000,
             )
 
-        return self.llm_classifier.predict(query)
+        if self.intent_backend == "ml":
+            raise RuntimeError(
+                "ML intent artifacts unavailable; external LLM fallback is disabled in 'ml' mode."
+            )
+        logger.warning(
+            "[IntentPredictor] ML artifacts unavailable; using offline semantic fallback instead of live LLM."
+        )
+        return self.llm_classifier._semantic_fallback(query)
 
     def predict(self, query: str) -> IntentPredictionResponse:
         # 1. Pure ML mode (chỉ dùng ML offline, không gọi LLM)
         if self.intent_backend == "ml":
             return self._predict_ml(query)
 
-        # 2. LLM First (Mặc định: Ưu tiên LLM cho độ chính xác cao nhất, tự động fallback sang ML nếu LLM lỗi)
+        # 2. Explicit offline isolation mode: avoid any external LLM calls
+        if is_external_llm_disabled():
+            if self.intent_backend == "hybrid" and self.has_ml_artifacts:
+                return self._predict_ml(query)
+            return self.llm_classifier._semantic_fallback(query)
+
+        # 3. LLM Primary -> ML Fallback when LLM is unavailable
+        start = time.perf_counter()
+        llm_resp: IntentPredictionResponse | None = None
         try:
             llm_resp = self.llm_classifier.predict(query)
-            if llm_resp and llm_resp.is_in_scope:
-                return llm_resp
-            # Nếu LLM phân loại ra out_of_scope hoặc fallback, kiểm tra lại với ML
-            if llm_resp and not llm_resp.is_in_scope and self.is_loaded:
-                ml_resp = self._predict_ml(query)
-                if ml_resp and ml_resp.is_in_scope and ml_resp.confidence >= 0.80:
-                    return ml_resp
-            if llm_resp:
-                return llm_resp
         except Exception as exc:
-            logger.warning("[IntentPredictor] LLM call failed (%s). Falling back to ML baseline.", exc)
+            logger.warning("[IntentPredictor] Primary LLM call failed (%s).", exc)
 
-        # Fallback to local ML model if LLM is unavailable / failed
-        return self._predict_ml(query)
+        if llm_resp is not None and llm_resp.model_name != "semantic_rule_fallback":
+            return llm_resp
+
+        if self.has_ml_artifacts:
+            logger.warning("[IntentPredictor] Primary LLM unavailable; falling back to loaded ML model.")
+            return self._predict_ml(query)
+
+        logger.error(
+            "[IntentPredictor] Both primary LLM and local ML artifacts are unavailable; "
+            "returning fail-closed abstention for guardrail escalation."
+        )
+        return IntentPredictionResponse(
+            intent="unknown_query",
+            confidence=0.0,
+            is_in_scope=False,
+            language="vi",
+            model_name="unavailable_fallback",
+            all_probabilities={},
+            latency_ms=round((time.perf_counter() - start) * 1000, 2),
+        )

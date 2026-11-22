@@ -3,14 +3,14 @@ Guarantees long-term persistence across restarts and UI tab navigations.
 """
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import json
 import os
 from pathlib import Path
 import sqlite3
 from typing import Any, Dict, List, Optional
 
-from contracts.schemas import ConversationTurnItem
+from contracts.schemas import ConversationTurnItem, VN_TZ, get_system_now
 from services.conversation_service.src.config import ROOT_DIR
 from services.conversation_service.src.dialogue_state.state import ConversationState
 
@@ -18,8 +18,22 @@ DB_PATH = Path(os.getenv("CONVERSATIONS_DB_PATH", str(ROOT_DIR / "copilot_conver
 
 
 def get_system_now_str() -> str:
-    """Returns current system time shifted by +12 hours."""
-    return (datetime.now() + timedelta(hours=12)).strftime("%Y-%m-%d %H:%M:%S")
+    """Return current timezone-aware Vietnam timestamp (ISO 8601 +07:00)."""
+    return get_system_now()
+
+
+def _parse_vn_timestamp(ts: Optional[str]) -> datetime:
+    """Parse ISO (+07:00/Z) or legacy naive timestamp into VN_TZ datetime for chronological sorting."""
+    if not ts or not isinstance(ts, str):
+        return datetime.min.replace(tzinfo=VN_TZ)
+    cleaned = ts.strip()
+    try:
+        parsed = datetime.fromisoformat(cleaned.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            return parsed.replace(tzinfo=VN_TZ)
+        return parsed.astimezone(VN_TZ)
+    except ValueError:
+        return datetime.min.replace(tzinfo=VN_TZ)
 
 
 def get_db_connection(db_path: Path = DB_PATH) -> sqlite3.Connection:
@@ -302,10 +316,11 @@ class PersistentStateStore:
             conn.commit()
 
     def list_sessions(self) -> List[str]:
-        """Return list of active session IDs."""
+        """Return list of active session IDs ordered chronologically descending."""
         with get_db_connection(self.db_path) as conn:
-            rows = conn.execute("SELECT session_id FROM conversation_sessions ORDER BY updated_at DESC;").fetchall()
-            return [r["session_id"] for r in rows]
+            rows = conn.execute("SELECT session_id, updated_at FROM conversation_sessions;").fetchall()
+            ordered = sorted(rows, key=lambda r: _parse_vn_timestamp(r["updated_at"]), reverse=True)
+            return [r["session_id"] for r in ordered]
 
     def list_sessions_by_customer(self, customer_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """List all persistent conversation sessions for a customer."""
@@ -318,8 +333,7 @@ class PersistentStateStore:
                     FROM conversation_sessions s
                     LEFT JOIN conversation_turns t ON s.session_id = t.session_id
                     WHERE s.customer_id = ?
-                    GROUP BY s.session_id
-                    ORDER BY s.updated_at DESC;
+                    GROUP BY s.session_id;
                     """,
                     (customer_id,),
                 ).fetchall()
@@ -330,11 +344,11 @@ class PersistentStateStore:
                            s.copilot_draft, COUNT(t.id) as message_count
                     FROM conversation_sessions s
                     LEFT JOIN conversation_turns t ON s.session_id = t.session_id
-                    GROUP BY s.session_id
-                    ORDER BY s.updated_at DESC;
+                    GROUP BY s.session_id;
                     """
                 ).fetchall()
 
+            ordered_rows = sorted(rows, key=lambda r: _parse_vn_timestamp(r["updated_at"]), reverse=True)
             return [
                 {
                     "sessionId": r["session_id"],
@@ -345,7 +359,7 @@ class PersistentStateStore:
                     "copilotDraft": r["copilot_draft"] or "",
                     "messageCount": r["message_count"],
                 }
-                for r in rows
+                for r in ordered_rows
             ]
 
     def get_full_session_details(self, session_id: str) -> Optional[Dict[str, Any]]:

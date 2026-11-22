@@ -15,6 +15,7 @@ from contracts.schemas import (
     GuardrailResult,
     IntentPredictionResponse,
     RetrievedDocument,
+    get_vn_today,
 )
 from services.gateway.src.config import (
     DISABLE_CONFIDENCE_GUARD,
@@ -140,7 +141,7 @@ def check_temporal_validity(
         (is_valid, status, detail_message)
         where status in {'ACTIVE', 'EXPIRED', 'NOT_YET_EFFECTIVE', 'SUPERSEDED'}
     """
-    ref_date = reference_date or date.today()
+    ref_date = reference_date or get_vn_today()
     policy_type = getattr(doc, "policy_type", "permanent") or "permanent"
 
     # --- superseded: always blocked ---
