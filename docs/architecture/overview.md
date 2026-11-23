@@ -88,7 +88,7 @@ flowchart LR
   - Explicit `DISABLE_EXTERNAL_LLM=true` isolation mode preserves offline test isolation (`_predict_ml` in `hybrid` if loaded, or `semantic_rule_fallback` for offline behavioral/isolation suites).
 - **RAG Service (`8002`)** owns policy indexing/retrieval and policy-grounded draft generation (`POST /generate`). In the **primary** flow, `conversation_service` calls `rag_service /retrieve` for citations and generates drafts via `CopilotDraftEngine`, whereas `gateway` **fallback** calls both `rag_service /retrieve` and `rag_service /generate`.
 - **Document Service (`8004`)** owns the canonical JSON policy store and policy audit log; after mutations (`create`, `update`, `delete`, `rollback`, `sync-active-status`), it notifies `rag_service` via `POST /api/v1/rag/sync-kb`.
-- **Telemetry Service (`8003`)** owns `copilot_telemetry.sqlite3` and an in-memory `OrderLRUCache` (default size `256`).
+- **Telemetry Service (`8003`)** owns `copilot_telemetry.sqlite3`, an in-memory `OrderLRUCache` (default size `256`), and production telemetry endpoints (`/audit/stats`, `GET /audit/drift` reading `recent_records`, `POST /audit/shadow/evaluate`).
 
 ### 3.2 Key Shared Contracts (`contracts/schemas.py`)
 

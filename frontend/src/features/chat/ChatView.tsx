@@ -31,6 +31,11 @@ import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { CustomerOrderRecord, CustomerProfileRecord, GatewayResponse, RetrievedDocument } from '../../types';
 import { formatSystemTime } from '../../lib/time';
+import {
+  extractPolicyCodes,
+  findRepliedCustomerQuestion,
+  sortCustomersByNewestActivity,
+} from '../../lib/chat-helpers';
 
 export interface ChatMessage {
   id: string;
@@ -328,18 +333,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       const filtered = allCustomers.filter((c) => c.assignedStaffId === selectedStaffId);
       if (filtered.length > 0) base = filtered;
     }
-    return [...base].sort((a, b) => {
-      const actA = customerActivity[a.id];
-      const actB = customerActivity[b.id];
-      // 1. Customers with a pending Copilot draft / unanswered question come first
-      if (actA?.hasPendingDraft && !actB?.hasPendingDraft) return -1;
-      if (!actA?.hasPendingDraft && actB?.hasPendingDraft) return 1;
-      // 2. Sort by most recent question/session updatedAt timestamp descending
-      const timeA = actA?.updatedAt ? new Date(actA.updatedAt).getTime() : 0;
-      const timeB = actB?.updatedAt ? new Date(actB.updatedAt).getTime() : 0;
-      if (timeA !== timeB) return timeB - timeA;
-      return 0;
-    });
+    return sortCustomersByNewestActivity(base, customerActivity);
   }, [allCustomers, filterByStaff, selectedStaffId, customerActivity]);
 
   useEffect(() => {
@@ -763,16 +757,6 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // Find the customer question that a given agent/acknowledgement message is replying to (Messenger-style quote)
-  const findRepliedCustomerQuestion = (msgs: ChatMessage[], currentIdx: number): ChatMessage | null => {
-    for (let i = currentIdx - 1; i >= 0; i--) {
-      if (msgs[i].role === 'customer') {
-        return msgs[i];
-      }
-    }
-    return null;
-  };
-
   // Helper to parse markdown bold (**text**)
   const parseMarkdownBold = (rawText: string, keyPrefix: string, isDarkBubble = false) => {
     const boldRegex = /\*\*([^*]+)\*\*/g;
@@ -1069,8 +1053,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     const copilotResp = activeSession.copilotResponse;
 
     // Filter citations: ONLY attach policies that are EXPLICITLY referenced in finalContent (avoid legal risk)
-    const citedMatches = finalContent.match(/POL-[A-Z0-9_-]+/gi) || [];
-    const citedSet = new Set(citedMatches.map((c) => c.toUpperCase()));
+    const citedSet = new Set(extractPolicyCodes(finalContent));
     const activeCitations = (copilotResp?.citations || []).filter((c) =>
       citedSet.has(c.doc_id.toUpperCase())
     );
@@ -1579,8 +1562,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       </div>
 
                       {(() => {
-                        const citedMatches = m.content.match(/POL-[A-Z0-9_-]+/gi) || [];
-                        const citedSet = new Set(citedMatches.map((c) => c.toUpperCase()));
+                        const citedSet = new Set(extractPolicyCodes(m.content));
                         const activeCitations =
                           m.citations && m.citations.length > 0
                             ? m.citations.filter((c) => citedSet.has(c.doc_id.toUpperCase()))

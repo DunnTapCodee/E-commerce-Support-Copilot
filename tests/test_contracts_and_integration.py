@@ -15,11 +15,15 @@ import httpx
 from fastapi.testclient import TestClient
 
 from contracts.schemas import (
+    AuditLogCreate,
+    CustomerProfile,
     GatewayResponse,
     GuardrailResult,
+    HumanActionUpdate,
     IntentPredictionResponse,
     PolicyAuditLogEntry,
     RetrievedDocument,
+    StaffProfile,
 )
 from scripts.export_continual_learning_dataset import append_single_interaction_to_csv, redact_pii
 from services.gateway.src.clients import MicroserviceClients
@@ -75,6 +79,63 @@ class TestBackendFrontendContracts(unittest.TestCase):
         retrieve_routes = [r for r in rag_app.routes if getattr(r, "path", None) == "/retrieve"]
         self.assertEqual(len(retrieve_routes), 1)
         self.assertEqual(retrieve_routes[0].response_model, List[RetrievedDocument])
+
+    def test_shared_rbac_telemetry_and_gateway_contracts_roundtrip(self):
+        """Inter-service Pydantic DTOs serialize/deserialize without silent field loss."""
+        staff = StaffProfile(
+            staff_id="staff-01",
+            name="Nguyễn Quản Trị",
+            email="staff01@tiki.vn",
+            role="Senior CSKH",
+            department="CSKH",
+        )
+        cust = CustomerProfile(
+            customer_id="CUST-1100",
+            name="Lê Văn Sơn",
+            phone="0998708581",
+            email="son@example.com",
+            assigned_staff_id=staff.staff_id,
+        )
+        doc = RetrievedDocument(
+            doc_id="POL-RET-001",
+            title="Chính sách đổi trả",
+            content="Đổi trả trong 30 ngày với sản phẩm nguyên tem.",
+            is_active=True,
+        )
+        resp = GatewayResponse(
+            interaction_id="int-123",
+            intent=IntentPredictionResponse(intent="return_policy", confidence=0.95, is_in_scope=True),
+            guardrail=GuardrailResult(allow_llm=True, action_type="PROCEED_TO_LLM", reason="Safe"),
+            citations=[doc],
+            draft_text="Dạ sản phẩm được đổi trả trong 30 ngày [POL-RET-001].",
+            order_data={"order_id": "ORD-1100", "customer_id": cust.customer_id, "total_amount": 450000},
+            retrieval_status="SUFFICIENT",
+            circuit_breaker_tripped=False,
+        )
+        restored = GatewayResponse.model_validate_json(resp.model_dump_json())
+        self.assertEqual(restored.interaction_id, "int-123")
+        self.assertEqual(restored.retrieval_status, "SUFFICIENT")
+        self.assertEqual(restored.order_data["order_id"], "ORD-1100")
+
+        audit = AuditLogCreate(
+            interaction_id="int-123",
+            customer_query="Đổi trả mấy ngày",
+            predicted_intent="return_policy",
+            intent_confidence=0.95,
+            guardrail_action="PROCEED_TO_LLM",
+            retrieved_doc_ids="POL-RET-001",
+            raw_draft_text=resp.draft_text,
+            latency_ms=12,
+        )
+        action = HumanActionUpdate(
+            interaction_id=audit.interaction_id,
+            action="APPROVE",
+            final_text=resp.draft_text,
+            handling_time_ms=4200,
+        )
+        self.assertEqual(StaffProfile.model_validate_json(staff.model_dump_json()).staff_id, "staff-01")
+        self.assertEqual(CustomerProfile.model_validate_json(cust.model_dump_json()).customer_id, "CUST-1100")
+        self.assertEqual(action.action, "APPROVE")
 
 
 class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):

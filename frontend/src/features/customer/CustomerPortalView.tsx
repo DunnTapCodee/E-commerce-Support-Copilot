@@ -19,6 +19,10 @@ import {
 import { apiClient } from '../../lib/api-client';
 import { ChatMessage, CustomerProfileRecord, RetrievedDocument } from '../../types';
 import { formatSystemTime } from '../../lib/time';
+import {
+  extractPolicyCodes,
+  formatRepliedCustomerQuestionGroup,
+} from '../../lib/chat-helpers';
 
 interface CustomerPortalViewProps {
   onSwitchRole: () => void;
@@ -244,20 +248,6 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({ onSwitch
     navigator.clipboard.writeText(text);
     setCopiedPolicy(true);
     setTimeout(() => setCopiedPolicy(false), 2000);
-  };
-
-  // Helper: Find the customer question that a given agent message is replying to (Messenger-style quote)
-  const findRepliedCustomerQuestion = (msgs: ChatMessage[], currentIdx: number): string | null => {
-    const collected: string[] = [];
-    for (let i = currentIdx - 1; i >= 0; i--) {
-      const m = msgs[i];
-      if (m.role === 'customer') {
-        collected.unshift(m.content);
-      } else if (collected.length > 0) {
-        break;
-      }
-    }
-    return collected.length > 0 ? collected.join(' • ') : null;
   };
 
   // Helper: Render bold (**text**) and clickable [POL-XXX] badges inside message content
@@ -741,13 +731,13 @@ export const CustomerPortalView: React.FC<CustomerPortalViewProps> = ({ onSwitch
                 }
 
                 // Messenger-style quoted customer question for agent/ack replies
-                const repliedQuestion = !isCustomer ? findRepliedCustomerQuestion(currentMessages, idx) : null;
+                const repliedQuestion = !isCustomer ? formatRepliedCustomerQuestionGroup(currentMessages, idx) : null;
 
                 // Collect policy codes mentioned inside msg.content or msg.citations
-                const citedMatches = !isCustomer ? msg.content.match(/POL-[A-Z0-9_-]+/gi) || [] : [];
+                const citedMatches = !isCustomer ? extractPolicyCodes(msg.content) : [];
                 const uniquePolicyCodes = Array.from(
                   new Set([
-                    ...citedMatches.map((c) => c.toUpperCase()),
+                    ...citedMatches,
                     ...(msg.citations || []).map((c) => c.doc_id.toUpperCase()),
                   ])
                 );

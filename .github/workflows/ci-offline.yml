@@ -75,6 +75,10 @@ jobs:
             tests/test_module3_orders.py \
             tests/test_policy_filter.py \
             tests/test_policy_audit_rollback.py \
+            tests/test_data_and_pipeline_quality.py \
+            tests/test_e2e_customer_staff_sync.py \
+            tests/test_load_concurrency.py \
+            tests/test_production_drift_and_shadow.py \
             tests/test_agent_skills.py \
             tests/test_agent_harness_eval.py \
             -v
@@ -100,6 +104,9 @@ jobs:
 
       - name: Run TypeScript typecheck
         run: npx tsc --noEmit
+
+      - name: Run frontend helper unit tests
+        run: npm run test:unit
 
   docs-link-check:
     runs-on: ubuntu-latest

@@ -3,9 +3,12 @@ Includes:
 1. Normalized Levenshtein Edit Distance (measuring draft reuse).
 2. Rubber-stamping detection (Automation bias: agent approving long draft in < 1.5s).
 3. Continual Learning data candidate selector.
-Aligns with CMU MLIP Chapter 19: Testing and Experimenting in Production.
+4. Data / Concept / Automation Bias Drift Detector.
+5. Shadow Mode Comparison Evaluator.
+Aligns with CMU MLIP Chapters 16 & 19: Data Quality & Testing and Experimenting in Production.
 """
-from typing import Tuple
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 
 def levenshtein_distance(s1: str, s2: str) -> int:
@@ -86,4 +89,109 @@ def is_continual_learning_candidate(
     if action == "APPROVE" or (action == "EDIT" and 0.10 <= edit_dist <= 0.85):
         return True
     return False
+
+
+def detect_telemetry_drift(
+    recent_logs: List[Dict[str, Any]],
+    baseline_avg_ned: float = 0.25,
+    max_oos_rate: float = 0.25,
+    max_rubber_stamp_rate: float = 0.20,
+    max_low_conf_rate: float = 0.30,
+    low_conf_threshold: float = 0.60,
+) -> Dict[str, Any]:
+    """Detect Data Drift, Concept Drift, and Automation Bias Drift from recent telemetry logs.
+    Aligns with CMU MLIP Chapters 16 (Data Quality) & 19 (Testing in Production).
+    """
+    if not recent_logs:
+        return {
+            "drift_detected": False,
+            "sample_size": 0,
+            "reviewed_count": 0,
+            "oos_rate": 0.0,
+            "low_confidence_rate": 0.0,
+            "avg_edit_distance": 0.0,
+            "rubber_stamping_rate": 0.0,
+            "alerts": [],
+        }
+
+    total = len(recent_logs)
+    oos_count = sum(1 for r in recent_logs if r.get("predicted_intent") in {"out_of_scope", "unknown_query"})
+    low_conf_count = sum(1 for r in recent_logs if float(r.get("intent_confidence") or 0.0) < low_conf_threshold)
+
+    reviewed_logs = [r for r in recent_logs if r.get("human_action") in {"APPROVE", "EDIT", "REJECT"}]
+    ned_values = [float(r["edit_distance"]) for r in reviewed_logs if r.get("edit_distance") is not None]
+    rubber_count = sum(1 for r in reviewed_logs if int(r.get("is_rubber_stamping") or 0) == 1)
+
+    oos_rate = round(oos_count / total, 4)
+    low_conf_rate = round(low_conf_count / total, 4)
+    avg_ned = round(sum(ned_values) / len(ned_values), 4) if ned_values else 0.0
+    rubber_rate = round(rubber_count / len(reviewed_logs), 4) if reviewed_logs else 0.0
+
+    alerts: List[str] = []
+    if oos_rate > max_oos_rate:
+        alerts.append(
+            f"DATA_DRIFT: Out-of-scope rate ({oos_rate:.1%}) exceeds threshold ({max_oos_rate:.1%}). New customer topics detected."
+        )
+    if low_conf_rate > max_low_conf_rate:
+        alerts.append(
+            f"COVARIATE_SHIFT: Low-confidence intent rate ({low_conf_rate:.1%}) exceeds threshold ({max_low_conf_rate:.1%})."
+        )
+    if ned_values and avg_ned > (baseline_avg_ned + 0.15):
+        alerts.append(
+            f"CONCEPT_DRIFT: Average staff edit distance NED ({avg_ned:.2f}) degraded significantly above baseline ({baseline_avg_ned:.2f})."
+        )
+    if reviewed_logs and rubber_rate > max_rubber_stamp_rate:
+        alerts.append(
+            f"AUTOMATION_BIAS_DRIFT: Staff rubber-stamping rate ({rubber_rate:.1%}) exceeds safe threshold ({max_rubber_stamp_rate:.1%})."
+        )
+
+    return {
+        "drift_detected": len(alerts) > 0,
+        "sample_size": total,
+        "reviewed_count": len(reviewed_logs),
+        "oos_rate": oos_rate,
+        "low_confidence_rate": low_conf_rate,
+        "avg_edit_distance": avg_ned,
+        "rubber_stamping_rate": rubber_rate,
+        "alerts": alerts,
+    }
+
+
+def evaluate_shadow_comparison(
+    primary_draft: str,
+    shadow_draft: str,
+    expected_entities: Optional[Dict[str, str]] = None,
+    primary_latency_ms: float = 0.0,
+    shadow_latency_ms: float = 0.0,
+) -> Dict[str, Any]:
+    """Compare Primary production model output against a Shadow candidate model output
+    without exposing the shadow output to end-users (CMU MLIP Ch. 19 Shadow Deployment).
+    """
+    divergence_ned = compute_normalized_levenshtein(primary_draft, shadow_draft)
+    primary_citations = sorted(set(re.findall(r"POL-[A-Z0-9_-]+", primary_draft or "", re.IGNORECASE)))
+    shadow_citations = sorted(set(re.findall(r"POL-[A-Z0-9_-]+", shadow_draft or "", re.IGNORECASE)))
+
+    shadow_missing_entities: List[str] = []
+    if expected_entities:
+        shadow_lower = (shadow_draft or "").lower()
+        for k, v in expected_entities.items():
+            if str(v).lower() not in shadow_lower:
+                shadow_missing_entities.append(f"{k}:{v}")
+
+    shadow_passed_safety = (
+        len(shadow_missing_entities) == 0
+        and len((shadow_draft or "").strip()) >= 30
+        and "traceback" not in (shadow_draft or "").lower()
+    )
+
+    return {
+        "divergence_ned": divergence_ned,
+        "primary_citations": [c.upper() for c in primary_citations],
+        "shadow_citations": [c.upper() for c in shadow_citations],
+        "citation_match": [c.upper() for c in primary_citations] == [c.upper() for c in shadow_citations],
+        "shadow_missing_entities": shadow_missing_entities,
+        "shadow_passed_safety": shadow_passed_safety,
+        "latency_delta_ms": round(shadow_latency_ms - primary_latency_ms, 2),
+        "promotion_ready": shadow_passed_safety and (len(shadow_citations) >= len(primary_citations)),
+    }
 

@@ -19,6 +19,7 @@ import {
 import { apiClient } from '../../lib/api-client';
 import { ChatMessage, CustomerProfileRecord } from '../../types';
 import { formatSystemTime } from '../../lib/time';
+import { sortCustomersByNewestActivity } from '../../lib/chat-helpers';
 
 interface StaffCustomerManagerViewProps {
   selectedStaffId: string;
@@ -207,15 +208,7 @@ export const StaffCustomerManagerView: React.FC<StaffCustomerManagerViewProps> =
         (c.email || '').toLowerCase().includes(q)
       );
     });
-    return [...base].sort((a, b) => {
-      const actA = customerActivity[a.customer_id];
-      const actB = customerActivity[b.customer_id];
-      if (actA?.hasPendingDraft && !actB?.hasPendingDraft) return -1;
-      if (!actA?.hasPendingDraft && actB?.hasPendingDraft) return 1;
-      const timeA = actA?.updatedAt ? new Date(actA.updatedAt).getTime() : 0;
-      const timeB = actB?.updatedAt ? new Date(actB.updatedAt).getTime() : 0;
-      return timeB - timeA;
-    });
+    return sortCustomersByNewestActivity(base, customerActivity);
   }, [customers, searchText, customerActivity]);
 
   const activeCustomer = customers.find((c) => c.customer_id === selectedCustomerId);

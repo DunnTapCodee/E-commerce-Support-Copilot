@@ -13,7 +13,7 @@
 - `services/ui_service/` — Legacy Streamlit UI (`:8501`, retained in Docker Compose per `ADR-001`).
 - `frontend/` — **Confirmed Primary UI** (`:5173`, React/Vite/TypeScript SPA per `ADR-001`).
 - `contracts/` — shared Pydantic DTOs, Vietnam timezone helpers (`ADR-003`), and TLS-verified LLM failover client (`ADR-004`).
-- `tests/`, `evaluation/` — unit, contract, mocked integration, and MLIP evaluation suites.
+- `tests/`, `evaluation/` — unit, contract, mocked integration, SQLite WAL concurrency/E2E, data quality (`policies.json`/`mock_orders.json`), telemetry drift/shadow, Agent Harness eval, and MLIP evaluation suites.
 - `reports/`, `data/`, `artifacts/` — runtime/eval outputs and artifacts; do not treat them as disposable.
 - `docs/architecture/overview.md` — Architecture Overview v1 (boundaries, storage, LLM config audit, and known code/doc mismatches).
 - `docs/product/requirements.md` — Requirements Baseline v1 (goals, requirements, safety constraints, acceptance criteria, and open decisions `OD-001`..`OD-008`).

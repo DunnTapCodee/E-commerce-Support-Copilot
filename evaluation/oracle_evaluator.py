@@ -129,3 +129,40 @@ class TestOracleEvaluator:
             "passed": not res.hallucination_detected,
         }
 
+    # -------------------------------------------------------------
+    # Tier 4: Dynamic Order Data Grounding Oracle (Module 3 DB Check)
+    # -------------------------------------------------------------
+    @staticmethod
+    def verify_dynamic_order_grounding(
+        draft_text: str,
+        order_data: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Verify dynamic order_id and monetary amounts in draft_text match order_data."""
+        violations: List[str] = []
+        expected_order_id = str(order_data.get("order_id", "")).upper().strip()
+        expected_amount = order_data.get("total_amount")
+
+        mentioned_orders = [m.upper() for m in re.findall(r"ORD-[A-Z0-9]+", draft_text, re.IGNORECASE)]
+        if expected_order_id:
+            if expected_order_id not in mentioned_orders:
+                violations.append(f"Missing expected order_id '{expected_order_id}' in draft")
+            for mo in mentioned_orders:
+                if mo != expected_order_id:
+                    violations.append(f"Hallucinated foreign order_id '{mo}' (expected '{expected_order_id}')")
+
+        if expected_amount is not None:
+            expected_int = int(expected_amount)
+            money_matches = re.findall(r"(\d[\d\.,]*)\s*(?:đ|vnd|vnđ|đồng)", draft_text, re.IGNORECASE)
+            for raw_num in money_matches:
+                cleaned = re.sub(r"[^\d]", "", raw_num)
+                if cleaned and int(cleaned) != expected_int:
+                    violations.append(
+                        f"Hallucinated order amount '{raw_num}' (DB total_amount is {expected_int})"
+                    )
+
+        return {
+            "passed": len(violations) == 0,
+            "violations": violations,
+            "checked_order_id": expected_order_id,
+        }
+
