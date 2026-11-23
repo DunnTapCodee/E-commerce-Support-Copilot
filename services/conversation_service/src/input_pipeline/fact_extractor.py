@@ -16,7 +16,7 @@ AMOUNT_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?:k|đ|vnđ|vnd|dong|�
 CARRIER_RE = re.compile(r"\b(tikinow|ghn|ghtk|viettel\s*post|ninja\s*van|j&t|shopee\s*express)\b", re.IGNORECASE)
 
 
-def extract_facts(text: str) -> Dict[str, Any]:
+def extract_facts(text: str, customer_id: Optional[str] = None) -> Dict[str, Any]:
     """Extract domain facts from customer utterance, falling back to local hybrid order matcher."""
     facts: Dict[str, Any] = {}
 
@@ -46,13 +46,19 @@ def extract_facts(text: str) -> Dict[str, Any]:
     if carrier_match:
         facts["carrier"] = carrier_match.group(0).upper()
 
-    # If no order_id found by regex, use local hybrid matcher for semantic lookup
-    if "order_id" not in facts:
+    from contracts.safety import detect_foreign_customer_query
+
+    foreign_cid = detect_foreign_customer_query(text, customer_id)
+    if foreign_cid:
+        facts["foreign_customer_id"] = foreign_cid
+
+    # If no order_id found by regex, use local hybrid matcher scoped to session customer_id
+    if "order_id" not in facts and not foreign_cid:
         try:
             from services.conversation_service.src.input_pipeline.order_matcher import get_order_matcher
             matcher = get_order_matcher()
             if not inspect.iscoroutinefunction(matcher.match):
-                res = matcher.match(text)
+                res = matcher.match(text, customer_id=customer_id)
                 if res.order and res.order.get("order_id"):
                     facts["order_id"] = res.order["order_id"]
                     if res.order.get("customer_name") and "customer_name" not in facts:

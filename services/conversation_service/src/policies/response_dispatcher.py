@@ -30,6 +30,7 @@ class ResponsePolicyDispatcher:
         citations: List[RetrievedDocument],
         has_expired_policy: bool,
         is_live_chat: bool,
+        unauthorized_order_reason: Optional[str] = None,
     ) -> Tuple[GuardrailResult, str, Optional[str], Optional[str], str]:
         """Dispatch policy based on dialogue state.
         Returns:
@@ -39,7 +40,13 @@ class ResponsePolicyDispatcher:
         confidence = intent_resp.confidence
 
         # Case -1: Prompt Injection & Adversarial Attack Hard Block
-        from services.conversation_service.src.policies.safety_guard import evaluate_prompt_injection
+        from services.conversation_service.src.policies.safety_guard import (
+            detect_brand_competitor_bait,
+            detect_fabricated_prior_promise,
+            detect_warehouse_seal_request,
+            evaluate_prompt_injection,
+        )
+
         is_injection, injection_msg = evaluate_prompt_injection(user_query)
         if is_injection:
             guard = GuardrailResult(
@@ -51,6 +58,24 @@ class ResponsePolicyDispatcher:
             )
             draft = "[CẢNH BÁO AN NINH: Phát hiện tấn công Prompt Injection / Jailbreak. Chuyển cho nhân viên bảo mật xử lý.]"
             return guard, draft, None, "🔴 CẢNH BÁO AN NINH: Nghi vấn người dùng cố tình bẻ khóa chỉ dẫn hệ thống.", "blocked_security_guard"
+
+        # Case -0.5: Cross-customer Order / IDOR Security Block
+        if unauthorized_order_reason:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason=unauthorized_order_reason,
+                is_hard_fail=True,
+                violations=[unauthorized_order_reason],
+            )
+            draft = MACRO_TEMPLATES["unauthorized_order_access"]
+            return (
+                guard,
+                draft,
+                draft,
+                AGENT_GUIDANCE["unauthorized_order_access"],
+                "blocked_unauthorized_order_access",
+            )
 
         # Case 0: Chitchat greeting or thanks
         if input_type == "chitchat" or intent_name.startswith("chitchat_") or intent_name == "greeting":
@@ -102,6 +127,61 @@ class ResponsePolicyDispatcher:
                 "Vui lòng nhấn nút 'Xem hồ sơ đối soát' để kiểm tra dữ liệu đơn hàng và quyết định thủ công."
             )
             return guard, draft, suggested, AGENT_GUIDANCE["financial_risk"], "blocked_financial"
+
+        # Case 2a: Pre-generation Anti-Manipulation, Warehouse Seal & Brand Sensitivity Guards
+        manipulation_msg = detect_fabricated_prior_promise(user_query)
+        if manipulation_msg:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason=manipulation_msg,
+                is_hard_fail=True,
+                violations=[manipulation_msg],
+            )
+            draft = MACRO_TEMPLATES["manipulation_voucher_escalate"]
+            return (
+                guard,
+                draft,
+                draft,
+                AGENT_GUIDANCE["manipulation_risk"],
+                "blocked_manipulation_guard",
+            )
+
+        seal_msg = detect_warehouse_seal_request(user_query)
+        if seal_msg:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason=seal_msg,
+                is_hard_fail=True,
+                violations=[seal_msg],
+            )
+            draft = MACRO_TEMPLATES["warehouse_seal_blocked"]
+            return (
+                guard,
+                draft,
+                draft,
+                AGENT_GUIDANCE["warehouse_seal"],
+                "blocked_warehouse_guard",
+            )
+
+        brand_msg = detect_brand_competitor_bait(user_query)
+        if brand_msg:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason=brand_msg,
+                is_hard_fail=False,
+                violations=[brand_msg],
+            )
+            draft = MACRO_TEMPLATES["brand_comparison_neutral"]
+            return (
+                guard,
+                draft,
+                draft,
+                AGENT_GUIDANCE["brand_sensitivity"],
+                "blocked_brand_sensitivity",
+            )
 
         # Case 2b: Câu hỏi Ngoài phạm vi nghiệp vụ (Out of Scope / Off-topic)
         q_clean = user_query.lower()

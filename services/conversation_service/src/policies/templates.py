@@ -31,6 +31,26 @@ MACRO_TEMPLATES = {
         "Dạ em là chuyên viên hỗ trợ của Tiki đây ạ. Em đã tiếp nhận phiên hỗ trợ trực tiếp. "
         "Anh/chị chia sẻ giúp em chi tiết vấn đề mình đang cần hỗ trợ nhé!"
     ),
+    "unauthorized_order_access": (
+        "Dạ Tiki chào anh/chị! Để đảm bảo bảo mật thông tin tài khoản và đơn hàng cá nhân, "
+        "em chỉ có thể tra cứu các đơn hàng thuộc đúng tài khoản đang đăng nhập của anh/chị ạ. "
+        "Anh/chị vui lòng cung cấp mã đơn hàng thuộc tài khoản của mình để em kiểm tra hỗ trợ ngay nhé!"
+    ),
+    "manipulation_voucher_escalate": (
+        "Dạ Tiki chào anh/chị! Em đã ghi nhận phản ánh về ưu đãi/voucher và quyền lợi hỗ trợ trước đó của mình. "
+        "Do các khoản cấp bù voucher hoặc bồi thường đều cần kiểm tra lịch sử xác thực trên hệ thống, "
+        "em xin phép chuyển thông tin này tới chuyên viên CSKH cấp cao kiểm tra và phản hồi chính xác nhất cho anh/chị ạ."
+    ),
+    "warehouse_seal_blocked": (
+        "Dạ Tiki chào anh/chị! Theo quy trình niêm phong và an toàn kho vận của Tiki, "
+        "hệ thống không thể mở kiện hàng đã đóng gói hoặc chèn thêm giấy tờ bên ngoài vào kiện hàng. "
+        "Em xin phép chuyển yêu cầu của anh/chị sang bộ phận CSKH chuyên trách để kiểm tra phương án hỗ trợ phù hợp ạ."
+    ),
+    "brand_comparison_neutral": (
+        "Dạ Tiki chào anh/chị! Tiki luôn lắng nghe và trân trọng mọi góp ý của quý khách nhằm cải thiện chất lượng phục vụ [POL-BRAND-001]. "
+        "Em xin phép giữ lập trường trung lập, không bình luận hay so sánh với các sàn thương mại điện tử khác; "
+        "nếu anh/chị đang gặp vấn đề với đơn hàng hoặc chính sách tại Tiki, em rất sẵn sàng kiểm tra và hỗ trợ mình ngay ạ!"
+    ),
 }
 
 AGENT_GUIDANCE = {
@@ -38,6 +58,22 @@ AGENT_GUIDANCE = {
         "🔴 CẢNH BÁO TÀI CHÍNH: Phát hiện yêu cầu hoàn tiền / lỗi thanh toán. "
         "LLM bị khóa tuyệt đối để phòng ngừa rủi ro thất thoát. "
         "Vui lòng nhấn nút 'Xem hồ sơ đối soát' để kiểm tra dữ liệu đơn hàng và thực hiện quy trình kế toán."
+    ),
+    "unauthorized_order_access": (
+        "🔴 CẢNH BÁO BẢO MẬT (IDOR): Khách hàng hỏi mã khách/mã đơn không thuộc tài khoản phiên hiện tại. "
+        "Hệ thống đã chặn truy xuất đơn hàng chéo tài khoản và không hiển thị PII của khách hàng khác."
+    ),
+    "manipulation_risk": (
+        "🔴 CẢNH BÁO THAO TÚNG VOUCHER / BỒI THƯỜNG: Khách hàng nhắc tới cam kết miệng/voucher chưa xác thực. "
+        "LLM bị khóa để không tự ý hứa cấp voucher ngoài thẩm quyền. Nhân viên kiểm tra log cũ trước khi phản hồi."
+    ),
+    "warehouse_seal": (
+        "🔴 CẢNH BÁO QUY TRÌNH KHO: Khách hàng yêu cầu mở kiện niêm phong hoặc chèn giấy tờ ngoài quy định. "
+        "LLM bị khóa để không hứa thao tác kho trái quy trình."
+    ),
+    "brand_sensitivity": (
+        "🟠 CẢNH BÁO NHẠY CẢM THƯƠNG HIỆU [POL-BRAND-001]: Tin nhắn có yếu tố công kích thương hiệu hoặc bẫy so sánh đối thủ. "
+        "Hệ thống đã chuyển sang mẫu phản hồi trung lập. Nhân viên vui lòng kiểm tra kỹ trước khi bấm gửi."
     ),
     "low_confidence": (
         "🟡 CẢNH BÁO NGỮ CẢNH: Câu hỏi có độ tin cậy thấp hoặc chưa rõ ý. "

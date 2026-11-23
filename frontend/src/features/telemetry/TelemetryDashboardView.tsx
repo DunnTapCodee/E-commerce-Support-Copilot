@@ -1,24 +1,85 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, ShieldCheck, Zap, RefreshCw, AlertTriangle, CheckCircle, Clock, Eye } from 'lucide-react';
+import { Activity, ShieldCheck, Zap, RefreshCw, AlertTriangle, CheckCircle, Clock, Eye, Send } from 'lucide-react';
 import { apiClient } from '../../lib/api-client';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { formatSystemTimeWithSeconds } from '../../lib/time';
+import { DelayNotificationRecord, IncidentClusterSummary } from '../../types';
 
 export const TelemetryDashboardView: React.FC = () => {
   const [stats, setStats] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any | null>(null);
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'operations'>('overview');
+  const [clusters, setClusters] = useState<IncidentClusterSummary[]>([]);
+  const [delayNotifications, setDelayNotifications] = useState<DelayNotificationRecord[]>([]);
+  const [opsMessage, setOpsMessage] = useState<string | null>(null);
+  const [isRunningOps, setIsRunningOps] = useState(false);
 
   const fetchStats = async () => {
     setIsLoading(true);
     try {
-      const data = await apiClient.getStats();
+      const [data, clusterRes, delayRes] = await Promise.all([
+        apiClient.getStats(),
+        apiClient.getIncidentClusters(24, 2),
+        apiClient.listDelayNotifications(),
+      ]);
       setStats(data);
+      setClusters(clusterRes?.clusters || []);
+      setDelayNotifications(delayRes?.notifications || []);
     } catch (err) {
       console.error('Failed to fetch telemetry stats:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleScanOverdueOrders = async () => {
+    setIsRunningOps(true);
+    setOpsMessage(null);
+    try {
+      const res = await apiClient.scanProactiveDelay(undefined, 3);
+      setDelayNotifications(res.notifications || []);
+      setOpsMessage(
+        `✅ Đã quét ngày ${res.reference_date}: phát hiện ${res.total_overdue_matching} đơn Shipping trễ > 3 ngày (tạo mới ${res.newly_created_count} thông báo voucher 30k).`
+      );
+    } catch (err: any) {
+      setOpsMessage(`⚠️ Lỗi quét đơn trễ: ${err?.message || 'Thất bại'}`);
+    } finally {
+      setIsRunningOps(false);
+    }
+  };
+
+  const handleDispatchPendingDelay = async () => {
+    setIsRunningOps(true);
+    setOpsMessage(null);
+    try {
+      const res = await apiClient.dispatchDelayNotifications(undefined, 'CS Staff');
+      const listRes = await apiClient.listDelayNotifications();
+      setDelayNotifications(listRes.notifications || []);
+      setOpsMessage(`📨 Đã duyệt gửi hàng loạt ${res.dispatched_count} thông báo xin lỗi + voucher 30k.`);
+    } catch (err: any) {
+      setOpsMessage(`⚠️ Lỗi gửi hàng loạt: ${err?.message || 'Thất bại'}`);
+    } finally {
+      setIsRunningOps(false);
+    }
+  };
+
+  const handleBroadcastCluster = async (cluster: IncidentClusterSummary) => {
+    setIsRunningOps(true);
+    setOpsMessage(null);
+    try {
+      await apiClient.broadcastIncident({
+        cluster_id: cluster.cluster_id,
+        issue_topic: cluster.issue_topic,
+        message_text: cluster.suggested_broadcast,
+        performed_by: 'CS Staff',
+      });
+      setOpsMessage(`📢 Đã phát hành mẫu thông báo hàng loạt cho cụm '${cluster.issue_topic}' (${cluster.count} phản ánh).`);
+    } catch (err: any) {
+      setOpsMessage(`⚠️ Lỗi phát thông báo cụm: ${err?.message || 'Thất bại'}`);
+    } finally {
+      setIsRunningOps(false);
     }
   };
 
@@ -45,17 +106,155 @@ export const TelemetryDashboardView: React.FC = () => {
             Theo dõi tổng lượt truy vấn, độ trễ thời gian thực và phân bổ các chốt chặn an toàn Guardrails.
           </p>
         </div>
-        <button
-          onClick={fetchStats}
-          disabled={isLoading}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          <span>Làm mới</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl text-xs">
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('overview')}
+              className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                activeSubTab === 'overview' ? 'bg-white text-blue-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              📊 Hiệu năng & Guardrails
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveSubTab('operations')}
+              className={`px-3 py-1.5 rounded-lg font-semibold cursor-pointer transition-colors ${
+                activeSubTab === 'operations' ? 'bg-white text-rose-700 shadow-2xs' : 'text-slate-600'
+              }`}
+            >
+              🚨 Sự vụ & Quét Trễ Đơn ({delayNotifications.filter((n) => n.status === 'PENDING_SEND').length})
+            </button>
+          </div>
+          <button
+            onClick={fetchStats}
+            disabled={isLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Làm mới</span>
+          </button>
+        </div>
       </div>
 
-      {stats ? (
+      {activeSubTab === 'operations' && (
+        <div className="space-y-6">
+          {opsMessage && (
+            <div className="p-3 rounded-xl bg-blue-50 border border-blue-200 text-xs font-medium text-blue-900">
+              {opsMessage}
+            </div>
+          )}
+
+          {/* Proactive Overdue Shipping Delay Agent (> 3 days, 30k voucher) */}
+          <Card title="🚚 Tác tử Quét Đơn Giao Trễ > 3 Ngày (Tặng Voucher Tri Ân 30.000đ)">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+              <p className="text-xs text-slate-600">
+                Quét tự động các đơn <code className="bg-slate-100 px-1 rounded">Shipping</code> quá hạn cam kết giao &gt; 3 ngày (idempotent chống cấp trùng voucher).
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={isRunningOps}
+                  onClick={handleScanOverdueOrders}
+                  className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold cursor-pointer disabled:opacity-50"
+                >
+                  🔍 Quét đơn trễ ngay
+                </button>
+                <button
+                  type="button"
+                  disabled={isRunningOps || delayNotifications.filter((n) => n.status === 'PENDING_SEND').length === 0}
+                  onClick={handleDispatchPendingDelay}
+                  className="px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold cursor-pointer disabled:opacity-50 flex items-center gap-1"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Duyệt gửi hàng loạt</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-100 text-slate-400">
+                    <th className="py-2 px-2">Mã đơn</th>
+                    <th className="py-2 px-2">Khách hàng</th>
+                    <th className="py-2 px-2">Ngày hẹn giao</th>
+                    <th className="py-2 px-2">Trễ</th>
+                    <th className="py-2 px-2">Mã Voucher 30k</th>
+                    <th className="py-2 px-2">Trạng thái</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {delayNotifications.map((n) => (
+                    <tr key={n.order_id} className="hover:bg-slate-50">
+                      <td className="py-2 px-2 font-mono font-bold text-slate-800">{n.order_id}</td>
+                      <td className="py-2 px-2">{n.customer_name || n.customer_id}</td>
+                      <td className="py-2 px-2 font-mono">{n.promised_delivery_date}</td>
+                      <td className="py-2 px-2 font-semibold text-rose-600">{n.days_overdue} ngày</td>
+                      <td className="py-2 px-2 font-mono text-indigo-700">{n.voucher_code}</td>
+                      <td className="py-2 px-2">
+                        <Badge variant={n.status === 'SENT' ? 'success' : 'warning'}>{n.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                  {delayNotifications.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="py-6 text-center text-slate-400">
+                        Chưa có bản ghi đơn trễ nào. Bấm "Quét đơn trễ ngay" để kích hoạt tác tử kiểm tra DB đơn hàng.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          {/* Incident Clustering Dashboard */}
+          <Card title="🚨 Gom Cụm Sự Vụ Diện Rộng (24h gần nhất)">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              {clusters.map((c) => (
+                <div
+                  key={c.cluster_id}
+                  className={`p-3 rounded-xl border space-y-2 ${
+                    c.is_widespread ? 'bg-rose-50/70 border-rose-200' : 'bg-slate-50 border-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-bold text-slate-900">{c.issue_topic}</span>
+                    <Badge variant={c.is_widespread ? 'danger' : 'info'}>
+                      {c.count} lượt {c.is_widespread ? '• Diện rộng' : ''}
+                    </Badge>
+                  </div>
+                  <p className="text-[11px] text-slate-500 font-mono">
+                    Intent: {c.predicted_intent} • ID: {c.cluster_id}
+                  </p>
+                  <ul className="space-y-1 text-[11px] text-slate-700 list-disc pl-4">
+                    {c.sample_queries.map((q, idx) => (
+                      <li key={idx} className="truncate">{q}</li>
+                    ))}
+                  </ul>
+                  <button
+                    type="button"
+                    disabled={isRunningOps}
+                    onClick={() => handleBroadcastCluster(c)}
+                    className="w-full py-1.5 px-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold text-[11px] cursor-pointer"
+                  >
+                    📢 Phát thông báo xử lý hàng loạt
+                  </button>
+                </div>
+              ))}
+              {clusters.length === 0 && (
+                <p className="text-slate-400 italic col-span-2 py-4 text-center">
+                  Chưa ghi nhận cụm sự vụ bất thường nào trong cửa sổ 24 giờ gần nhất.
+                </p>
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {activeSubTab === 'overview' && (stats ? (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <Card className="!p-4">
@@ -185,7 +384,7 @@ export const TelemetryDashboardView: React.FC = () => {
         <div className="p-8 text-center text-slate-400 text-xs">
           {isLoading ? 'Đang tải dữ liệu telemetry...' : 'Chưa có dữ liệu thống kê.'}
         </div>
-      )}
+      ))}
 
       {/* Record Details Modal */}
       {selectedRecord && (

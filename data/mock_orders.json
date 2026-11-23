@@ -33,7 +33,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1002",
@@ -69,7 +71,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1003",
@@ -105,7 +109,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1004",
@@ -141,7 +147,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1005",
@@ -177,7 +185,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-21"
   },
   {
     "order_id": "ORD-1006",
@@ -213,7 +223,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1007",
@@ -249,7 +261,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1008",
@@ -285,7 +299,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1009",
@@ -321,7 +337,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-17"
   },
   {
     "order_id": "ORD-1010",
@@ -357,7 +375,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-21"
   },
   {
     "order_id": "ORD-1011",
@@ -393,7 +413,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-18"
   },
   {
     "order_id": "ORD-1012",
@@ -429,7 +451,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-19"
   },
   {
     "order_id": "ORD-1013",
@@ -465,7 +489,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1014",
@@ -501,7 +527,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1015",
@@ -537,7 +565,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-21"
   },
   {
     "order_id": "ORD-1016",
@@ -573,7 +603,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1017",
@@ -609,7 +641,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1018",
@@ -645,7 +679,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1019",
@@ -681,7 +717,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1020",
@@ -717,7 +755,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-21"
   },
   {
     "order_id": "ORD-1021",
@@ -753,7 +793,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1022",
@@ -789,7 +831,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1023",
@@ -825,7 +869,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1024",
@@ -861,7 +907,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-24"
   },
   {
     "order_id": "ORD-1025",
@@ -897,7 +945,9 @@
         "time": "2026-10-21 08:15",
         "status": "Bưu tá Tiki đang phát hàng đến địa chỉ nhận"
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-21"
   },
   {
     "order_id": "ORD-1026",
@@ -918,7 +968,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1027",
@@ -939,7 +991,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1028",
@@ -960,7 +1014,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1029",
@@ -981,7 +1037,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1030",
@@ -1002,7 +1060,9 @@
         "price": 310000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1031",
@@ -1023,7 +1083,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1032",
@@ -1044,7 +1106,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1033",
@@ -1065,7 +1129,9 @@
         "price": 690000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1034",
@@ -1086,7 +1152,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1035",
@@ -1107,7 +1175,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1036",
@@ -1128,7 +1198,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1037",
@@ -1149,7 +1221,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1038",
@@ -1170,7 +1244,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1039",
@@ -1191,7 +1267,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1040",
@@ -1212,7 +1290,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1041",
@@ -1233,7 +1313,9 @@
         "price": 1850000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1042",
@@ -1254,7 +1336,9 @@
         "price": 680000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1043",
@@ -1275,7 +1359,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1044",
@@ -1296,7 +1382,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1045",
@@ -1317,7 +1405,9 @@
         "price": 250000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1046",
@@ -1338,7 +1428,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1047",
@@ -1359,7 +1451,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1048",
@@ -1380,7 +1474,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1049",
@@ -1401,7 +1497,9 @@
         "price": 1850000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1050",
@@ -1422,7 +1520,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1051",
@@ -1444,7 +1544,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1052",
@@ -1466,7 +1568,9 @@
         "price": 250000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1053",
@@ -1488,7 +1592,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1054",
@@ -1510,7 +1616,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1055",
@@ -1532,7 +1640,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1056",
@@ -1554,7 +1664,9 @@
         "price": 310000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1057",
@@ -1576,7 +1688,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1058",
@@ -1598,7 +1712,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1059",
@@ -1620,7 +1736,9 @@
         "price": 1850000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1060",
@@ -1642,7 +1760,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1061",
@@ -1664,7 +1784,9 @@
         "price": 1850000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1062",
@@ -1686,7 +1808,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1063",
@@ -1708,7 +1832,9 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1064",
@@ -1730,7 +1856,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1065",
@@ -1752,7 +1880,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1066",
@@ -1774,7 +1904,9 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1067",
@@ -1796,7 +1928,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1068",
@@ -1818,7 +1952,9 @@
         "price": 250000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1069",
@@ -1840,7 +1976,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1070",
@@ -1862,7 +2000,9 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1071",
@@ -1884,7 +2024,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1072",
@@ -1906,7 +2048,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1073",
@@ -1928,7 +2072,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1074",
@@ -1950,7 +2096,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1075",
@@ -1972,7 +2120,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1076",
@@ -1992,7 +2142,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1077",
@@ -2012,7 +2164,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1078",
@@ -2032,7 +2186,9 @@
         "price": 680000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1079",
@@ -2052,7 +2208,9 @@
         "price": 250000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1080",
@@ -2072,7 +2230,9 @@
         "price": 2780000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1081",
@@ -2092,7 +2252,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1082",
@@ -2112,7 +2274,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1083",
@@ -2132,7 +2296,9 @@
         "price": 680000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1084",
@@ -2152,7 +2318,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1085",
@@ -2172,7 +2340,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1086",
@@ -2192,7 +2362,9 @@
         "price": 690000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1087",
@@ -2212,7 +2384,9 @@
         "price": 5990000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1088",
@@ -2232,7 +2406,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1089",
@@ -2252,7 +2428,9 @@
         "price": 320000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1090",
@@ -2272,7 +2450,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-25"
   },
   {
     "order_id": "ORD-1091",
@@ -2295,7 +2475,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1092",
@@ -2318,7 +2500,9 @@
         "price": 210000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1093",
@@ -2341,7 +2525,9 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1094",
@@ -2364,7 +2550,9 @@
         "price": 7890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1095",
@@ -2387,7 +2575,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1096",
@@ -2410,7 +2600,9 @@
         "price": 890000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "123 Nguyễn Huệ, Quận 1, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1097",
@@ -2433,7 +2625,9 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "45 Lý Thường Kiệt, Hoàn Kiếm, Hà Nội",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1098",
@@ -2456,7 +2650,9 @@
         "price": 520000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "88 Lê Duẩn, Hải Châu, Đà Nẵng",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1099",
@@ -2479,7 +2675,9 @@
         "price": 4650000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "210 Võ Văn Tần, Quận 3, TP.HCM",
+    "promised_delivery_date": "2026-11-20"
   },
   {
     "order_id": "ORD-1100",
@@ -2502,6 +2700,8 @@
         "price": 1950000,
         "quantity": 1
       }
-    ]
+    ],
+    "shipping_address": "15 Trần Hưng Đạo, Ninh Kiều, Cần Thơ",
+    "promised_delivery_date": "2026-11-20"
   }
 ]

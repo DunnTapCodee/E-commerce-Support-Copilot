@@ -99,9 +99,10 @@ class InputClassifier:
         text: str,
         active_intent: Optional[str] = None,
         context_summary: Optional[str] = None,
+        customer_id: Optional[str] = None,
     ) -> Tuple[InputCategory, Dict[str, Any], float]:
         """Full hybrid classification: Tier 1 -> Tier 2 (LLM)."""
-        extracted = extract_facts(text)
+        extracted = extract_facts(text, customer_id=customer_id)
         fast_category = self.classify_fast_tier(text, extracted)
         if fast_category:
             return fast_category, extracted, 0.95

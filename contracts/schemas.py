@@ -172,7 +172,76 @@ class TelemetryStats(BaseModel):
 
 
 # -------------------------------------------------------------------
-# 6. Gateway End-to-End Response
+# 6. Order Actions & Proactive Incident / Delay Contracts
+# -------------------------------------------------------------------
+OrderActionType = Literal["cancel_order", "update_address", "update_receiver", "return_product"]
+
+
+class OrderActionProposal(BaseModel):
+    """Structured order modification proposal extracted from chat (PENDING until Staff approves)."""
+    action_id: str = Field(..., description="Unique proposal ID")
+    interaction_id: Optional[str] = Field(default=None, description="Linked interaction trace ID")
+    session_id: Optional[str] = Field(default=None, description="Linked conversation session ID")
+    order_id: str = Field(..., description="Target order ID verified as owned by session customer")
+    customer_id: str = Field(..., description="Owning customer account ID")
+    action_type: OrderActionType
+    before_values: Dict[str, Any] = Field(default_factory=dict)
+    proposed_values: Dict[str, Any] = Field(default_factory=dict)
+    eligible: bool = Field(default=True, description="Whether order_status permits this action")
+    ineligibility_reason: Optional[str] = Field(default=None, description="Explanation if ineligible")
+    customer_reason: Optional[str] = Field(default=None, description="Reason extracted from customer message")
+    status: Literal["PENDING", "APPROVED", "REJECTED"] = Field(default="PENDING")
+    decision_reason: Optional[str] = Field(default=None, description="Staff approval or rejection rationale")
+    performed_by: Optional[str] = Field(default=None, description="Staff member executing the decision")
+    created_at: Optional[str] = None
+    decided_at: Optional[str] = None
+
+
+class OrderActionDecisionRequest(BaseModel):
+    """Staff decision payload for an OrderActionProposal."""
+    decision: Literal["APPROVE", "REJECT"]
+    reason: Optional[str] = Field(default=None, description="Mandatory rationale on REJECT, optional on APPROVE")
+    performed_by: str = Field(default="CS Staff", description="Staff identity performing action")
+
+
+class DelayNotificationRecord(BaseModel):
+    """Proactive overdue-shipping notification and simulated 30k voucher log."""
+    order_id: str
+    customer_id: str
+    customer_name: Optional[str] = None
+    promised_delivery_date: str
+    days_overdue: int
+    voucher_code: str
+    voucher_amount: int = 30000
+    message_text: str
+    status: Literal["PENDING_SEND", "SENT"] = "PENDING_SEND"
+    created_at: Optional[str] = None
+    sent_at: Optional[str] = None
+
+
+class IncidentClusterSummary(BaseModel):
+    """Aggregated widespread customer issue cluster detected across recent telemetry."""
+    cluster_id: str
+    predicted_intent: str
+    issue_topic: str
+    count: int
+    is_widespread: bool = False
+    sample_queries: List[str] = Field(default_factory=list)
+    suggested_broadcast: str
+    latest_timestamp: Optional[str] = None
+
+
+class IncidentBroadcastRequest(BaseModel):
+    """Staff bulk broadcast notice for a widespread incident cluster."""
+    cluster_id: str
+    issue_topic: str
+    message_text: str
+    performed_by: str = "CS Staff"
+    session_ids: List[str] = Field(default_factory=list)
+
+
+# -------------------------------------------------------------------
+# 7. Gateway End-to-End Response
 # -------------------------------------------------------------------
 class GatewayResponse(BaseModel):
     """Final unified response returned by API Gateway to UI."""
@@ -196,10 +265,14 @@ class GatewayResponse(BaseModel):
     circuit_breaker_tripped: bool = Field(default=False, description="Whether fallback was invoked due to circuit breaker trip")
     components_used: Dict[str, str] = Field(default_factory=dict, description="Active system components and models invoked during this request")
     rewritten_query: Optional[str] = Field(default=None, description="Context-rewritten user query")
+    pending_action: Optional[OrderActionProposal] = Field(
+        default=None,
+        description="Structured pending order modification/cancel/return proposal requiring CS Staff approval",
+    )
 
 
 # -------------------------------------------------------------------
-# 7. Order & Tool Calling Contracts (Module 3)
+# 8. Order & Tool Calling Contracts (Module 3)
 # -------------------------------------------------------------------
 class OrderCancelRequest(BaseModel):
     """Request payload to cancel an order."""

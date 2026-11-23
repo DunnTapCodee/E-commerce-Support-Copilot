@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import sqlite3
 from typing import Any, Dict, List, Optional
+import uuid
 
 from contracts.schemas import ConversationTurnItem, VN_TZ, get_system_now
 from services.conversation_service.src.config import ROOT_DIR
@@ -82,9 +83,26 @@ def init_conversation_db(db_path: Path = DB_PATH) -> None:
         );
         """)
 
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS copilot_draft_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT NOT NULL,
+            interaction_id TEXT NOT NULL,
+            customer_question TEXT NULL,
+            draft_text TEXT NOT NULL,
+            response_json TEXT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            resolved_at DATETIME NULL,
+            UNIQUE(session_id, interaction_id),
+            FOREIGN KEY (session_id) REFERENCES conversation_sessions(session_id) ON DELETE CASCADE
+        );
+        """)
+
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_customer_id ON conversation_sessions(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON conversation_sessions(updated_at);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_turns_session_id ON conversation_turns(session_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_draft_queue_session_status ON copilot_draft_queue(session_id, status, id);")
         conn.commit()
 
 
@@ -219,6 +237,7 @@ class PersistentStateStore:
         intent: Optional[str] = None,
         confidence: Optional[float] = None,
         facts: Optional[Dict[str, Any]] = None,
+        interaction_id: Optional[str] = None,
     ) -> int:
         """Append a single chat message turn directly to database."""
         now_str = get_system_now_str()
@@ -264,15 +283,31 @@ class PersistentStateStore:
                     (now_str, short_title, session_id),
                 )
             elif role == "agent" and not is_acknowledgement:
-                # Clear pending copilot draft when an approved agent message is sent
-                conn.execute(
-                    """
-                    UPDATE conversation_sessions
-                    SET updated_at = ?, copilot_draft = NULL, copilot_response_json = NULL
-                    WHERE session_id = ?;
-                    """,
-                    (now_str, session_id),
-                )
+                # Resolve the targeted interaction (or oldest FIFO pending draft) and advance queue head
+                if interaction_id:
+                    conn.execute(
+                        """
+                        UPDATE copilot_draft_queue
+                        SET status = 'APPROVED', resolved_at = ?
+                        WHERE session_id = ? AND interaction_id = ? AND status = 'PENDING';
+                        """,
+                        (now_str, session_id, interaction_id),
+                    )
+                else:
+                    conn.execute(
+                        """
+                        UPDATE copilot_draft_queue
+                        SET status = 'APPROVED', resolved_at = ?
+                        WHERE id = (
+                            SELECT id FROM copilot_draft_queue
+                            WHERE session_id = ? AND status = 'PENDING'
+                            ORDER BY id ASC
+                            LIMIT 1
+                        );
+                        """,
+                        (now_str, session_id),
+                    )
+                self._sync_session_draft_head_conn(conn, session_id, now_str)
             else:
                 conn.execute(
                     "UPDATE conversation_sessions SET updated_at = ? WHERE session_id = ?;",
@@ -281,30 +316,31 @@ class PersistentStateStore:
             conn.commit()
             return next_turn_id
 
-    def set_copilot_draft(
-        self,
-        session_id: str,
-        copilot_draft: str,
-        copilot_response_dict: Optional[Dict[str, Any]] = None,
+    @staticmethod
+    def _sync_session_draft_head_conn(
+        conn: sqlite3.Connection, session_id: str, now_str: str
     ) -> None:
-        """Persist the generated Copilot draft and full response metadata for Staff review."""
-        now_str = get_system_now_str()
-        resp_json = json.dumps(copilot_response_dict, ensure_ascii=False) if copilot_response_dict else None
-        with get_db_connection(self.db_path) as conn:
+        """Keep conversation_sessions.copilot_draft aligned with the oldest PENDING queue item."""
+        head = conn.execute(
+            """
+            SELECT draft_text, response_json
+            FROM copilot_draft_queue
+            WHERE session_id = ? AND status = 'PENDING'
+            ORDER BY id ASC
+            LIMIT 1;
+            """,
+            (session_id,),
+        ).fetchone()
+        if head:
             conn.execute(
                 """
                 UPDATE conversation_sessions
                 SET copilot_draft = ?, copilot_response_json = ?, updated_at = ?
                 WHERE session_id = ?;
                 """,
-                (copilot_draft, resp_json, now_str, session_id),
+                (head["draft_text"], head["response_json"], now_str, session_id),
             )
-            conn.commit()
-
-    def clear_copilot_draft(self, session_id: str) -> None:
-        """Clear pending Copilot draft when approved or dismissed by Staff."""
-        now_str = get_system_now_str()
-        with get_db_connection(self.db_path) as conn:
+        else:
             conn.execute(
                 """
                 UPDATE conversation_sessions
@@ -313,6 +349,82 @@ class PersistentStateStore:
                 """,
                 (now_str, session_id),
             )
+
+    def set_copilot_draft(
+        self,
+        session_id: str,
+        copilot_draft: str,
+        copilot_response_dict: Optional[Dict[str, Any]] = None,
+        interaction_id: Optional[str] = None,
+        customer_question: Optional[str] = None,
+    ) -> None:
+        """Enqueue the generated Copilot draft per interaction_id (FIFO) without dropping prior pending drafts."""
+        now_str = get_system_now_str()
+        resp_payload = dict(copilot_response_dict) if copilot_response_dict else None
+        eff_interaction_id = (
+            interaction_id
+            or (resp_payload.get("interaction_id") if resp_payload else None)
+            or f"draft_{uuid.uuid4().hex[:10]}"
+        )
+        eff_question = customer_question or (resp_payload.get("customer_question") if resp_payload else None)
+        if resp_payload is not None:
+            resp_payload.setdefault("interaction_id", eff_interaction_id)
+            if eff_question:
+                resp_payload.setdefault("customer_question", eff_question)
+        resp_json = json.dumps(resp_payload, ensure_ascii=False) if resp_payload else None
+
+        with get_db_connection(self.db_path) as conn:
+            conn.execute(
+                """
+                INSERT INTO copilot_draft_queue (
+                    session_id, interaction_id, customer_question, draft_text, response_json, status, created_at
+                ) VALUES (?, ?, ?, ?, ?, 'PENDING', ?)
+                ON CONFLICT(session_id, interaction_id) DO UPDATE SET
+                    customer_question = COALESCE(excluded.customer_question, copilot_draft_queue.customer_question),
+                    draft_text = excluded.draft_text,
+                    response_json = excluded.response_json,
+                    status = 'PENDING',
+                    resolved_at = NULL;
+                """,
+                (session_id, eff_interaction_id, eff_question, copilot_draft, resp_json, now_str),
+            )
+            self._sync_session_draft_head_conn(conn, session_id, now_str)
+            conn.commit()
+
+    def clear_copilot_draft(
+        self,
+        session_id: str,
+        interaction_id: Optional[str] = None,
+        resolution_status: str = "DISMISSED",
+    ) -> None:
+        """Resolve a specific interaction's draft (or oldest FIFO pending draft) and advance queue head."""
+        now_str = get_system_now_str()
+        safe_status = resolution_status if resolution_status in {"APPROVED", "DISMISSED"} else "DISMISSED"
+        with get_db_connection(self.db_path) as conn:
+            if interaction_id:
+                conn.execute(
+                    """
+                    UPDATE copilot_draft_queue
+                    SET status = ?, resolved_at = ?
+                    WHERE session_id = ? AND interaction_id = ? AND status = 'PENDING';
+                    """,
+                    (safe_status, now_str, session_id, interaction_id),
+                )
+            else:
+                conn.execute(
+                    """
+                    UPDATE copilot_draft_queue
+                    SET status = ?, resolved_at = ?
+                    WHERE id = (
+                        SELECT id FROM copilot_draft_queue
+                        WHERE session_id = ? AND status = 'PENDING'
+                        ORDER BY id ASC
+                        LIMIT 1
+                    );
+                    """,
+                    (safe_status, now_str, session_id),
+                )
+            self._sync_session_draft_head_conn(conn, session_id, now_str)
             conn.commit()
 
     def list_sessions(self) -> List[str]:
@@ -329,7 +441,9 @@ class PersistentStateStore:
                 rows = conn.execute(
                     """
                     SELECT s.session_id, s.customer_id, s.title, s.created_at, s.updated_at,
-                           s.copilot_draft, COUNT(t.id) as message_count
+                           s.copilot_draft, COUNT(t.id) as message_count,
+                           (SELECT COUNT(*) FROM copilot_draft_queue q
+                            WHERE q.session_id = s.session_id AND q.status = 'PENDING') as pending_draft_count
                     FROM conversation_sessions s
                     LEFT JOIN conversation_turns t ON s.session_id = t.session_id
                     WHERE s.customer_id = ?
@@ -341,7 +455,9 @@ class PersistentStateStore:
                 rows = conn.execute(
                     """
                     SELECT s.session_id, s.customer_id, s.title, s.created_at, s.updated_at,
-                           s.copilot_draft, COUNT(t.id) as message_count
+                           s.copilot_draft, COUNT(t.id) as message_count,
+                           (SELECT COUNT(*) FROM copilot_draft_queue q
+                            WHERE q.session_id = s.session_id AND q.status = 'PENDING') as pending_draft_count
                     FROM conversation_sessions s
                     LEFT JOIN conversation_turns t ON s.session_id = t.session_id
                     GROUP BY s.session_id;
@@ -357,6 +473,7 @@ class PersistentStateStore:
                     "createdAt": r["created_at"],
                     "updatedAt": r["updated_at"],
                     "copilotDraft": r["copilot_draft"] or "",
+                    "pendingDraftCount": int(r["pending_draft_count"] or 0),
                     "messageCount": r["message_count"],
                 }
                 for r in ordered_rows
@@ -382,12 +499,45 @@ class PersistentStateStore:
                 (session_id,),
             ).fetchall()
 
-            copilot_resp = None
-            if sess_row["copilot_response_json"]:
+            queue_rows = conn.execute(
+                """
+                SELECT interaction_id, customer_question, draft_text, response_json, created_at
+                FROM copilot_draft_queue
+                WHERE session_id = ? AND status = 'PENDING'
+                ORDER BY id ASC;
+                """,
+                (session_id,),
+            ).fetchall()
+
+            pending_drafts: List[Dict[str, Any]] = []
+            for qrow in queue_rows:
+                q_resp = None
+                if qrow["response_json"]:
+                    try:
+                        q_resp = json.loads(qrow["response_json"])
+                    except Exception:
+                        pass
+                pending_drafts.append(
+                    {
+                        "interactionId": qrow["interaction_id"],
+                        "customerQuestion": qrow["customer_question"] or "",
+                        "copilotDraft": qrow["draft_text"] or "",
+                        "copilotResponse": q_resp,
+                        "createdAt": qrow["created_at"],
+                    }
+                )
+
+            copilot_resp = pending_drafts[0]["copilotResponse"] if pending_drafts else None
+            if copilot_resp is None and sess_row["copilot_response_json"]:
                 try:
                     copilot_resp = json.loads(sess_row["copilot_response_json"])
                 except Exception:
                     pass
+            head_draft = (
+                pending_drafts[0]["copilotDraft"]
+                if pending_drafts
+                else (sess_row["copilot_draft"] or "")
+            )
 
             messages = [
                 {
@@ -413,8 +563,9 @@ class PersistentStateStore:
                 "title": sess_row["title"],
                 "createdAt": sess_row["created_at"],
                 "updatedAt": sess_row["updated_at"],
-                "copilotDraft": sess_row["copilot_draft"] or "",
+                "copilotDraft": head_draft,
                 "copilotResponse": copilot_resp,
+                "pendingDrafts": pending_drafts,
                 "facts": facts_data,
                 "messages": messages,
             }

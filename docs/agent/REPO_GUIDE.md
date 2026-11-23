@@ -55,7 +55,7 @@ Always check side effects and isolation before running any command; never treat 
 
 ## Documentation status
 
-- `README.md` is updated for the primary React/Vite UI (`frontend/`, `:5173`) alongside legacy Streamlit (`:8501`) and current `policies.json` counts (`51` total / `48` active), while referencing the `47` active policies used when the retrieval benchmark baseline was authored.
+- `README.md` is updated for the primary React/Vite UI (`frontend/`, `:5173`) alongside legacy Streamlit (`:8501`) and current `policies.json` counts (`52` total / `49` active), while referencing the `47` active policies used when the retrieval benchmark baseline was authored.
 - `services/intent_service/README_MODULE1.md` assumes trained artifacts in `artifacts/models/intent/` (currently only `.gitkeep` is present; legacy sklearn `1.6.1` pickle exists in `ML-model/`).
 - Historical `reports/*.md` may be stale on service count, UI, and config defaults.
 

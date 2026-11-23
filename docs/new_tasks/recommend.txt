@@ -1,0 +1,13 @@
+﻿Những tính năng có thể thêm/sửa vào Hệ thống
+
+
+1.Tiếp nhận yêu cầu hủy đơn, đổi địa chỉ, đổi thông tin người nhận hoặc thậm chí là tiếp nhận yêu cầu trả hàng ngay trong khung chat và chuyển tiếp yêu cầu vào.
+   Đề xuất: Khi khách hàng yêu cầu, xuất hiện ở giao diện đoạn chat “duyệt yêu cầu nhanh” 
+Hiển thị thay đổi, duyệt và cập nhật hệ thống hoặc từ chối kèm lí do 
+2. Hệ thống chưa tự động gộp các câu hỏi giống nhau thành nhóm sự vụ diện rộng 
+   Ví dụ: cùng 1 thời điểm nhiều khách hàng phàn nàn về giao hàng chậm trễ (có thể do thời tiết xấu), 
+  Đề xuất: xây dashboard gom các câu hỏi để xử lí hàng loạt hoặc thông báo chung (giống portal uet)
+3. Hệ thống thêm 1 tác tử quét cơ sở dữ liệu đơn hàng, nếu đơn hàng nào đang trong quá trình shipping mà bị giao trễ > 3 ngày thì chatbot chủ động gửi tin nhắn chủ động kèm gửi voucher 30k (giống tiktok shop và shopee nhưng giả lập)
+4. Cần giả lập lại trường ngày tháng liên quan tới đơn hàng trong mock_orders hoặc thiết lập ngày cố định làm việc cho Hệ thống để những đơn hàng trong moc_orders không xảy ra tình trạng như số 3, chỉ để 1 số case giao trễ > 3 ngày
+5. Thêm policy xử lý quy tắc thương hiệu, cờ cảnh báo nhạy cảm đối với các case hỏi so sánh giữa các thương hiệu tránh tình trạng can thiệp sâu như case số 4. 
+6. Thành phần tái tạo lại khi phiên bản mới không đem lại hiệu quả cho Hệ thống, thành phần tái lập lại lỗi Hệ thống

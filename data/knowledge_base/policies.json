@@ -951,5 +951,26 @@
       "tiki xu"
     ],
     "score": null
+  },
+  {
+    "doc_id": "POL-BRAND-001",
+    "category": "brand_communication",
+    "title": "Quy tắc ứng xử truyền thông thương hiệu và xử lý so sánh đối thủ",
+    "content": "Khi khách hàng đặt câu hỏi mang tính công kích thương hiệu Tiki hoặc yêu cầu so sánh dịch vụ/giá/tốc độ giao hàng với các nền tảng khác (Shopee, Lazada, TikTok Shop, Sendo...), nhân viên CSKH và hệ thống AI bắt buộc tuân thủ nguyên tắc trung lập: (1) Không bình luận tiêu cực, không chê bai hay khẳng định hơn thua với đối thủ cạnh tranh; (2) Không tự ý cam kết bồi thường, cấp voucher hay thông số SLA ngoài quy định niêm yết để giữ chân khách; (3) Ghi nhận góp ý lịch sự, tập trung giải quyết trực tiếp quyền lợi đơn hàng, bảo hành hoặc đổi trả của khách hàng theo chính sách hiện hành và gắn cờ nhạy cảm để nhân viên kiểm duyệt trước khi gửi.",
+    "version": "1.0",
+    "is_active": true,
+    "policy_type": "permanent",
+    "effective_date": "2024-01-01",
+    "expiration_date": null,
+    "tags": [
+      "thương hiệu",
+      "so sánh đối thủ",
+      "shopee",
+      "lazada",
+      "tiktok shop",
+      "truyền thông",
+      "khiếu nại nhạy cảm"
+    ],
+    "score": null
   }
 ]

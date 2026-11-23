@@ -29,7 +29,7 @@ export const apiClient = {
   },
 
   // Persistent Session & Turn Management in SQLite
-  async listSessions(customerId?: string): Promise<Array<{ sessionId: string; customerId: string; title: string; createdAt: string; updatedAt: string; messageCount: number; copilotDraft?: string }>> {
+  async listSessions(customerId?: string): Promise<Array<{ sessionId: string; customerId: string; title: string; createdAt: string; updatedAt: string; messageCount: number; copilotDraft?: string; pendingDraftCount?: number }>> {
     try {
       const url = customerId ? `${API_BASE}/sessions?customer_id=${customerId}` : `${API_BASE}/sessions`;
       const res = await fetch(url);
@@ -86,12 +86,15 @@ export const apiClient = {
     }
   },
 
-  async clearSessionDraft(sessionId: string): Promise<void> {
+  async clearSessionDraft(sessionId: string, interactionId?: string): Promise<void> {
     try {
       await fetch(`${API_BASE}/session/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clear_draft: true }),
+        body: JSON.stringify({
+          clear_draft: true,
+          ...(interactionId ? { interaction_id: interactionId } : {}),
+        }),
       });
     } catch (err) {
       console.warn('Clear session draft error:', err);
@@ -103,7 +106,8 @@ export const apiClient = {
     role: string,
     content: string,
     isAcknowledgement?: boolean,
-    customerId?: string
+    customerId?: string,
+    interactionId?: string
   ): Promise<void> {
     try {
       await fetch(`${API_BASE}/message`, {
@@ -115,6 +119,7 @@ export const apiClient = {
           role,
           content,
           is_acknowledgement: Boolean(isAcknowledgement),
+          ...(interactionId ? { interaction_id: interactionId } : {}),
         }),
       });
     } catch (err) {
@@ -438,6 +443,99 @@ export const apiClient = {
       console.warn('Get customer overview error:', err);
     }
     return null;
+  },
+
+  // Dot 2: In-Chat Order Action Quick Approval
+  async proposeOrderAction(proposal: Record<string, any>): Promise<any | null> {
+    try {
+      const res = await fetch(`${API_BASE}/orders/actions/propose`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(proposal),
+      });
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('Propose order action error:', err);
+    }
+    return null;
+  },
+
+  async decideOrderAction(
+    actionId: string,
+    payload: { decision: 'APPROVE' | 'REJECT'; reason?: string; performed_by?: string }
+  ): Promise<any> {
+    const res = await fetch(`${API_BASE}/orders/actions/${encodeURIComponent(actionId)}/decide`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      let detail = '';
+      try {
+        const j = await res.json();
+        detail = j.detail || '';
+      } catch {
+        detail = await res.text();
+      }
+      throw new Error(detail || `Decision failed (${res.status})`);
+    }
+    return res.json();
+  },
+
+  // Dot 2: Proactive Overdue Delay Agent & Incident Clustering
+  async scanProactiveDelay(referenceDate?: string, minOverdueDays = 3): Promise<any> {
+    const params = new URLSearchParams({ min_overdue_days: String(minOverdueDays) });
+    if (referenceDate) params.set('reference_date', referenceDate);
+    const res = await fetch(`${API_BASE}/proactive/delay/scan?${params.toString()}`, { method: 'POST' });
+    if (!res.ok) throw new Error(`Delay scan failed (${res.status})`);
+    return res.json();
+  },
+
+  async listDelayNotifications(): Promise<{ total: number; notifications: any[] }> {
+    try {
+      const res = await fetch(`${API_BASE}/proactive/delay/notifications`);
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('List delay notifications error:', err);
+    }
+    return { total: 0, notifications: [] };
+  },
+
+  async dispatchDelayNotifications(orderIds?: string[], performedBy = 'CS Staff'): Promise<any> {
+    const res = await fetch(`${API_BASE}/proactive/delay/dispatch`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ order_ids: orderIds, performed_by: performedBy }),
+    });
+    if (!res.ok) throw new Error(`Dispatch failed (${res.status})`);
+    return res.json();
+  },
+
+  async getIncidentClusters(windowHours = 24, minClusterSize = 2): Promise<any> {
+    try {
+      const res = await fetch(
+        `${API_BASE}/incidents/clusters?window_hours=${windowHours}&min_cluster_size=${minClusterSize}`
+      );
+      if (res.ok) return await res.json();
+    } catch (err) {
+      console.warn('Get incident clusters error:', err);
+    }
+    return { clusters: [], widespread_count: 0, recent_broadcasts: [] };
+  },
+
+  async broadcastIncident(payload: {
+    cluster_id: string;
+    issue_topic: string;
+    message_text: string;
+    performed_by?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/incidents/broadcast`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`Broadcast failed (${res.status})`);
+    return res.json();
   },
 };
 

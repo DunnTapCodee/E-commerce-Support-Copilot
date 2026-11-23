@@ -29,7 +29,13 @@ import {
 import { apiClient } from '../../lib/api-client';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { CustomerOrderRecord, CustomerProfileRecord, GatewayResponse, RetrievedDocument } from '../../types';
+import {
+  CustomerOrderRecord,
+  CustomerProfileRecord,
+  GatewayResponse,
+  PendingDraftItem,
+  RetrievedDocument,
+} from '../../types';
 import { formatSystemTime } from '../../lib/time';
 import {
   extractPolicyCodes,
@@ -100,6 +106,8 @@ export interface ConversationSession {
   messages: ChatMessage[];
   copilotResponse: GatewayResponse | null;
   editedDraft: string;
+  activeDraftInteractionId?: string | null;
+  pendingDrafts?: PendingDraftItem[];
   messageCount?: number;
 }
 
@@ -151,6 +159,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [viewingPolicy, setViewingPolicy] = useState<RetrievedDocument | null>(null);
   const [copiedPolicy, setCopiedPolicy] = useState(false);
   const [allPolicies, setAllPolicies] = useState<RetrievedDocument[]>([]);
+
+  // Dot 2 (Task 4): Quick Order Action Approval state
+  const [actionDecisionReason, setActionDecisionReason] = useState('');
+  const [isDecidingOrderAction, setIsDecidingOrderAction] = useState(false);
+  const [orderActionFeedback, setOrderActionFeedback] = useState<string | null>(null);
 
   // Customer activity map (customerId -> latest session activity) to sort customers with newest questions first
   const [customerActivity, setCustomerActivity] = useState<
@@ -473,8 +486,38 @@ export const ChatView: React.FC<ChatViewProps> = ({
         }
 
         if (details) {
+          const pendingQueue: PendingDraftItem[] = Array.isArray(details.pendingDrafts)
+            ? details.pendingDrafts
+            : [];
           baseList = baseList.map((s) => {
             if (s.sessionId === activeSessionId) {
+              if (pendingQueue.length > 0) {
+                const locked = s.activeDraftInteractionId
+                  ? pendingQueue.find((d) => d.interactionId === s.activeDraftInteractionId)
+                  : undefined;
+                const activeItem = locked || pendingQueue[0];
+                const isSameLocked = Boolean(
+                  locked && s.activeDraftInteractionId === activeItem.interactionId
+                );
+                const nextDraft =
+                  isSameLocked && (draftMode === 'edit' || Boolean(s.editedDraft?.trim()))
+                    ? s.editedDraft
+                    : activeItem.copilotDraft;
+                const nextResp =
+                  isSameLocked && s.copilotResponse
+                    ? s.copilotResponse
+                    : (activeItem.copilotResponse ?? details.copilotResponse ?? s.copilotResponse);
+                return {
+                  ...s,
+                  title: details.title || s.title,
+                  messages: Array.isArray(details.messages) ? details.messages : s.messages,
+                  pendingDrafts: pendingQueue,
+                  activeDraftInteractionId: activeItem.interactionId,
+                  editedDraft: nextDraft,
+                  copilotResponse: nextResp,
+                  messageCount: Array.isArray(details.messages) ? details.messages.length : s.messageCount,
+                };
+              }
               const nextDraft =
                 draftMode === 'edit' && s.editedDraft
                   ? s.editedDraft
@@ -485,6 +528,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 ...s,
                 title: details.title || s.title,
                 messages: Array.isArray(details.messages) ? details.messages : s.messages,
+                pendingDrafts: [],
+                activeDraftInteractionId: null,
                 editedDraft: nextDraft,
                 copilotResponse:
                   details.copilotResponse !== undefined ? details.copilotResponse : s.copilotResponse,
@@ -691,12 +736,25 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 ...prev,
                 [selectedCustomerId]: list.map((s) => {
                   if (s.sessionId === currentSessionId) {
+                    const doneResp = s.copilotResponse
+                      ? { ...s.copilotResponse, draft_text: finalDraft, customer_question: queryText }
+                      : null;
+                    const newItem: PendingDraftItem = {
+                      interactionId: data.interaction_id || doneResp?.interaction_id || `draft_${Date.now()}`,
+                      customerQuestion: queryText,
+                      copilotDraft: finalDraft,
+                      copilotResponse: doneResp,
+                    };
+                    const existingQueue = s.pendingDrafts || [];
+                    const updatedQueue = existingQueue.some((d) => d.interactionId === newItem.interactionId)
+                      ? existingQueue.map((d) => (d.interactionId === newItem.interactionId ? newItem : d))
+                      : [...existingQueue, newItem];
                     return {
                       ...s,
+                      activeDraftInteractionId: s.activeDraftInteractionId || newItem.interactionId,
+                      pendingDrafts: updatedQueue,
                       editedDraft: finalDraft,
-                      copilotResponse: s.copilotResponse
-                        ? { ...s.copilotResponse, draft_text: finalDraft }
-                        : null,
+                      copilotResponse: doneResp,
                     };
                   }
                   return s;
@@ -714,9 +772,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 ...prev,
                 [selectedCustomerId]: list.map((s) => {
                   if (s.sessionId === currentSessionId) {
+                    const enriched = { ...resp, customer_question: queryText };
+                    const newItem: PendingDraftItem = {
+                      interactionId: resp.interaction_id,
+                      customerQuestion: queryText,
+                      copilotDraft: resp.draft_text || '',
+                      copilotResponse: enriched,
+                    };
+                    const existingQueue = s.pendingDrafts || [];
                     return {
                       ...s,
-                      copilotResponse: resp,
+                      activeDraftInteractionId: s.activeDraftInteractionId || newItem.interactionId,
+                      pendingDrafts: [...existingQueue, newItem],
+                      copilotResponse: enriched,
                       editedDraft: resp.draft_text || '',
                     };
                   }
@@ -1051,6 +1119,8 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     const currentSessionId = activeSession.sessionId;
     const copilotResp = activeSession.copilotResponse;
+    const targetInteractionId =
+      activeSession.activeDraftInteractionId || copilotResp?.interaction_id || undefined;
 
     // Filter citations: ONLY attach policies that are EXPLICITLY referenced in finalContent (avoid legal risk)
     const citedSet = new Set(extractPolicyCodes(finalContent));
@@ -1073,11 +1143,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
         ...prev,
         [selectedCustomerId]: list.map((s) => {
           if (s.sessionId === currentSessionId) {
+            const remainingQueue = (s.pendingDrafts || []).filter((d) =>
+              targetInteractionId ? d.interactionId !== targetInteractionId : false
+            );
+            const nextHead = remainingQueue[0] || null;
             return {
               ...s,
               messages: [...s.messages, agentMsg],
-              copilotResponse: null,
-              editedDraft: '',
+              pendingDrafts: remainingQueue,
+              activeDraftInteractionId: nextHead?.interactionId || null,
+              copilotResponse: nextHead?.copilotResponse || null,
+              editedDraft: nextHead?.copilotDraft || '',
               updatedAt: new Date().toISOString(),
             };
           }
@@ -1086,8 +1162,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
       };
     });
 
-    // Save final approved agent message to SQLite DB (also clears copilot_draft in SQLite)
-    await apiClient.saveMessage(currentSessionId, 'agent', finalContent, false, selectedCustomerId);
+    // Save final approved agent message to SQLite DB (resolves only this interaction_id and advances queue)
+    await apiClient.saveMessage(
+      currentSessionId,
+      'agent',
+      finalContent,
+      false,
+      selectedCustomerId,
+      targetInteractionId
+    );
 
     // Record review action to telemetry
     if (copilotResp?.interaction_id) {
@@ -1122,16 +1205,53 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const handleDismissDraft = () => {
     if (!activeSession) return;
     const sessId = activeSession.sessionId;
+    const targetInteractionId =
+      activeSession.activeDraftInteractionId ||
+      activeSession.copilotResponse?.interaction_id ||
+      undefined;
+    setSessionsByCustomer((prev) => {
+      const list = prev[selectedCustomerId] || [];
+      return {
+        ...prev,
+        [selectedCustomerId]: list.map((s) => {
+          if (s.sessionId !== sessId) return s;
+          const remainingQueue = (s.pendingDrafts || []).filter((d) =>
+            targetInteractionId ? d.interactionId !== targetInteractionId : false
+          );
+          const nextHead = remainingQueue[0] || null;
+          return {
+            ...s,
+            pendingDrafts: remainingQueue,
+            activeDraftInteractionId: nextHead?.interactionId || null,
+            copilotResponse: nextHead?.copilotResponse || null,
+            editedDraft: nextHead?.copilotDraft || '',
+          };
+        }),
+      };
+    });
+    apiClient.clearSessionDraft(sessId, targetInteractionId);
+  };
+
+  // Switch active draft manually inside pending FIFO queue
+  const handleSelectQueuedDraft = (item: PendingDraftItem) => {
+    if (!activeSession) return;
+    const sessId = activeSession.sessionId;
     setSessionsByCustomer((prev) => {
       const list = prev[selectedCustomerId] || [];
       return {
         ...prev,
         [selectedCustomerId]: list.map((s) =>
-          s.sessionId === sessId ? { ...s, copilotResponse: null, editedDraft: '' } : s
+          s.sessionId === sessId
+            ? {
+                ...s,
+                activeDraftInteractionId: item.interactionId,
+                copilotResponse: item.copilotResponse,
+                editedDraft: item.copilotDraft,
+              }
+            : s
         ),
       };
     });
-    apiClient.clearSessionDraft(sessId);
   };
 
   // Copy policy text
@@ -1139,6 +1259,64 @@ export const ChatView: React.FC<ChatViewProps> = ({
     navigator.clipboard.writeText(text);
     setCopiedPolicy(true);
     setTimeout(() => setCopiedPolicy(false), 2000);
+  };
+
+  // Staff approves or rejects an in-chat order action proposal (HITL Quick Approval)
+  const handleDecideOrderAction = async (decision: 'APPROVE' | 'REJECT') => {
+    if (!activeSession?.copilotResponse?.pending_action) return;
+    const pending = activeSession.copilotResponse.pending_action;
+    const trimmedReason = actionDecisionReason.trim();
+    if (decision === 'REJECT' && !trimmedReason) {
+      setOrderActionFeedback('⚠️ Vui lòng nhập lý do từ chối trước khi bấm Từ chối yêu cầu.');
+      return;
+    }
+
+    setIsDecidingOrderAction(true);
+    setOrderActionFeedback(null);
+    try {
+      await apiClient.proposeOrderAction(pending);
+      const res = await apiClient.decideOrderAction(pending.action_id, {
+        decision,
+        reason: trimmedReason || (decision === 'APPROVE' ? 'Nhân viên CSKH đã duyệt' : undefined),
+        performed_by: selectedStaffName || 'CS Staff',
+      });
+      const updatedAction = res.action || { ...pending, status: decision === 'APPROVE' ? 'APPROVED' : 'REJECTED', decision_reason: trimmedReason };
+      const updatedOrder = res.order || activeSession.copilotResponse.order_data;
+      const replySuggestion = res.reply_message || activeSession.editedDraft;
+
+      setSessionsByCustomer((prev) => {
+        const list = prev[selectedCustomerId] || [];
+        return {
+          ...prev,
+          [selectedCustomerId]: list.map((s) =>
+            s.sessionId === activeSession.sessionId && s.copilotResponse
+              ? {
+                  ...s,
+                  editedDraft: replySuggestion,
+                  copilotResponse: {
+                    ...s.copilotResponse,
+                    order_data: updatedOrder,
+                    pending_action: updatedAction,
+                  },
+                }
+              : s
+          ),
+        };
+      });
+      if (decision === 'APPROVE' && selectedCustomerId) {
+        apiClient.getCustomerOrders(selectedCustomerId).then((ords) => setCustomerOrders(ords as CustomerOrderRecord[]));
+      }
+      setActionDecisionReason('');
+      setOrderActionFeedback(
+        decision === 'APPROVE'
+          ? `✅ Đã duyệt & cập nhật đơn #${pending.order_id}. Đã điền câu xác nhận vào bản nháp.`
+          : `🛑 Đã từ chối yêu cầu cho đơn #${pending.order_id}. Đã điền câu giải thích vào bản nháp.`
+      );
+    } catch (err: any) {
+      setOrderActionFeedback(`⚠️ Lỗi xử lý yêu cầu: ${err?.message || 'Không thể cập nhật'}`);
+    } finally {
+      setIsDecidingOrderAction(false);
+    }
   };
 
   const messages = activeSession?.messages || [];
@@ -1770,10 +1948,53 @@ export const ChatView: React.FC<ChatViewProps> = ({
           <>
             {/* CS Draft Response Editor (Placed at top of Column 3 for immediate action!) */}
             <Card title="✍️ Bản nháp Đề xuất cho Nhân viên">
-              {/* Messenger-style Faded Quoted Customer Question being answered by this draft */}
+              {/* FIFO Pending Draft Queue Banner (Prevents overwriting Q1 when Q2 arrives concurrently) */}
+              {activeSession?.pendingDrafts && activeSession.pendingDrafts.length > 1 && (
+                <div className="mb-2.5 p-2 rounded-xl bg-blue-50 border border-blue-200 text-[11px] text-blue-900 space-y-1.5">
+                  <div className="flex items-center justify-between font-semibold">
+                    <span>🗂️ Hàng đợi bản nháp: {activeSession.pendingDrafts.length} câu chưa duyệt</span>
+                    <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.5 rounded-full">
+                      FIFO khóa bản nháp đang xem
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {activeSession.pendingDrafts.map((qItem, qIdx) => {
+                      const isCurrent =
+                        qItem.interactionId ===
+                        (activeSession.activeDraftInteractionId || copilotResponse?.interaction_id);
+                      return (
+                        <button
+                          key={qItem.interactionId}
+                          type="button"
+                          onClick={() => handleSelectQueuedDraft(qItem)}
+                          className={`px-2 py-0.5 rounded-lg border text-[10px] font-semibold cursor-pointer transition-colors ${
+                            isCurrent
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-blue-700 border-blue-200 hover:bg-blue-100'
+                          }`}
+                          title={qItem.customerQuestion || `Câu hỏi #${qIdx + 1}`}
+                        >
+                          Câu #{qIdx + 1}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Messenger-style Faded Quoted Customer Question pinned to this queued draft */}
               {(() => {
+                const activeQueuedItem = activeSession?.pendingDrafts?.find(
+                  (d) =>
+                    d.interactionId ===
+                    (activeSession.activeDraftInteractionId || copilotResponse?.interaction_id)
+                );
                 const latestCustMsg = [...messages].reverse().find((m) => m.role === 'customer');
-                if (!latestCustMsg) return null;
+                const quotedQuestion =
+                  activeQueuedItem?.customerQuestion ||
+                  copilotResponse?.customer_question ||
+                  latestCustMsg?.content;
+                if (!quotedQuestion) return null;
                 return (
                   <div className="mb-2.5 px-3 py-2 rounded-xl bg-slate-100/90 border border-slate-200/90 text-[11px] text-slate-600 flex items-start gap-1.5 opacity-90">
                     <CornerUpLeft className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
@@ -1781,11 +2002,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       <span className="font-semibold text-slate-700 block">
                         Đang trả lời câu hỏi của {currentCustomer.name}:
                       </span>
-                      <p className="italic text-slate-600 line-clamp-2 mt-0.5">"{latestCustMsg.content}"</p>
+                      <p className="italic text-slate-600 line-clamp-2 mt-0.5">"{quotedQuestion}"</p>
                     </div>
                   </div>
                 );
               })()}
+
+              {/* Sensitivity & Guardrail Alert Banner for Staff Review (Task 1 & Task 2) */}
+              {(copilotResponse?.guardrail?.violations?.length ||
+                (copilotResponse?.agent_guidance &&
+                  copilotResponse.guardrail?.action_type !== 'PROCEED_TO_LLM' &&
+                  copilotResponse.guardrail?.action_type !== 'CHITCHAT_RESPONSE')) && (
+                <div className="mb-2.5 p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-[11px] text-rose-900 space-y-1">
+                  {copilotResponse?.agent_guidance && (
+                    <p className="font-semibold leading-snug">{copilotResponse.agent_guidance}</p>
+                  )}
+                  {copilotResponse?.guardrail?.violations?.map((v, idx) => (
+                    <p key={idx} className="text-rose-700 text-[10px]">
+                      • {v}
+                    </p>
+                  ))}
+                </div>
+              )}
 
               {copilotResponse?.customer_acknowledgement && (
                 <div className="mb-2.5 p-2 bg-amber-50 rounded-lg border border-amber-100 text-[11px] text-amber-800">
@@ -1960,6 +2198,109 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     )}
                   </div>
                 </div>
+              </Card>
+            )}
+
+            {/* Quick Order Action Approval Card (Task 4 - HITL Diff & Reason) */}
+            {copilotResponse?.pending_action && (
+              <Card title="⚡ Duyệt yêu cầu nhanh (Tác nghiệp đơn hàng)">
+                {(() => {
+                  const act = copilotResponse.pending_action;
+                  const actionLabels: Record<string, string> = {
+                    cancel_order: 'Hủy đơn hàng',
+                    update_address: 'Đổi địa chỉ giao hàng',
+                    update_receiver: 'Đổi thông tin người nhận',
+                    return_product: 'Yêu cầu trả hàng',
+                  };
+                  const statusColor =
+                    act.status === 'APPROVED'
+                      ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                      : act.status === 'REJECTED'
+                        ? 'bg-rose-50 border-rose-200 text-rose-900'
+                        : 'bg-amber-50/70 border-amber-200 text-slate-800';
+                  return (
+                    <div className={`p-3 rounded-xl border text-xs space-y-2.5 ${statusColor}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-slate-900">
+                          {actionLabels[act.action_type] || act.action_type} • #{act.order_id}
+                        </span>
+                        <Badge
+                          variant={
+                            act.status === 'APPROVED'
+                              ? 'success'
+                              : act.status === 'REJECTED'
+                                ? 'danger'
+                                : act.eligible
+                                  ? 'warning'
+                                  : 'danger'
+                          }
+                        >
+                          {act.status === 'PENDING' ? (act.eligible ? 'Chờ duyệt' : 'Không đủ ĐK') : act.status}
+                        </Badge>
+                      </div>
+
+                      {!act.eligible && act.ineligibility_reason && (
+                        <p className="text-[11px] font-medium text-rose-700 bg-white/80 p-2 rounded-lg border border-rose-200">
+                          {act.ineligibility_reason}
+                        </p>
+                      )}
+
+                      <div className="bg-white/90 rounded-lg border border-slate-200 p-2 space-y-1 text-[11px]">
+                        <span className="font-semibold text-slate-600 block">Thay đổi đề xuất (Trước → Sau):</span>
+                        {Object.keys(act.proposed_values || {}).map((field) => (
+                          <div key={field} className="flex flex-col gap-0.5 border-t border-slate-100 pt-1">
+                            <span className="font-mono text-[10px] text-slate-500">{field}:</span>
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="line-through text-rose-600">
+                                {String(act.before_values?.[field] ?? 'N/A')}
+                              </span>
+                              <span className="text-slate-400">→</span>
+                              <span className="font-semibold text-emerald-700">
+                                {String(act.proposed_values?.[field] ?? '')}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {act.status === 'PENDING' && (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={actionDecisionReason}
+                            onChange={(e) => setActionDecisionReason(e.target.value)}
+                            placeholder="Nhập lý do duyệt / từ chối (bắt buộc khi từ chối)..."
+                            className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[11px] focus:outline-none focus:border-blue-500"
+                          />
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              disabled={!act.eligible || isDecidingOrderAction}
+                              onClick={() => handleDecideOrderAction('APPROVE')}
+                              className="flex-1 py-1.5 px-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 text-white font-semibold text-[11px] cursor-pointer transition-colors"
+                            >
+                              {isDecidingOrderAction ? 'Đang xử lý...' : 'Duyệt & Cập nhật DB'}
+                            </button>
+                            <button
+                              type="button"
+                              disabled={isDecidingOrderAction}
+                              onClick={() => handleDecideOrderAction('REJECT')}
+                              className="py-1.5 px-2.5 rounded-lg bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-semibold text-[11px] cursor-pointer transition-colors"
+                            >
+                              Từ chối
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {orderActionFeedback && (
+                        <p className="text-[11px] font-medium bg-white/90 px-2 py-1 rounded border border-slate-200">
+                          {orderActionFeedback}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </Card>
             )}
 

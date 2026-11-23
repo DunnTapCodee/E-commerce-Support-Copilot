@@ -102,11 +102,14 @@ class MicroserviceClients:
             except Exception:
                 return []
 
-    async def lookup_order(self, identifier: str) -> Optional[Dict[str, Any]]:
+    async def lookup_order(
+        self, identifier: str, customer_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
         """Call telemetry_service:8003/orders/{identifier}."""
+        params = {"customer_id": customer_id} if customer_id else None
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             try:
-                resp = await client.get(f"{TELEMETRY_SERVICE_URL}/orders/{identifier}")
+                resp = await client.get(f"{TELEMETRY_SERVICE_URL}/orders/{identifier}", params=params)
                 if resp.status_code == 200:
                     return resp.json()
                 return None

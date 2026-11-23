@@ -178,8 +178,10 @@ class RuleOrderMatcher:
             if ph:
                 self.orders_by_phone.setdefault(ph, []).append(o)
 
-    def match(self, query: str) -> MatchResult:
+    def match(self, query: str, customer_id: Optional[str] = None) -> MatchResult:
         start = time.perf_counter()
+        from contracts.safety import is_order_owned_by_customer
+
         entities = extract_entities_advanced(query)
 
         matched_order = None
@@ -190,23 +192,32 @@ class RuleOrderMatcher:
         if trk_match:
             trk_code = trk_match.group(0).upper()
             if trk_code in self.orders_by_tracking:
-                matched_order = self.orders_by_tracking[trk_code]
-                matched_by = "tracking_code"
-                conf = 1.0
+                cand = self.orders_by_tracking[trk_code]
+                if not customer_id or is_order_owned_by_customer(cand, customer_id):
+                    matched_order = cand
+                    matched_by = "tracking_code"
+                    conf = 1.0
 
         if not matched_order:
             oid = entities.get("order_id")
             if oid and oid.upper() in self.orders_by_id:
-                matched_order = self.orders_by_id[oid.upper()]
-                matched_by = "order_id"
-                conf = 1.0
+                cand = self.orders_by_id[oid.upper()]
+                if not customer_id or is_order_owned_by_customer(cand, customer_id):
+                    matched_order = cand
+                    matched_by = "order_id"
+                    conf = 1.0
 
         if not matched_order and entities.get("phone"):
             ph = re.sub(r"\D", "", str(entities.get("phone")))
             if ph in self.orders_by_phone:
-                matched_order = self.orders_by_phone[ph][0]
-                matched_by = "phone"
-                conf = 0.95
+                owned = [
+                    o for o in self.orders_by_phone[ph]
+                    if not customer_id or is_order_owned_by_customer(o, customer_id)
+                ]
+                if owned:
+                    matched_order = owned[0]
+                    matched_by = "phone"
+                    conf = 0.95
 
         latency_ms = (time.perf_counter() - start) * 1000
         return MatchResult(
@@ -263,8 +274,12 @@ class EmbeddingOrderMatcher:
             self.vectorizer = None
             self.matrix = None
 
-    def match(self, query: str, threshold: float = 0.22) -> MatchResult:
+    def match(
+        self, query: str, threshold: float = 0.22, customer_id: Optional[str] = None
+    ) -> MatchResult:
         start = time.perf_counter()
+        from contracts.safety import is_order_owned_by_customer
+
         q_lower = query.lower()
         general_intents = ["có bán", "mua ở đâu", "tư vấn giúp", "tổng đài", "thời gian làm việc", "mã giảm giá"]
         is_general = any(gi in q_lower for gi in general_intents) and not any(k in q_lower for k in ["đơn", "order", "ord", "giao", "hủy"])
@@ -278,24 +293,33 @@ class EmbeddingOrderMatcher:
                 query_vec = self.vectorizer.transform([query])
                 scores = cosine_similarity(query_vec, self.matrix)[0]
                 import numpy as np
-                best_idx = int(np.argmax(scores))
-                best_score = float(scores[best_idx])
-                if best_score >= threshold:
-                    matched_order = self.orders[best_idx]
+                ranked_indices = np.argsort(scores)[::-1]
+                for idx in ranked_indices:
+                    cand_score = float(scores[int(idx)])
+                    if cand_score < threshold:
+                        break
+                    cand_order = self.orders[int(idx)]
+                    if customer_id and not is_order_owned_by_customer(cand_order, customer_id):
+                        continue
+                    best_score = cand_score
+                    matched_order = cand_order
+                    break
             except Exception:
                 pass
 
         if not matched_order and not is_general and self.orders:
             tokens = set(q_lower.split())
             best_overlap = 0
-            best_idx = 0
+            best_idx = -1
             for idx, o in enumerate(self.orders):
+                if customer_id and not is_order_owned_by_customer(o, customer_id):
+                    continue
                 items = " ".join(it.get("name", "").lower() for it in o.get("items", []))
                 overlap = sum(1 for t in tokens if len(t) > 2 and t in items)
                 if overlap > best_overlap:
                     best_overlap = overlap
                     best_idx = idx
-            if best_overlap >= 2:
+            if best_overlap >= 2 and best_idx >= 0:
                 matched_order = self.orders[best_idx]
                 best_score = min(0.85, 0.4 + best_overlap * 0.15)
 
@@ -324,9 +348,9 @@ class HybridOrderMatcher:
         self.rule_matcher = RuleOrderMatcher(self.orders)
         self.embedding_matcher = EmbeddingOrderMatcher(self.orders, embedding_model=embedding_model)
 
-    def match(self, query: str) -> MatchResult:
+    def match(self, query: str, customer_id: Optional[str] = None) -> MatchResult:
         start = time.perf_counter()
-        rule_res = self.rule_matcher.match(query)
+        rule_res = self.rule_matcher.match(query, customer_id=customer_id)
 
         matched_order = None
         matched_by = "none"
@@ -337,7 +361,7 @@ class HybridOrderMatcher:
             matched_by = f"exact_{rule_res.matched_by}"
             conf = 1.0
         else:
-            emb_res = self.embedding_matcher.match(query)
+            emb_res = self.embedding_matcher.match(query, customer_id=customer_id)
             if emb_res.order and emb_res.confidence >= 0.22:
                 matched_order = emb_res.order
                 matched_by = "semantic_embedding"
@@ -370,9 +394,9 @@ class PromptOrderMatcher:
         self.orders = orders if orders is not None else load_all_orders()
         self.rule_matcher = RuleOrderMatcher(self.orders)
 
-    async def match(self, query: str) -> MatchResult:
+    async def match(self, query: str, customer_id: Optional[str] = None) -> MatchResult:
         # Calls rule matcher first, then reports as prompt extraction method
-        res = self.rule_matcher.match(query)
+        res = self.rule_matcher.match(query, customer_id=customer_id)
         res.method = self.name
         return res
 

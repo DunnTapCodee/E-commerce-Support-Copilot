@@ -196,6 +196,35 @@ class TestModule3OrdersAndTools(unittest.TestCase):
         self.assertEqual(r_sem.matched_by, "semantic_embedding")
         self.assertGreater(r_sem.confidence, 0.40)
 
+    def test_customer_order_isolation_and_idor_prevention(self):
+        """Task 1: Never synthesize ORD-XXXX from foreign CUST-XXXX or leak cross-customer PII."""
+        from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
+        from services.conversation_service.src.input_pipeline.order_matcher import HybridOrderMatcher
+
+        # Scoped lookup blocks cross-customer CUST-1007 / ORD-1007 for demo-customer (Bùi Thị An)
+        self.assertIsNone(self.repo.get_order("CUST-1007", customer_id="demo-customer"))
+        self.assertIsNone(self.repo.get_order("ORD-1007", customer_id="demo-customer"))
+        self.assertIsNone(self.repo.get_order("CUST-1002", customer_id="CUST-1001"))
+
+        # Synthetic CUST-XXXX -> ORD-XXXX alias is disabled even if order row exists under another customer
+        self.assertIsNotNone(self.repo.get_order("ORD-1003"))  # owned by cust-1003
+        self.assertIsNone(self.repo.get_order("CUST-1003", customer_id="demo-customer"))
+
+        # Own alias CUST-1001 <-> demo-customer (Bùi Thị An) still works cleanly
+        own_order = self.repo.get_order("ORD-1001", customer_id="CUST-1001")
+        self.assertIsNotNone(own_order)
+        self.assertEqual(own_order["order_id"], "ORD-1001")
+
+        # Scoped matcher must NOT cross-bind by shared product name of another customer
+        matcher = HybridOrderMatcher()
+        cross_product = matcher.match("kiểm tra đơn mua bình giữ nhiệt của tôi", customer_id="CUST-9999")
+        self.assertIsNone(cross_product.order)
+
+        # Fact extraction flags foreign CUST-* without binding someone else's order_id
+        facts = extract_facts("Kiểm tra giúp mình đơn của CUST-1007 nhé", customer_id="demo-customer")
+        self.assertEqual(facts.get("foreign_customer_id"), "CUST-1007")
+        self.assertNotIn("order_id", facts)
+
 
 if __name__ == "__main__":
     unittest.main()

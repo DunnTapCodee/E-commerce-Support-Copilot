@@ -130,12 +130,18 @@ async def update_session(session_id: str, payload: Dict[str, Any]):
     if new_title:
         state_store.update_session_title(session_id, new_title)
     if payload.get("clear_draft"):
-        state_store.clear_copilot_draft(session_id)
+        state_store.clear_copilot_draft(
+            session_id,
+            interaction_id=payload.get("interaction_id"),
+            resolution_status=payload.get("resolution_status", "DISMISSED"),
+        )
     elif "copilot_draft" in payload:
         state_store.set_copilot_draft(
             session_id,
             payload.get("copilot_draft") or "",
             payload.get("copilot_response"),
+            interaction_id=payload.get("interaction_id"),
+            customer_question=payload.get("customer_question"),
         )
     return {"status": "updated", "session_id": session_id, "title": new_title}
 
@@ -155,6 +161,7 @@ async def persist_chat_message(payload: Dict[str, Any]):
     role = payload.get("role", "agent")
     content = payload.get("content", "")
     is_ack = payload.get("is_acknowledgement", False)
+    interaction_id = payload.get("interaction_id")
     if not sess_id or not content:
         raise HTTPException(status_code=400, detail="Missing session_id or content")
     # Ensure session exists in SQLite before inserting turn
@@ -164,6 +171,7 @@ async def persist_chat_message(payload: Dict[str, Any]):
         role=role,
         content=content,
         is_acknowledgement=is_ack,
+        interaction_id=interaction_id,
     )
     return {"status": "saved", "turn_id": turn_id, "session_id": sess_id}
 
@@ -183,6 +191,7 @@ async def generate_fast_ack(request: QueryRequest):
         customer_query,
         active_intent=state.active_intent,
         context_summary=state.context_summary,
+        customer_id=customer_id,
     )
     merged_facts = dict(state.facts)
     merged_facts.update(new_facts)
@@ -254,10 +263,107 @@ async def get_session_state(session_id: str):
     )
 
 
+async def _resolve_scoped_order_and_guard(
+    customer_query: str,
+    state: ConversationSessionState,
+    customer_id: str,
+) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
+    """Resolve order strictly scoped to customer_id and detect cross-customer IDOR attempts."""
+    from contracts.safety import detect_foreign_customer_query, is_order_owned_by_customer
+    from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
+
+    pre_facts = extract_facts(customer_query, customer_id=customer_id)
+    foreign_cid = pre_facts.get("foreign_customer_id") or detect_foreign_customer_query(
+        customer_query, customer_id
+    )
+    if foreign_cid:
+        return None, (
+            f"Truy vấn đề cập mã khách hàng '{foreign_cid}' không thuộc tài khoản đang đăng nhập ({customer_id})."
+        )
+
+    explicit_oid = pre_facts.get("order_id")
+    order_data: Optional[Dict[str, Any]] = None
+
+    if explicit_oid:
+        try:
+            order_data = await telemetry_client.lookup_order(explicit_oid, customer_id=customer_id)
+        except Exception as exc:
+            print(f"[ConversationService] Scoped order lookup error: {exc}")
+        if not order_data:
+            order_data = order_tools.get_order_by_id(explicit_oid, customer_id=customer_id)
+
+        if order_data and is_order_owned_by_customer(order_data, customer_id):
+            state.active_order_id = order_data["order_id"]
+            state.facts["order_id"] = order_data["order_id"]
+            state.facts["order_cached"] = order_data
+            return order_data, None
+
+        # Check unscoped only internally to detect cross-customer IDOR without exposing PII
+        unscoped_hit: Optional[Dict[str, Any]] = None
+        try:
+            unscoped_hit = await telemetry_client.lookup_order(explicit_oid)
+        except Exception:
+            pass
+        if not unscoped_hit:
+            unscoped_hit = order_tools.get_order_by_id(explicit_oid)
+        if unscoped_hit and not is_order_owned_by_customer(unscoped_hit, customer_id):
+            return None, (
+                f"Đơn hàng {explicit_oid} thuộc khách hàng khác; từ chối truy xuất và tiết lộ PII."
+            )
+        return None, None
+
+    # No explicit order_id in current turn: reuse active_order_id or customer_id ONLY if owned
+    lookup_key = state.active_order_id or customer_id
+    if lookup_key:
+        try:
+            order_data = await telemetry_client.lookup_order(lookup_key, customer_id=customer_id)
+        except Exception as exc:
+            print(f"[ConversationService] Order lookup error: {exc}")
+    if not order_data and state.active_order_id:
+        order_data = order_tools.get_order_by_id(state.active_order_id, customer_id=customer_id)
+    if not order_data and state.facts.get("order_cached"):
+        cached = state.facts["order_cached"]
+        if is_order_owned_by_customer(cached, customer_id):
+            order_data = cached
+
+    if order_data and is_order_owned_by_customer(order_data, customer_id) and order_data.get("order_id"):
+        state.active_order_id = order_data["order_id"]
+        state.facts["order_id"] = order_data["order_id"]
+        state.facts["order_cached"] = order_data
+        return order_data, None
+
+    return None, None
+
+
+def _build_pending_order_action(
+    customer_query: str,
+    effective_intent: str,
+    order_data: Optional[Dict[str, Any]],
+    customer_id: str,
+    session_id: str,
+    interaction_id: str,
+    unauthorized_order_reason: Optional[str],
+):
+    """Extract read-only OrderActionProposal for Staff Quick Approval when ownership checks pass."""
+    if unauthorized_order_reason or not order_data:
+        return None
+    from contracts.order_actions import extract_order_action_proposal
+
+    return extract_order_action_proposal(
+        customer_query=customer_query,
+        intent=effective_intent,
+        order_data=order_data,
+        customer_id=customer_id,
+        session_id=session_id,
+        interaction_id=interaction_id,
+    )
+
+
 async def execute_dialogue_preprocessing(
     customer_query: str,
     state: ConversationSessionState,
     order_data: Optional[Dict[str, Any]],
+    unauthorized_order_reason: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Concurrent execution of Input Classification, Intent Prediction, and Query Rewriting via asyncio.gather."""
     from services.conversation_service.src.dialogue_state.query_rewriter import QueryRewriter
@@ -270,6 +376,7 @@ async def execute_dialogue_preprocessing(
             customer_query,
             active_intent=state.active_intent,
             context_summary=state.context_summary,
+            customer_id=state.customer_id,
         )
     )
     intent_task = asyncio.create_task(
@@ -291,10 +398,14 @@ async def execute_dialogue_preprocessing(
         input_type, new_facts, input_conf = results[0]
 
     merged_facts = dict(state.facts)
-    merged_facts.update(new_facts)
+    safe_new_facts = dict(new_facts)
+    if unauthorized_order_reason:
+        safe_new_facts.pop("order_id", None)
+        safe_new_facts.pop("customer_name", None)
+    merged_facts.update(safe_new_facts)
     state.facts = merged_facts
-    if "order_id" in merged_facts:
-        state.active_order_id = merged_facts["order_id"]
+    if not unauthorized_order_reason and "order_id" in merged_facts and order_data:
+        state.active_order_id = order_data["order_id"]
 
     # 2. Unpack Intent
     if isinstance(results[1], Exception):
@@ -379,6 +490,7 @@ async def execute_dialogue_preprocessing(
         citations=citations,
         has_expired_policy=has_expired_policy,
         is_live_chat=state.is_live_chat,
+        unauthorized_order_reason=unauthorized_order_reason,
     )
 
     # Step 8: Immediate Customer Acknowledgement
@@ -454,29 +566,15 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
     # Step 0: Retrieve / initialize session state
     state = state_store.get_or_create(session_id, customer_id)
 
-    # Step 1: Early Order Lookup & Session Association
-    order_data: Optional[Dict[str, Any]] = None
-    lookup_key = state.active_order_id or customer_id
-    if lookup_key:
-        try:
-            order_data = await telemetry_client.lookup_order(lookup_key)
-        except Exception as exc:
-            print(f"[ConversationService] Order lookup error: {exc}")
-
-    # Fallback to local order store if telemetry returned None
-    if not order_data and state.active_order_id:
-        order_data = order_tools.get_order_by_id(state.active_order_id)
-    if not order_data and state.facts.get("order_cached"):
-        order_data = state.facts["order_cached"]
-
-    # Lock order_id into state facts for all subsequent turns
-    if order_data and order_data.get("order_id"):
-        state.active_order_id = order_data["order_id"]
-        state.facts["order_id"] = order_data["order_id"]
-        state.facts["order_cached"] = order_data
+    # Step 1: Early Scoped Order Lookup & Cross-Customer IDOR Guard
+    order_data, unauthorized_order_reason = await _resolve_scoped_order_and_guard(
+        customer_query, state, customer_id
+    )
 
     # Concurrent Preprocessing Pipeline via asyncio.gather
-    prep = await execute_dialogue_preprocessing(customer_query, state, order_data)
+    prep = await execute_dialogue_preprocessing(
+        customer_query, state, order_data, unauthorized_order_reason=unauthorized_order_reason
+    )
 
     effective_intent = prep["effective_intent"]
     effective_conf = prep["effective_conf"]
@@ -534,6 +632,25 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
                     "hallucination_detected": runtime_guard.hallucination_detected,
                 }
             )
+
+    # Step 9c: Extract read-only In-Chat Order Action Proposal (Task 4 - HITL Quick Approval)
+    pending_action = _build_pending_order_action(
+        customer_query=customer_query,
+        effective_intent=effective_intent,
+        order_data=order_data,
+        customer_id=customer_id,
+        session_id=session_id,
+        interaction_id=interaction_id,
+        unauthorized_order_reason=unauthorized_order_reason,
+    )
+    agent_guidance_with_action = prep["agent_guidance"]
+    if pending_action:
+        if not pending_action.eligible and pending_action.ineligibility_reason:
+            extra_note = f"⚠️ ĐỀ XUẤT THAO TÁC ĐƠN ({pending_action.action_type}): Không đủ điều kiện — {pending_action.ineligibility_reason}"
+        else:
+            extra_note = f"⚡ ĐỀ XUẤT THAO TÁC ĐƠN ({pending_action.action_type}) CHO #{pending_action.order_id}: Chờ nhân viên duyệt nhanh (chưa sửa DB)."
+        agent_guidance_with_action = f"{agent_guidance_with_action}\n{extra_note}" if agent_guidance_with_action else extra_note
+        background_tasks.add_task(telemetry_client.propose_order_action, pending_action)
 
     active_openai_model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
     draft_label = (
@@ -607,7 +724,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         guardrail=guard,
         intent=final_intent_resp,
         citations=citations,
-        agent_guidance=prep["agent_guidance"],
+        agent_guidance=agent_guidance_with_action,
         retrieval_status=retrieval_status,
         session_turns=ui_turns,
         components_used=components_used,
@@ -615,9 +732,18 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         active_facts=state.facts,
         input_type=prep["input_type"],
         order_data=order_data,
+        pending_action=pending_action,
     )
     try:
-        state_store.set_copilot_draft(session_id, agent_draft, gateway_resp.model_dump())
+        persisted_dict = gateway_resp.model_dump()
+        persisted_dict["customer_question"] = customer_query
+        state_store.set_copilot_draft(
+            session_id,
+            agent_draft,
+            persisted_dict,
+            interaction_id=interaction_id,
+            customer_question=customer_query,
+        )
     except Exception as exc:
         print(f"[ConversationService] set_copilot_draft error: {exc}")
     return gateway_resp
@@ -634,25 +760,32 @@ async def process_chat_turn_stream(request: QueryRequest):
 
     state = state_store.get_or_create(session_id, customer_id)
 
-    # Step 1: Early Order Lookup
-    order_data: Optional[Dict[str, Any]] = None
-    lookup_key = state.active_order_id or customer_id
-    if lookup_key:
-        try:
-            order_data = await telemetry_client.lookup_order(lookup_key)
-        except Exception:
-            pass
-    if not order_data and state.active_order_id:
-        order_data = order_tools.get_order_by_id(state.active_order_id)
-    if not order_data and state.facts.get("order_cached"):
-        order_data = state.facts["order_cached"]
-    if order_data and order_data.get("order_id"):
-        state.active_order_id = order_data["order_id"]
-        state.facts["order_id"] = order_data["order_id"]
-        state.facts["order_cached"] = order_data
+    # Step 1: Early Scoped Order Lookup & Cross-Customer IDOR Guard
+    order_data, unauthorized_order_reason = await _resolve_scoped_order_and_guard(
+        customer_query, state, customer_id
+    )
 
     # Concurrent Preprocessing Pipeline
-    prep = await execute_dialogue_preprocessing(customer_query, state, order_data)
+    prep = await execute_dialogue_preprocessing(
+        customer_query, state, order_data, unauthorized_order_reason=unauthorized_order_reason
+    )
+    stream_pending_action = _build_pending_order_action(
+        customer_query=customer_query,
+        effective_intent=prep["effective_intent"],
+        order_data=order_data,
+        customer_id=customer_id,
+        session_id=session_id,
+        interaction_id=interaction_id,
+        unauthorized_order_reason=unauthorized_order_reason,
+    )
+    stream_guidance = prep["agent_guidance"]
+    if stream_pending_action:
+        if not stream_pending_action.eligible and stream_pending_action.ineligibility_reason:
+            extra_note = f"⚠️ ĐỀ XUẤT THAO TÁC ĐƠN ({stream_pending_action.action_type}): Không đủ điều kiện — {stream_pending_action.ineligibility_reason}"
+        else:
+            extra_note = f"⚡ ĐỀ XUẤT THAO TÁC ĐƠN ({stream_pending_action.action_type}) CHO #{stream_pending_action.order_id}: Chờ nhân viên duyệt nhanh (chưa sửa DB)."
+        stream_guidance = f"{stream_guidance}\n{extra_note}" if stream_guidance else extra_note
+        asyncio.create_task(telemetry_client.propose_order_action(stream_pending_action))
 
     async def sse_event_generator():
         # Event 1: Immediate Metadata Event
@@ -668,7 +801,8 @@ async def process_chat_turn_stream(request: QueryRequest):
             "order_data": order_data,
             "guardrail_result": prep["guard"].model_dump(),
             "citations": [c.model_dump() for c in prep["citations"]],
-            "agent_guidance": prep["agent_guidance"],
+            "agent_guidance": stream_guidance,
+            "pending_action": stream_pending_action.model_dump() if stream_pending_action else None,
             "dynamic_components": {
                 "intent_classifier": prep["intent_model_label"],
                 "query_rewriter": prep["rewriter_label"],
@@ -745,20 +879,28 @@ async def process_chat_turn_stream(request: QueryRequest):
         persisted_copilot_resp = {
             "interaction_id": interaction_id,
             "session_id": session_id,
+            "customer_question": customer_query,
             "customer_acknowledgement": prep["customer_ack"],
             "draft_text": final_draft,
             "guardrail": guard.model_dump(),
             "intent": prep["final_intent_resp"].model_dump(),
             "citations": [c.model_dump() for c in prep["citations"]],
-            "agent_guidance": prep["agent_guidance"],
+            "agent_guidance": stream_guidance,
             "order_data": order_data,
+            "pending_action": stream_pending_action.model_dump() if stream_pending_action else None,
             "components_used": meta_payload["dynamic_components"],
             "rewritten_query": prep["rewritten_query"],
             "input_type": prep["input_type"],
             "latency_ms": int((time.perf_counter() - start_time) * 1000),
         }
         try:
-            state_store.set_copilot_draft(session_id, final_draft, persisted_copilot_resp)
+            state_store.set_copilot_draft(
+                session_id,
+                final_draft,
+                persisted_copilot_resp,
+                interaction_id=interaction_id,
+                customer_question=customer_query,
+            )
         except Exception as exc:
             print(f"[ConversationService] stream set_copilot_draft error: {exc}")
 

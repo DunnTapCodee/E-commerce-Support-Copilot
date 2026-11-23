@@ -27,7 +27,7 @@ from contracts.schemas import (
     ToolCallRecord,
 )
 from services.gateway.src.circuit_breaker import CircuitBreaker, CircuitState
-from services.gateway.src.clients import MicroserviceClients
+from services.gateway.src.clients import TELEMETRY_SERVICE_URL, MicroserviceClients
 from services.gateway.src.config import (
     CONVERSATION_SERVICE_URL,
     FALLBACK_FINANCIAL_MESSAGE,
@@ -137,15 +137,50 @@ async def process_copilot_query(
             all_probabilities={},
         )
 
-    # Order lookup fallback
+    # Check for cross-customer IDOR query before lookup fallback
+    from contracts.safety import (
+        detect_brand_competitor_bait,
+        detect_fabricated_prior_promise,
+        detect_foreign_customer_query,
+        detect_warehouse_seal_request,
+        evaluate_runtime_safety_envelope,
+        is_order_owned_by_customer,
+    )
+
+    foreign_cid = detect_foreign_customer_query(customer_query, customer_id)
+
+    # Order lookup fallback (strictly scoped to session customer_id)
     tool_records: List[ToolCallRecord] = []
     order_match = re.search(r"\bORD-[A-Za-z0-9-]+\b", customer_query, re.IGNORECASE)
-    lookup_key = order_match.group(0) if order_match else customer_id
-    if lookup_key:
-        try:
-            order_data = await clients.lookup_order(lookup_key)
-        except Exception:
-            pass
+    requested_oid = order_match.group(0).upper() if order_match else None
+    unauthorized_order_reason: Optional[str] = (
+        f"Truy vấn đề cập mã khách hàng '{foreign_cid}' không thuộc tài khoản đang đăng nhập."
+        if foreign_cid
+        else None
+    )
+    if not unauthorized_order_reason:
+        lookup_key = requested_oid or customer_id
+        if lookup_key:
+            try:
+                order_data = await clients.lookup_order(lookup_key, customer_id=customer_id)
+                if order_data and not is_order_owned_by_customer(order_data, customer_id):
+                    order_data = None
+                    unauthorized_order_reason = (
+                        f"Đơn hàng {requested_oid or lookup_key} không thuộc quyền sở hữu của tài khoản hiện tại."
+                    )
+                elif requested_oid and not order_data:
+                    # Check unscoped to distinguish nonexistent vs cross-customer IDOR
+                    unscoped = await clients.lookup_order(requested_oid)
+                    if unscoped and not is_order_owned_by_customer(unscoped, customer_id):
+                        unauthorized_order_reason = (
+                            f"Đơn hàng {requested_oid} thuộc khách hàng khác; từ chối tiết lộ PII."
+                        )
+            except Exception:
+                pass
+
+    manipulation_msg = detect_fabricated_prior_promise(customer_query)
+    seal_msg = detect_warehouse_seal_request(customer_query)
+    brand_msg = detect_brand_competitor_bait(customer_query)
 
     # Intent Guardrail Check
     intent_guard = evaluate_intent_guard(intent_resp)
@@ -158,7 +193,48 @@ async def process_copilot_query(
             ),
         )
 
-    if not intent_guard.allow_llm:
+    if unauthorized_order_reason:
+        guardrail_decision = GuardrailResult(
+            allow_llm=False,
+            action_type="ESCALATE_HUMAN",
+            reason=unauthorized_order_reason,
+            is_hard_fail=True,
+            violations=[unauthorized_order_reason],
+        )
+        draft_text = (
+            "Dạ Tiki chào anh/chị! Để đảm bảo bảo mật thông tin tài khoản và đơn hàng cá nhân, "
+            "em chỉ có thể tra cứu các đơn hàng thuộc đúng tài khoản đang đăng nhập của anh/chị ạ."
+        )
+        generation_mode = "blocked_unauthorized_order_access"
+    elif manipulation_msg or seal_msg or brand_msg:
+        msg = manipulation_msg or seal_msg or brand_msg
+        guardrail_decision = GuardrailResult(
+            allow_llm=False,
+            action_type="ESCALATE_HUMAN",
+            reason=msg,
+            is_hard_fail=bool(manipulation_msg or seal_msg),
+            violations=[msg],
+        )
+        if manipulation_msg:
+            draft_text = (
+                "Dạ Tiki chào anh/chị! Do các khoản cấp bù voucher hoặc bồi thường đều cần kiểm tra lịch sử xác thực trên hệ thống, "
+                "em xin phép chuyển thông tin này tới chuyên viên CSKH cấp cao kiểm tra và phản hồi chính xác nhất cho anh/chị ạ."
+            )
+            generation_mode = "blocked_manipulation_guard"
+        elif seal_msg:
+            draft_text = (
+                "Dạ Tiki chào anh/chị! Theo quy trình niêm phong và an toàn kho vận của Tiki, "
+                "hệ thống không thể mở kiện hàng đã đóng gói hoặc chèn thêm giấy tờ bên ngoài vào kiện hàng."
+            )
+            generation_mode = "blocked_warehouse_guard"
+        else:
+            draft_text = (
+                "Dạ Tiki chào anh/chị! Tiki luôn lắng nghe và trân trọng mọi góp ý của quý khách [POL-BRAND-001]. "
+                "Em xin phép giữ lập trường trung lập, không bình luận hay so sánh với các sàn khác; "
+                "nếu anh/chị cần hỗ trợ kiểm tra đơn hàng tại Tiki, em rất sẵn sàng hỗ trợ ngay ạ!"
+            )
+            generation_mode = "blocked_brand_sensitivity"
+    elif not intent_guard.allow_llm:
         guardrail_decision = intent_guard
         if intent_resp.intent == "human_agent":
             draft_text = (
@@ -211,13 +287,19 @@ async def process_copilot_query(
                     draft_text = gen_resp.draft_text
                     generation_mode = gen_resp.generation_mode
 
-                    output_guard = evaluate_response_faithfulness(
-                        draft_text, citations, customer_query=customer_query, order_data=order_data
+                    runtime_guard = evaluate_runtime_safety_envelope(
+                        customer_query=customer_query,
+                        draft_text=draft_text,
+                        order_data=order_data,
+                        citations=citations,
                     )
-                    guardrail_decision = output_guard
-                    if not output_guard.allow_llm:
-                        generation_mode = "blocked_faithfulness_guard"
-                        # Keep the draft intact so staff can edit, while guardrail records the alert
+                    guardrail_decision = runtime_guard
+                    if not runtime_guard.allow_llm:
+                        generation_mode = "blocked_safety_envelope"
+                        draft_text = (
+                            "Dạ em chào anh/chị, em đã tiếp nhận yêu cầu của mình. "
+                            "Em đang phối hợp với bộ phận kiểm soát đơn hàng để kiểm tra hồ sơ và xử lý chính xác nhất cho anh/chị nhé ạ."
+                        )
                 except Exception as exc:
                     generation_mode = "blocked_generation_error"
                     guardrail_decision = GuardrailResult(
@@ -228,6 +310,19 @@ async def process_copilot_query(
                     draft_text = (
                         "Dạ em chào anh/chị, em đã nhận được câu hỏi của mình và đang kiểm tra thông tin chi tiết để phản hồi anh/chị ngay nhé ạ!"
                     )
+
+    from contracts.order_actions import extract_order_action_proposal
+
+    pending_action = None
+    if not unauthorized_order_reason and order_data:
+        pending_action = extract_order_action_proposal(
+            customer_query=customer_query,
+            intent=intent_resp.intent,
+            order_data=order_data,
+            customer_id=customer_id,
+            session_id=request.session_id,
+            interaction_id=interaction_id,
+        )
 
     audit_payload = AuditLogCreate(
         interaction_id=interaction_id,
@@ -248,6 +343,7 @@ async def process_copilot_query(
         citations=citations,
         draft_text=draft_text,
         order_data=order_data,
+        pending_action=pending_action,
         tool_calls=tool_records,
         generation_mode=generation_mode,
         suggested_reply=draft_text,
@@ -517,6 +613,102 @@ def run_evaluation_suite():
             "error": str(exc),
             "modules": [],
         }
+
+
+@app.post("/api/v1/copilot/orders/actions/propose")
+async def propose_order_action_proxy(payload: Dict[str, Any]):
+    """Proxy order action proposal persistence to Telemetry Service."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/orders/actions/propose", json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.get("/api/v1/copilot/orders/actions")
+async def list_order_actions_proxy(
+    order_id: Optional[str] = None,
+    session_id: Optional[str] = None,
+    action_status: Optional[str] = None,
+):
+    """Proxy order action proposals listing from Telemetry Service."""
+    params = {k: v for k, v in {"order_id": order_id, "session_id": session_id, "action_status": action_status}.items() if v}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.get(f"{TELEMETRY_SERVICE_URL}/orders/actions", params=params)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/orders/actions/{action_id}/decide")
+async def decide_order_action_proxy(action_id: str, payload: Dict[str, Any]):
+    """Proxy CS Staff APPROVE/REJECT decision on an order action proposal."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/orders/actions/{action_id}/decide", json=payload)
+        if resp.status_code >= 400:
+            try:
+                detail = resp.json().get("detail", resp.text)
+            except Exception:
+                detail = resp.text
+            raise HTTPException(status_code=resp.status_code, detail=detail)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/proactive/delay/scan")
+async def scan_proactive_delay_proxy(reference_date: Optional[str] = None, min_overdue_days: int = 3):
+    """Proxy proactive overdue-shipping scan."""
+    params: Dict[str, Any] = {"min_overdue_days": min_overdue_days}
+    if reference_date:
+        params["reference_date"] = reference_date
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/proactive/delay/scan", params=params)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.get("/api/v1/copilot/proactive/delay/notifications")
+async def list_proactive_delay_proxy(notif_status: Optional[str] = None):
+    """Proxy proactive overdue notifications list."""
+    params = {"notif_status": notif_status} if notif_status else {}
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.get(f"{TELEMETRY_SERVICE_URL}/proactive/delay/notifications", params=params)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/proactive/delay/dispatch")
+async def dispatch_proactive_delay_proxy(payload: Optional[Dict[str, Any]] = None):
+    """Proxy bulk dispatch of queued overdue delay notifications."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/proactive/delay/dispatch", json=payload or {})
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.get("/api/v1/copilot/incidents/clusters")
+async def get_incident_clusters_proxy(window_hours: int = 24, min_cluster_size: int = 3):
+    """Proxy incident clustering dashboard endpoint."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.get(
+            f"{TELEMETRY_SERVICE_URL}/incidents/clusters",
+            params={"window_hours": window_hours, "min_cluster_size": min_cluster_size},
+        )
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/incidents/broadcast")
+async def broadcast_incident_proxy(payload: Dict[str, Any]):
+    """Proxy bulk incident broadcast audit log."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/incidents/broadcast", json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
 
 
 if __name__ == "__main__":

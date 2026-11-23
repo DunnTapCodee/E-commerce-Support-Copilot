@@ -54,6 +54,62 @@ export interface GatewayResponse {
   circuit_breaker_tripped?: boolean;
   components_used?: Record<string, string>;
   rewritten_query?: string;
+  customer_question?: string;
+  pending_action?: OrderActionProposal | null;
+}
+
+export type OrderActionType = 'cancel_order' | 'update_address' | 'update_receiver' | 'return_product';
+
+export interface OrderActionProposal {
+  action_id: string;
+  interaction_id?: string | null;
+  session_id?: string | null;
+  order_id: string;
+  customer_id: string;
+  action_type: OrderActionType;
+  before_values: Record<string, any>;
+  proposed_values: Record<string, any>;
+  eligible: boolean;
+  ineligibility_reason?: string | null;
+  customer_reason?: string | null;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  decision_reason?: string | null;
+  performed_by?: string | null;
+  created_at?: string | null;
+  decided_at?: string | null;
+}
+
+export interface DelayNotificationRecord {
+  order_id: string;
+  customer_id: string;
+  customer_name?: string | null;
+  promised_delivery_date: string;
+  days_overdue: number;
+  voucher_code: string;
+  voucher_amount: number;
+  message_text: string;
+  status: 'PENDING_SEND' | 'SENT';
+  created_at?: string | null;
+  sent_at?: string | null;
+}
+
+export interface IncidentClusterSummary {
+  cluster_id: string;
+  predicted_intent: string;
+  issue_topic: string;
+  count: number;
+  is_widespread: boolean;
+  sample_queries: string[];
+  suggested_broadcast: string;
+  latest_timestamp?: string | null;
+}
+
+export interface PendingDraftItem {
+  interactionId: string;
+  customerQuestion: string;
+  copilotDraft: string;
+  copilotResponse: GatewayResponse | null;
+  createdAt?: string;
 }
 
 export interface PolicyAuditLogEntry {

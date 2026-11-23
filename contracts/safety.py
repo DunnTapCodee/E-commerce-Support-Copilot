@@ -4,9 +4,60 @@ Located in contracts/ so both API Gateway and Conversation Service Docker
 images share one canonical, zero-duplication implementation.
 """
 import re
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple
 
 from contracts.schemas import GuardrailResult, RetrievedDocument
+
+# ---------------------------------------------------------------------------
+# Task 1: Customer Account Alias & Order Ownership Isolation (IDOR Prevention)
+# ---------------------------------------------------------------------------
+# In seeded mock data, Bùi Thị An uses both 'CUST-1001' (customer profile) and
+# 'demo-customer' (mock_orders.json). Restrict aliasing strictly to this known
+# identity pair; never map arbitrary CUST-XXXX to ORD-XXXX.
+_ALIAS_GROUPS: Tuple[FrozenSet[str], ...] = (
+    frozenset({"demo-customer", "cust-1001"}),
+)
+
+
+def canonical_customer_ids(customer_id: Optional[str]) -> FrozenSet[str]:
+    """Return normalized canonical lowercase customer IDs belonging to this account."""
+    if not customer_id or not str(customer_id).strip():
+        return frozenset()
+    clean = str(customer_id).strip().lower()
+    for group in _ALIAS_GROUPS:
+        if clean in group:
+            return group
+    return frozenset({clean})
+
+
+def is_order_owned_by_customer(
+    order_data: Optional[Dict[str, Any]],
+    session_customer_id: Optional[str],
+) -> bool:
+    """Verify strictly that order_data belongs to session_customer_id."""
+    if not order_data or not isinstance(order_data, dict):
+        return False
+    allowed = canonical_customer_ids(session_customer_id)
+    if not allowed:
+        return True
+    order_cust = str(order_data.get("customer_id", "")).strip().lower()
+    return bool(order_cust and order_cust in allowed)
+
+
+def detect_foreign_customer_query(
+    query: str,
+    session_customer_id: Optional[str],
+) -> Optional[str]:
+    """Detect if query references an explicit CUST-* / customer ID not owned by session."""
+    if not query or not session_customer_id:
+        return None
+    allowed = canonical_customer_ids(session_customer_id)
+    for match in re.finditer(r"\b(CUST-\d+|demo-customer)\b", query, flags=re.IGNORECASE):
+        token = match.group(1)
+        if token.strip().lower() not in allowed:
+            return token.upper() if token.lower().startswith("cust-") else token
+    return None
+
 
 CANONICAL_INTENTS: Tuple[str, ...] = (
     "track_order",
@@ -79,6 +130,70 @@ PROMPT_INJECTION_PATTERNS = [
     re.compile(r"\b(jailbreak|dan mode|bẻ khóa ai|developer mode)\b", re.IGNORECASE),
     re.compile(r"\b(đóng vai là|act as a|pretend you are)\s+(unrestricted|không bị giới hạn)", re.IGNORECASE),
 ]
+
+# ---------------------------------------------------------------------------
+# Task 2: Anti-Manipulation, Warehouse Seal & Brand Comparison Detectors
+# ---------------------------------------------------------------------------
+PRIOR_PROMISE_CLAIM_PATTERNS = [
+    re.compile(
+        r"(nhân viên|tổng đài viên|tư vấn viên|bạn)\s+(?:trước|cũ|hôm qua|hôm trước|nãy)?\s*(?:đã\s+)?(?:đồng ý|hứa|cam kết|bảo)\s*(?:sẽ\s+)?(?:đền|tặng|cấp|hoàn|bù|hỗ trợ)?.*?(?:voucher|mã giảm|triệu|nghìn|\d+[\d.,]*\s*(?:k|đ|vnđ|vnd|đồng))",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:hứa|cam kết|đồng ý)\s+(?:đền|tặng|cấp|bù)\s+(?:voucher|mã giảm giá)\s*(?:\d+[\d.,]*\s*(?:k|đ|vnđ|vnd|đồng|triệu))?",
+        re.IGNORECASE,
+    ),
+]
+
+WAREHOUSE_INTERVENTION_PATTERNS = [
+    re.compile(
+        r"(?:mở kiện|mở niêm phong|khui hộp|khui kiện|nhét thêm|nhét giấy|bỏ thêm giấy|mở gói hàng).*(?:hướng dẫn|giấy|hdsd|viết tay|quà|vào kiện|đã đóng)?",
+        re.IGNORECASE,
+    ),
+    re.compile(
+        r"(?:yêu cầu|nhờ)\s+(?:kho|bên kho|nhân viên kho|shipper)\s+(?:mở|khui|nhét|bỏ thêm)",
+        re.IGNORECASE,
+    ),
+]
+
+BRAND_COMPETITOR_PATTERN = re.compile(
+    r"(?:shopee|lazada|tiktok\s*shop|sendo|amazon)"
+    r"|so\s+sánh.*(?:tiki|sàn\s+khác|đối\s+thủ)"
+    r"|tiki.*(?:lừa\s+đảo|gian\s+dối|bịp|tệ\s+hơn|thua\s+xa|đắt\s+hơn)",
+    re.IGNORECASE,
+)
+
+
+def detect_fabricated_prior_promise(query: str) -> Optional[str]:
+    """Detect customer claims asserting unverified prior-agent voucher/compensation promises."""
+    if not query:
+        return None
+    for pat in PRIOR_PROMISE_CLAIM_PATTERNS:
+        m = pat.search(query)
+        if m:
+            return f"Cảnh báo thao túng cam kết miệng chưa xác thực: '{m.group(0)}'"
+    return None
+
+
+def detect_warehouse_seal_request(query: str) -> Optional[str]:
+    """Detect unauthorized physical warehouse/parcel-opening requests."""
+    if not query:
+        return None
+    for pat in WAREHOUSE_INTERVENTION_PATTERNS:
+        m = pat.search(query)
+        if m:
+            return f"Yêu cầu can thiệp kiện hàng / mở niêm phong kho ngoài quy trình: '{m.group(0)}'"
+    return None
+
+
+def detect_brand_competitor_bait(query: str) -> Optional[str]:
+    """Detect brand defamation or competitor comparison bait requiring neutral policy & staff review."""
+    if not query:
+        return None
+    m = BRAND_COMPETITOR_PATTERN.search(query)
+    if m:
+        return f"Truy vấn nhạy cảm so sánh đối thủ / công kích thương hiệu: '{m.group(0)}'"
+    return None
 
 
 def extract_numeric_entities(text: str) -> List[str]:
@@ -290,22 +405,42 @@ def evaluate_runtime_safety_envelope(
     if is_injection and injection_msg:
         violations.append(injection_msg)
 
-    # 2. Financial Hard Gate on Draft
+    # 2. Financial & Voucher / Warehouse Operation Hard Gates on Draft
     refund_promise_match = re.search(
-        r"(sẽ hoàn lại|đã hoàn|hoàn trả lại số tiền|chuyển khoản lại cho anh/chị|bồi thường)\s+(\d+[\d.,]*\s*(?:đ|vnd|đồng)?)",
+        r"(sẽ hoàn lại|đã hoàn|hoàn trả lại số tiền|chuyển khoản lại cho anh/chị|bồi thường)\s+(\d+[\d.,]*\s*(?:đ|vnd|vnđ|đồng|k|triệu)?)",
         draft_text,
         re.IGNORECASE,
     )
     if refund_promise_match:
         authorized = False
         if order_data:
-            order_status = str(order_data.get("status", "")).upper()
+            order_status = str(order_data.get("status") or order_data.get("order_status") or "").upper()
             if order_status in {"REFUND_PENDING", "CANCELLED", "RETURN_APPROVED"}:
                 authorized = True
         if not authorized:
             violations.append(
                 f"LLM tự ý phát ngôn cam kết bồi thường / hoàn tiền trái thẩm quyền: '{refund_promise_match.group(0)}'"
             )
+
+    voucher_promise_match = re.search(
+        r"(?:sẽ\s+|em\s+|tiki\s+|hệ thống\s+)?(?:cấp|tặng|gửi\s+tặng|gửi\s+kèm|đền|bù\s+đắp|bù|hỗ\s+trợ|trừ\s+thẳng\s+vào\s+đơn|khấu\s+trừ)\s+(?:anh/chị\s+)?(?:mã\s+)?(?:voucher|mã\s+giảm\s+giá|phiếu\s+mua\s+hàng)?\s*(?:trị\s+giá\s+)?\d+[\d.,]*\s*(?:đ|vnđ|vnd|đồng|k|triệu)|(?:cấp|tặng|đền|bù)\s+(?:anh/chị\s+)?(?:mã\s+)?voucher\b",
+        draft_text,
+        re.IGNORECASE,
+    )
+    if voucher_promise_match:
+        violations.append(
+            f"LLM tự ý hứa cấp/bù voucher hoặc giảm trừ ngoài thẩm quyền: '{voucher_promise_match.group(0)}'"
+        )
+
+    warehouse_promise_match = re.search(
+        r"(?:sẽ\s+|em\s+|bên\s+em\s+)?(?:liên\s+hệ\s+kho|nhờ\s+kho|báo\s+kho|báo\s+shipper|yêu\s+cầu\s+kho)?\s*(?:hỗ\s+trợ\s+)?(?:mở\s+kiện|mở\s+niêm\s+phong|khui\s+kiện|khui\s+hộp|nhét\s+thêm|nhét\s+giấy|bỏ\s+thêm\s+giấy|viết\s+tay\s+bỏ\s+vào)",
+        draft_text,
+        re.IGNORECASE,
+    )
+    if warehouse_promise_match:
+        violations.append(
+            f"LLM tự ý cam kết mở kiện / can thiệp niêm phong kho trái quy trình: '{warehouse_promise_match.group(0)}'"
+        )
 
     # 3. Grounding / Faithfulness Parity Check
     if citations:

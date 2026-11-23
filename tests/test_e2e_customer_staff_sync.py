@@ -100,6 +100,54 @@ class TestE2ECustomerStaffSynchronization(unittest.TestCase):
         self.assertIsNotNone(replied_question)
         self.assertEqual(replied_question["content"], customer_question)
 
+    def test_fifo_draft_queue_prevents_overwrite_race_condition(self):
+        """Task 3: Rapid Q1 + Q2 must keep Draft 1 at FIFO head and advance cleanly to Draft 2 on approval."""
+        sess = "sess_race_fifo"
+        self.store.get_or_create(sess, "CUST-1001")
+
+        self.store.add_turn_record(sess, role="customer", content="Câu hỏi 1: Đơn ORD-1001 khi nào giao?")
+        self.store.set_copilot_draft(
+            sess,
+            "Bản nháp 1 cho ORD-1001",
+            {"interaction_id": "int_q1", "draft_text": "Bản nháp 1 cho ORD-1001"},
+            interaction_id="int_q1",
+            customer_question="Câu hỏi 1: Đơn ORD-1001 khi nào giao?",
+        )
+
+        # Q2 arrives before Staff approves Draft 1
+        self.store.add_turn_record(sess, role="customer", content="Câu hỏi 2: Chính sách đổi trả mấy ngày?")
+        self.store.set_copilot_draft(
+            sess,
+            "Bản nháp 2 đổi trả 30 ngày",
+            {"interaction_id": "int_q2", "draft_text": "Bản nháp 2 đổi trả 30 ngày"},
+            interaction_id="int_q2",
+            customer_question="Câu hỏi 2: Chính sách đổi trả mấy ngày?",
+        )
+
+        details_mid = self.store.get_full_session_details(sess)
+        self.assertEqual(details_mid["copilotDraft"], "Bản nháp 1 cho ORD-1001")
+        self.assertEqual(len(details_mid["pendingDrafts"]), 2)
+        self.assertEqual([d["interactionId"] for d in details_mid["pendingDrafts"]], ["int_q1", "int_q2"])
+
+        # Staff approves Draft 1 -> Draft 2 must advance automatically to head
+        self.store.add_turn_record(
+            sess,
+            role="agent",
+            content="Bản nháp 1 cho ORD-1001",
+            is_acknowledgement=False,
+            interaction_id="int_q1",
+        )
+        details_after_q1 = self.store.get_full_session_details(sess)
+        self.assertEqual(len(details_after_q1["pendingDrafts"]), 1)
+        self.assertEqual(details_after_q1["pendingDrafts"][0]["interactionId"], "int_q2")
+        self.assertEqual(details_after_q1["copilotDraft"], "Bản nháp 2 đổi trả 30 ngày")
+
+        # Staff dismisses Draft 2 -> Queue empties cleanly
+        self.store.clear_copilot_draft(sess, interaction_id="int_q2")
+        details_end = self.store.get_full_session_details(sess)
+        self.assertEqual(details_end["pendingDrafts"], [])
+        self.assertEqual(details_end["copilotDraft"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

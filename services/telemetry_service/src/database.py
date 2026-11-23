@@ -69,12 +69,26 @@ def init_db(db_path: Path, mock_orders_path: Optional[Path] = None) -> None:
             carrier TEXT NULL,
             tracking_code TEXT NULL,
             estimated_delivery TEXT NULL,
+            promised_delivery_date TEXT NULL,
+            shipping_address TEXT NULL,
             can_cancel INTEGER NOT NULL DEFAULT 1,
             items_json TEXT NOT NULL,
             shipping_timeline_json TEXT NOT NULL,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
         """)
+
+        order_cols_to_add = [
+            ("promised_delivery_date", "TEXT NULL"),
+            ("shipping_address", "TEXT NULL"),
+        ]
+        existing_order_cols = {col[1] for col in conn.execute("PRAGMA table_info(orders);").fetchall()}
+        for col_name, col_type in order_cols_to_add:
+            if col_name not in existing_order_cols:
+                try:
+                    conn.execute(f"ALTER TABLE orders ADD COLUMN {col_name} {col_type};")
+                except Exception:
+                    pass
 
         # 3. Staff & Customer tables for Role-Based Access Control (Customer & Staff)
         conn.execute("""
@@ -100,12 +114,65 @@ def init_db(db_path: Path, mock_orders_path: Optional[Path] = None) -> None:
         );
         """)
 
-        # 4. Dedicated indexes for high-speed sub-millisecond lookups
+        # 4. Order Action Proposals, Proactive Delay Notifications & Incident Broadcasts (Dot 2)
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS order_action_requests (
+            action_id TEXT PRIMARY KEY,
+            session_id TEXT NULL,
+            interaction_id TEXT NULL,
+            order_id TEXT NOT NULL,
+            customer_id TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            before_values_json TEXT NOT NULL DEFAULT '{}',
+            proposed_values_json TEXT NOT NULL DEFAULT '{}',
+            eligible INTEGER NOT NULL DEFAULT 1,
+            ineligibility_reason TEXT NULL,
+            customer_reason TEXT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING',
+            decision_reason TEXT NULL,
+            performed_by TEXT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            decided_at DATETIME NULL
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS delay_notifications (
+            order_id TEXT PRIMARY KEY,
+            customer_id TEXT NOT NULL,
+            customer_name TEXT NULL,
+            promised_delivery_date TEXT NOT NULL,
+            days_overdue INTEGER NOT NULL,
+            voucher_code TEXT NOT NULL,
+            voucher_amount INTEGER NOT NULL DEFAULT 30000,
+            message_text TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'PENDING_SEND',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            sent_at DATETIME NULL
+        );
+        """)
+
+        conn.execute("""
+        CREATE TABLE IF NOT EXISTS incident_broadcasts (
+            broadcast_id TEXT PRIMARY KEY,
+            cluster_id TEXT NOT NULL,
+            issue_topic TEXT NOT NULL,
+            message_text TEXT NOT NULL,
+            performed_by TEXT NOT NULL,
+            session_ids_json TEXT NOT NULL DEFAULT '[]',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """)
+
+        # 5. Dedicated indexes for high-speed sub-millisecond lookups
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_customer_id ON orders(customer_id);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_phone ON orders(phone);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_tracking_code ON orders(tracking_code);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_orders_status ON orders(order_status);")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_customers_assigned_staff_id ON customers(assigned_staff_id);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_order_actions_order_status ON order_action_requests(order_id, status);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_order_actions_session ON order_action_requests(session_id, status);")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_delay_notifications_status ON delay_notifications(status);")
         conn.commit()
 
     # 5. Auto-migrate orders from JSON if table is empty
@@ -137,9 +204,9 @@ def _execute_migration(db_path: Path, mock_orders_path: Path, force: bool = Fals
                 INSERT OR REPLACE INTO orders (
                     order_id, customer_id, customer_name, phone, order_status,
                     payment_method, payment_status, total_amount, carrier,
-                    tracking_code, estimated_delivery, can_cancel,
-                    items_json, shipping_timeline_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    tracking_code, estimated_delivery, promised_delivery_date, shipping_address,
+                    can_cancel, items_json, shipping_timeline_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     o.get("order_id"),
@@ -153,6 +220,8 @@ def _execute_migration(db_path: Path, mock_orders_path: Path, force: bool = Fals
                     o.get("carrier"),
                     o.get("tracking_code"),
                     o.get("estimated_delivery"),
+                    o.get("promised_delivery_date"),
+                    o.get("shipping_address"),
                     1 if o.get("can_cancel", True) else 0,
                     json.dumps(o.get("items", []), ensure_ascii=False),
                     json.dumps(o.get("shipping_timeline", []), ensure_ascii=False),

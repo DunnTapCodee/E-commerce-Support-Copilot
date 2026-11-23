@@ -32,25 +32,37 @@ class OrderTools:
         except Exception:
             return []
 
-    def get_order_by_id(self, order_id: str) -> Optional[Dict[str, Any]]:
-        """Look up order by normalized order ID."""
+    def get_order_by_id(
+        self, order_id: str, customer_id: Optional[str] = None
+    ) -> Optional[Dict[str, Any]]:
+        """Look up order by normalized order ID, optionally enforcing customer ownership."""
         if not order_id:
             return None
+        from contracts.safety import is_order_owned_by_customer
+
         target = order_id.strip().upper().lstrip("#")
         orders = self.get_all_orders()
         for o in orders:
             curr_id = str(o.get("order_id", "")).strip().upper().lstrip("#")
             if curr_id == target:
+                if customer_id and not is_order_owned_by_customer(o, customer_id):
+                    return None
                 return o
         return None
 
-    def search_by_product_name(self, product_query: str) -> List[Dict[str, Any]]:
-        """Search orders containing items matching the product query."""
+    def search_by_product_name(
+        self, product_query: str, customer_id: Optional[str] = None
+    ) -> List[Dict[str, Any]]:
+        """Search orders containing items matching the product query, optionally scoped to customer_id."""
         if not product_query:
             return []
+        from contracts.safety import is_order_owned_by_customer
+
         query_words = set(product_query.lower().split())
         matched = []
         for o in self.get_all_orders():
+            if customer_id and not is_order_owned_by_customer(o, customer_id):
+                continue
             for item in o.get("items", []):
                 item_name = str(item.get("name", "")).lower()
                 if any(w in item_name for w in query_words if len(w) > 2):

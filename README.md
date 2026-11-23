@@ -53,7 +53,7 @@ The UI produces drafts for human review. Approve/Edit actions record an audit en
 
 ## Module 2: Retrieval experiments
 
-The retrieval benchmark compares the existing TF-IDF + cosine baseline, BM25, dense embeddings, BM25+dense RRF, and RRF with cross-encoder reranking. It uses `data/retrieval_eval.json`, a manually labeled Vietnamese query set covering active policies (historically 47 active policies at benchmark authoring time; `data/knowledge_base/policies.json` currently stores 51 total / 48 active policies). Inactive policies are filtered before ranking, and tags are excluded by default (tested as an ablation).
+The retrieval benchmark compares the existing TF-IDF + cosine baseline, BM25, dense embeddings, BM25+dense RRF, and RRF with cross-encoder reranking. It uses `data/retrieval_eval.json`, a manually labeled Vietnamese query set covering active policies (historically 47 active policies at benchmark authoring time; `data/knowledge_base/policies.json` currently stores 52 total / 49 active policies). Inactive policies are filtered before ranking, and tags are excluded by default (tested as an ablation).
 
 Install the optional experiment dependencies and run the benchmark from the repository root:
 
@@ -62,7 +62,7 @@ python -m pip install -r requirements-retrieval-experiments.txt
 python scripts/benchmark_retrieval.py
 ```
 
-The first dense run downloads the model. Defaults use `keepitreal/vietnamese-sbert` and `BAAI/bge-reranker-base`; pass `--dense-model BAAI/bge-m3` to compare BGE-M3. Dense query latency includes query embedding; reranked latency also includes candidate scoring. The report records index/model setup separately and writes results to `reports/module2_retrieval_benchmark.json`. The target is p95 query latency below 15 ms. FAISS `IndexFlatIP` is used when its Python wheel is available; otherwise the exact NumPy cosine implementation is used, which is sufficient for this ~48-active-policy corpus.
+The first dense run downloads the model. Defaults use `keepitreal/vietnamese-sbert` and `BAAI/bge-reranker-base`; pass `--dense-model BAAI/bge-m3` to compare BGE-M3. Dense query latency includes query embedding; reranked latency also includes candidate scoring. The report records index/model setup separately and writes results to `reports/module2_retrieval_benchmark.json`. The target is p95 query latency below 15 ms. FAISS `IndexFlatIP` is used when its Python wheel is available; otherwise the exact NumPy cosine implementation is used, which is sufficient for this ~49-active-policy corpus.
 
 Use `--methods tfidf,bm25` for a quick sparse-only run, or add `--include-tags` to repeat all selected methods with policy tags included.
 
