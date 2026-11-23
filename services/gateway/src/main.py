@@ -26,6 +26,7 @@ from contracts.schemas import (
     RetrievedDocument,
     ToolCallRecord,
 )
+from services.gateway.src.circuit_breaker import CircuitBreaker, CircuitState
 from services.gateway.src.clients import MicroserviceClients
 from services.gateway.src.config import (
     CONVERSATION_SERVICE_URL,
@@ -58,6 +59,7 @@ app.add_middleware(
 )
 
 clients = MicroserviceClients()
+conversation_circuit_breaker = CircuitBreaker("conversation_service")
 
 # Mount Modular Routers
 app.include_router(policy_router)
@@ -73,6 +75,9 @@ def health_check():
         "port": int(os.getenv("PORT", 8000)),
         "ingress_target": "conversation_service",
         "policy_target": "document_service",
+        "circuit_breakers": {
+            "conversation_service": conversation_circuit_breaker.get_status(),
+        },
     }
 
 
@@ -96,17 +101,27 @@ async def process_copilot_query(
         allow_llm=True, action_type="PROCEED_TO_LLM", reason="Default initialization"
     )
 
-    # Delegate to Conversation Service (Primary Path)
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0)) as http_client:
-            resp = await http_client.post(
-                f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
-                json=request.model_dump(),
-            )
-            if resp.status_code == 200:
-                return GatewayResponse(**resp.json())
-    except Exception as exc:
-        print(f"[Gateway] Conversation Service unreachable: {exc}. Running graceful gateway fallback.")
+    # Delegate to Conversation Service (Primary Path guarded by CircuitBreaker)
+    cb_tripped = False
+    if conversation_circuit_breaker.can_execute():
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0)) as http_client:
+                resp = await http_client.post(
+                    f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat",
+                    json=request.model_dump(),
+                )
+                if resp.status_code == 200:
+                    conversation_circuit_breaker.record_success()
+                    return GatewayResponse(**resp.json())
+                conversation_circuit_breaker.record_failure(f"HTTP {resp.status_code}")
+                cb_tripped = conversation_circuit_breaker.state == CircuitState.OPEN
+        except Exception as exc:
+            conversation_circuit_breaker.record_failure(str(exc))
+            cb_tripped = conversation_circuit_breaker.state == CircuitState.OPEN
+            print(f"[Gateway] Conversation Service unreachable: {exc}. Running graceful gateway fallback.")
+    else:
+        cb_tripped = True
+        print("[Gateway] CircuitBreaker OPEN for conversation_service. Fast-failing to gateway fallback.")
 
     # Graceful Fallback Pipeline (if Conversation Service is down)
     intent_service_error = None
@@ -237,6 +252,7 @@ async def process_copilot_query(
         generation_mode=generation_mode,
         suggested_reply=draft_text,
         agent_guidance=guardrail_decision.reason if not guardrail_decision.allow_llm else None,
+        circuit_breaker_tripped=cb_tripped,
         components_used={
             "intent_classifier": (
                 "Gateway Safe Escalation (Intent Service Unavailable)"
@@ -255,94 +271,69 @@ async def process_copilot_query(
 query_copilot = process_copilot_query
 
 
+def _sse_fallback_events(fallback_resp: GatewayResponse):
+    """Build SSE meta/token/done chunks from a GatewayResponse fallback."""
+    intent_name = (
+        fallback_resp.intent.intent
+        if hasattr(fallback_resp.intent, "intent")
+        else str(fallback_resp.intent)
+    )
+    intent_conf = (
+        fallback_resp.intent.confidence
+        if hasattr(fallback_resp.intent, "confidence")
+        else 0.0
+    )
+    guard_dict = (
+        fallback_resp.guardrail.model_dump()
+        if hasattr(fallback_resp, "guardrail") and fallback_resp.guardrail
+        else None
+    )
+    citations_list = [
+        (c.model_dump() if hasattr(c, "model_dump") else c)
+        for c in (fallback_resp.citations or [])
+    ]
+    meta_payload = {
+        "type": "meta",
+        "interaction_id": fallback_resp.interaction_id,
+        "customer_acknowledgement": getattr(fallback_resp, "customer_acknowledgement", None) or fallback_resp.draft_text,
+        "intent": intent_name,
+        "confidence": intent_conf,
+        "guardrail_result": guard_dict,
+        "citations": citations_list,
+        "circuit_breaker_tripped": fallback_resp.circuit_breaker_tripped,
+        "dynamic_components": getattr(fallback_resp, "components_used", {}),
+    }
+    return [
+        f"event: meta\ndata: {json.dumps(meta_payload, ensure_ascii=False)}\n\n".encode("utf-8"),
+        f"event: token\ndata: {json.dumps({'type': 'token', 'delta': fallback_resp.draft_text}, ensure_ascii=False)}\n\n".encode("utf-8"),
+        f"event: done\ndata: {json.dumps({'type': 'done', 'draft_text': fallback_resp.draft_text, 'interaction_id': fallback_resp.interaction_id}, ensure_ascii=False)}\n\n".encode("utf-8"),
+    ]
+
+
 @app.post("/api/v1/copilot/query_stream")
 async def query_copilot_stream(request: QueryRequest):
     """Proxy SSE streaming dialogue execution from Conversation Service to web clients."""
-    import httpx
 
     async def event_stream_proxy():
         url = f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/chat_stream"
-        try:
-            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0)) as http_client:
-                async with http_client.stream("POST", url, json=request.model_dump()) as resp:
-                    if resp.status_code == 200:
-                        async for chunk in resp.aiter_bytes():
-                            yield chunk
-                    else:
+        if conversation_circuit_breaker.can_execute():
+            try:
+                async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=5.0)) as http_client:
+                    async with http_client.stream("POST", url, json=request.model_dump()) as resp:
+                        if resp.status_code == 200:
+                            conversation_circuit_breaker.record_success()
+                            async for chunk in resp.aiter_bytes():
+                                yield chunk
+                            return
+                        conversation_circuit_breaker.record_failure(f"HTTP {resp.status_code}")
                         print(f"[Gateway] Stream proxy returned status {resp.status_code}")
-                        # Fallback non-streaming proxy call
-                        fallback_resp = await process_copilot_query(request, BackgroundTasks())
-                        intent_name = (
-                            fallback_resp.intent.intent
-                            if hasattr(fallback_resp.intent, "intent")
-                            else str(fallback_resp.intent)
-                        )
-                        intent_conf = (
-                            fallback_resp.intent.confidence
-                            if hasattr(fallback_resp.intent, "confidence")
-                            else 0.0
-                        )
-                        guard_dict = (
-                            fallback_resp.guardrail.model_dump()
-                            if hasattr(fallback_resp, "guardrail") and fallback_resp.guardrail
-                            else None
-                        )
-                        citations_list = [
-                            (c.model_dump() if hasattr(c, "model_dump") else c)
-                            for c in (fallback_resp.citations or [])
-                        ]
-                        meta_payload = {
-                            "type": "meta",
-                            "interaction_id": fallback_resp.interaction_id,
-                            "customer_acknowledgement": getattr(fallback_resp, "customer_acknowledgement", None) or fallback_resp.draft_text,
-                            "intent": intent_name,
-                            "confidence": intent_conf,
-                            "guardrail_result": guard_dict,
-                            "citations": citations_list,
-                            "dynamic_components": getattr(fallback_resp, "components_used", {}),
-                        }
-                        yield f"event: meta\ndata: {json.dumps(meta_payload, ensure_ascii=False)}\n\n".encode("utf-8")
-                        token_payload = {"type": "token", "delta": fallback_resp.draft_text}
-                        yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n".encode("utf-8")
-                        done_payload = {"type": "done", "draft_text": fallback_resp.draft_text, "interaction_id": fallback_resp.interaction_id}
-                        yield f"event: done\ndata: {json.dumps(done_payload, ensure_ascii=False)}\n\n".encode("utf-8")
-        except Exception as exc:
-            print(f"[Gateway] Stream proxy exception: {exc}")
-            fallback_resp = await process_copilot_query(request, BackgroundTasks())
-            intent_name = (
-                fallback_resp.intent.intent
-                if hasattr(fallback_resp.intent, "intent")
-                else str(fallback_resp.intent)
-            )
-            intent_conf = (
-                fallback_resp.intent.confidence
-                if hasattr(fallback_resp.intent, "confidence")
-                else 0.0
-            )
-            guard_dict = (
-                fallback_resp.guardrail.model_dump()
-                if hasattr(fallback_resp, "guardrail") and fallback_resp.guardrail
-                else None
-            )
-            citations_list = [
-                (c.model_dump() if hasattr(c, "model_dump") else c)
-                for c in (fallback_resp.citations or [])
-            ]
-            meta_payload = {
-                "type": "meta",
-                "interaction_id": fallback_resp.interaction_id,
-                "customer_acknowledgement": getattr(fallback_resp, "customer_acknowledgement", None) or fallback_resp.draft_text,
-                "intent": intent_name,
-                "confidence": intent_conf,
-                "guardrail_result": guard_dict,
-                "citations": citations_list,
-                "dynamic_components": getattr(fallback_resp, "components_used", {}),
-            }
-            yield f"event: meta\ndata: {json.dumps(meta_payload, ensure_ascii=False)}\n\n".encode("utf-8")
-            token_payload = {"type": "token", "delta": fallback_resp.draft_text}
-            yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n".encode("utf-8")
-            done_payload = {"type": "done", "draft_text": fallback_resp.draft_text, "interaction_id": fallback_resp.interaction_id}
-            yield f"event: done\ndata: {json.dumps(done_payload, ensure_ascii=False)}\n\n".encode("utf-8")
+            except Exception as exc:
+                conversation_circuit_breaker.record_failure(str(exc))
+                print(f"[Gateway] Stream proxy exception: {exc}")
+
+        fallback_resp = await process_copilot_query(request, BackgroundTasks())
+        for chunk in _sse_fallback_events(fallback_resp):
+            yield chunk
 
     return StreamingResponse(
         event_stream_proxy(),

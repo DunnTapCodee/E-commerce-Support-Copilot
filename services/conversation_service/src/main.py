@@ -1,4 +1,4 @@
-"""FastAPI Conversation Service running on Port 8001.
+"""FastAPI Conversation Service running on Port 8006.
 Orchestrates multi-turn sessions, context memory, and response policies.
 """
 from __future__ import annotations
@@ -12,7 +12,7 @@ import time
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
-from fastapi import BackgroundTasks, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Body, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 
@@ -20,6 +20,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from contracts.safety import is_intent_in_scope
 from contracts.schemas import (
     AuditLogCreate,
     ConversationSessionState,
@@ -66,7 +67,7 @@ from services.conversation_service.src.tools import OrderTools
 
 app = FastAPI(
     title="Conversation & Copilot Orchestration Service",
-    description="Multi-turn dialogue state tracker and grounded response engine on Port 8001",
+    description="Multi-turn dialogue state tracker and grounded response engine on Port 8006",
     version="2.0.0",
 )
 
@@ -344,7 +345,10 @@ async def execute_dialogue_preprocessing(
         final_intent_resp = IntentPredictionResponse(
             intent=effective_intent,
             confidence=round(effective_conf, 4),
-            is_in_scope=True if DISABLE_CONFIDENCE_GUARD else (effective_conf >= 0.50),
+            is_in_scope=is_intent_in_scope(
+                effective_intent,
+                allow_chitchat_internal=(input_type == "chitchat"),
+            ),
             all_probabilities=ml_intent_resp.all_probabilities if ml_intent_resp else {effective_intent: effective_conf},
             language="vi",
             model_name=getattr(ml_intent_resp, "model_name", None) or "hybrid_dialogue_tracker",
@@ -507,13 +511,14 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
         if not agent_draft.strip():
             agent_draft = suggested_macro or draft_fallback
 
-        # Step 9b: Runtime Safety Envelope Verification
+        # Step 9b: Runtime Safety Envelope Verification (Injection + Financial + Faithfulness)
         from services.conversation_service.src.policies.safety_guard import evaluate_runtime_safety_envelope
         runtime_guard = evaluate_runtime_safety_envelope(
             customer_query=customer_query,
             draft_text=agent_draft,
             order_data=order_data,
             citations=citations,
+            faithfulness_threshold=FAITHFULNESS_THRESHOLD,
         )
         if not runtime_guard.allow_llm:
             guard = runtime_guard
@@ -522,6 +527,13 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
                 "Em đang phối hợp với bộ phận kiểm soát đơn hàng để kiểm tra hồ sơ và xử lý chính xác nhất cho anh/chị nhé ạ."
             )
             gen_mode = "blocked_safety_envelope"
+        elif runtime_guard.faithfulness_score is not None:
+            guard = guard.model_copy(
+                update={
+                    "faithfulness_score": runtime_guard.faithfulness_score,
+                    "hallucination_detected": runtime_guard.hallucination_detected,
+                }
+            )
 
     active_openai_model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
     draft_label = (
@@ -584,18 +596,18 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
 
     retrieval_status = "SUFFICIENT"
     if not citations and effective_intent not in ("chitchat_greeting", "chitchat_farewell", "human_agent"):
-        retrieval_status = "FALLBACK"
+        retrieval_status = "EMPTY_RETRIEVAL"
+    elif has_expired_policy and all(not doc.is_active for doc in citations):
+        retrieval_status = "INSUFFICIENT_EVIDENCE"
 
     gateway_resp = GatewayResponse(
         interaction_id=interaction_id,
-        session_id=session_id,
         customer_acknowledgement=customer_ack,
         draft_text=agent_draft,
         guardrail=guard,
         intent=final_intent_resp,
         citations=citations,
         agent_guidance=prep["agent_guidance"],
-        latency_ms=int((time.perf_counter() - start_time) * 1000),
         retrieval_status=retrieval_status,
         session_turns=ui_turns,
         components_used=components_used,
@@ -649,11 +661,7 @@ async def process_chat_turn_stream(request: QueryRequest):
             "interaction_id": interaction_id,
             "session_id": session_id,
             "customer_acknowledgement": prep["customer_ack"],
-            "intent": {
-                "intent": prep["effective_intent"],
-                "confidence": prep["effective_conf"],
-                "is_in_scope": True if DISABLE_CONFIDENCE_GUARD else (prep["effective_conf"] >= 0.50),
-            },
+            "intent": prep["final_intent_resp"].model_dump(),
             "confidence": prep["effective_conf"],
             "input_type": prep["input_type"],
             "rewritten_query": prep["rewritten_query"],
@@ -710,18 +718,27 @@ async def process_chat_turn_stream(request: QueryRequest):
         if not final_draft:
             final_draft = prep["suggested_macro"] or prep["draft_fallback"]
 
-        # Step 9b: Runtime Safety Envelope Verification on full draft
+        # Step 9b: Runtime Safety Envelope Verification on full draft (Injection + Financial + Faithfulness)
         from services.conversation_service.src.policies.safety_guard import evaluate_runtime_safety_envelope
         runtime_guard = evaluate_runtime_safety_envelope(
             customer_query=customer_query,
             draft_text=final_draft,
             order_data=order_data,
             citations=prep["citations"],
+            faithfulness_threshold=FAITHFULNESS_THRESHOLD,
         )
         if not runtime_guard.allow_llm:
+            guard = runtime_guard
             final_draft = (
                 "Dạ em chào anh/chị, em đã tiếp nhận yêu cầu của mình. "
                 "Em đang phối hợp với bộ phận kiểm soát đơn hàng để kiểm tra hồ sơ và xử lý chính xác nhất cho anh/chị nhé ạ."
+            )
+        elif runtime_guard.faithfulness_score is not None:
+            guard = guard.model_copy(
+                update={
+                    "faithfulness_score": runtime_guard.faithfulness_score,
+                    "hallucination_detected": runtime_guard.hallucination_detected,
+                }
             )
 
         # Persist Copilot draft & response metadata in SQLite so Staff & Customer views are synced
@@ -730,12 +747,8 @@ async def process_chat_turn_stream(request: QueryRequest):
             "session_id": session_id,
             "customer_acknowledgement": prep["customer_ack"],
             "draft_text": final_draft,
-            "guardrail": prep["guard"].model_dump(),
-            "intent": {
-                "intent": prep["effective_intent"],
-                "confidence": prep["effective_conf"],
-                "is_in_scope": True if DISABLE_CONFIDENCE_GUARD else (prep["effective_conf"] >= 0.50),
-            },
+            "guardrail": guard.model_dump(),
+            "intent": prep["final_intent_resp"].model_dump(),
             "citations": [c.model_dump() for c in prep["citations"]],
             "agent_guidance": prep["agent_guidance"],
             "order_data": order_data,
@@ -805,11 +818,33 @@ async def process_chat_turn_stream(request: QueryRequest):
 
 
 @app.post("/api/v1/conversation/handover")
-async def toggle_live_chat_handover(session_id: str, enable_live_chat: bool = True):
-    state = state_store.get_or_create(session_id)
-    state.is_live_chat = enable_live_chat
+async def toggle_live_chat_handover(
+    session_id: Optional[str] = None,
+    enable_live_chat: Optional[bool] = None,
+    payload: Optional[Dict[str, Any]] = Body(default=None),
+):
+    body = payload if isinstance(payload, dict) else {}
+    target_session_id = session_id or body.get("session_id")
+    if not target_session_id:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="session_id is required")
+
+    if enable_live_chat is not None:
+        live_flag = enable_live_chat
+    elif "enable_live_chat" in body:
+        live_flag = bool(body["enable_live_chat"])
+    elif "is_live_chat" in body:
+        live_flag = bool(body["is_live_chat"])
+    else:
+        live_flag = True
+
+    state = state_store.get_or_create(target_session_id)
+    state.is_live_chat = live_flag
     state_store.save(state)
-    return {"session_id": session_id, "is_live_chat": state.is_live_chat}
+    return {
+        "session_id": target_session_id,
+        "is_live_chat": state.is_live_chat,
+        "agent_id": body.get("agent_id"),
+    }
 
 
 if __name__ == "__main__":

@@ -15,7 +15,7 @@
 | `POST /api/v1/copilot/query_stream` | `conversation_service /api/v1/conversation/chat_stream` (SSE) | Synthesizes `meta`, single `token`, `done` SSE events from `process_copilot_query()` | `text/event-stream` (`event: meta`, `token`, `done`) |
 | `POST /api/v1/copilot/action` | `telemetry_service /audit/action` | Returns `HTTP 500` on telemetry failure | `{status: "recorded", interaction_id}` |
 
-*Contract discrepancy (`Observed`, `OD-007`):* `conversation_service` passes `session_id` and `latency_ms` to `GatewayResponse(...)` (silently ignored by Pydantic) and sets `retrieval_status="FALLBACK"` (schema doc lists `SUFFICIENT, INSUFFICIENT_EVIDENCE, EMPTY_RETRIEVAL`). `frontend/src/types/index.ts` omits `retrieval_status`, `circuit_breaker_tripped`, `is_hard_fail`, `violations`, `all_probabilities`.
+*Contract alignment (`Confirmed` / `Observed`, `OD-007` resolved):* `conversation_service` passes only canonical `GatewayResponse` fields (omitting extra `session_id`/`latency_ms` kwargs) and emits `retrieval_status` in `{"SUFFICIENT", "INSUFFICIENT_EVIDENCE", "EMPTY_RETRIEVAL"}`. `frontend/src/types/index.ts` matches with optional `retrieval_status`, `circuit_breaker_tripped`, `is_hard_fail`, `violations`, and `all_probabilities`, and `handover_session` aligns with `/api/v1/conversation/handover`.
 
 ---
 
@@ -40,13 +40,13 @@
    - **Case 2 (`Observed` / `Proposed`):** `intent in FINANCIAL_INTENTS` (`request_refund`, `payment_issue`) -> `allow_llm=False`, `DIRECT_REFUND_FORM`, `blocked_financial`.
    - **Case 2b (`Observed` / `Proposed`):** `out_of_scope` or off-topic keywords -> `allow_llm=False`, `ESCALATE_HUMAN`, `out_of_scope_abstain`.
    - **Case 3a (`Confirmed Requirement`):** `not is_in_scope` or `intent == "unknown_query"` -> `allow_llm=False`, `ESCALATE_HUMAN`, `blocked_intent_unavailable` (never bypassed by `DISABLE_CONFIDENCE_GUARD`).
-   - **Case 3b (`Observed` / `Open Decision` `OD-005`):** `not DISABLE_CONFIDENCE_GUARD` and `confidence < 0.60` -> `allow_llm=False`, `ESCALATE_HUMAN`, `low_confidence_abstain`.
+   - **Case 3b (`Confirmed Requirement`, `OD-005`):** `not DISABLE_CONFIDENCE_GUARD` and `confidence < 0.60` -> `allow_llm=False`, `ESCALATE_HUMAN`, `low_confidence_abstain`. (`is_in_scope` is strictly scope-based via `contracts/safety.py::is_intent_in_scope`, decoupled from confidence, and `tracker.py` aligns on `0.60`.)
    - **Case 4 (`Observed` / `Proposed`):** `has_expired_policy` -> `allow_llm=False`, `ESCALATE_HUMAN`, `temporal_status="EXPIRED"`, `blocked_expired_policy`.
    - **Case 5:** `allow_llm=True`, `PROCEED_TO_LLM`.
 6. **Draft Generation & Runtime Safety Envelope:**
    - If `not guard.allow_llm`: use macro/fallback draft.
    - If `guard.allow_llm`: call `CopilotDraftEngine.generate_draft()` (or `_stream()`). When `LLM_PROVIDER=openai_compatible`, calls CKEY.VN (`mainnewnol/gpt-oss-120b`); on failure, falls back to `_build_semantic_fallback_draft()` without calling Gemini.
-   - Run `evaluate_runtime_safety_envelope()` (prompt injection + unauthorized monetary refund promise unless `order_data.status in {"REFUND_PENDING", "CANCELLED", "RETURN_APPROVED"}`). On violation, replace draft with safe holding response (`blocked_safety_envelope`).
+   - Run `evaluate_runtime_safety_envelope()` (`contracts/safety.py`: prompt injection + unauthorized monetary refund promise + `evaluate_response_faithfulness` when `citations` present / numeric-grounding check against `order_data`, using `FAITHFULNESS_THRESHOLD=0.70`). On violation, update `guard`, replace draft with safe holding response (`blocked_safety_envelope`), and propagate faithfulness score.
 7. **Persistence & Background Tasks (`Observed Implementation`):**
    - Save `copilot_draft` + response metadata in `conversation_sessions` (`+07:00`).
    - Background: `MemoryWorker.update_memory_task()`, `telemetry_client.record_audit_log()` (writes `+07:00` in `telemetry_logs`), and `append_single_interaction_to_csv()` (appends `data/continual_learning_dataset.csv`).
@@ -95,8 +95,8 @@ stateDiagram-v2
 | `rag_service /retrieve` returns `[]` | Gateway fallback blocks with `blocked_policy_guard` (`ESCALATE_HUMAN`). | `Observed Implementation` |
 | `conversation_service` receives `unavailable_fallback` on Turn 2 of active `track_order` session | Fails closed (`ESCALATE_HUMAN`), does not inherit Turn 1 `active_intent`. | `Confirmed Requirement` / `Observed Implementation` |
 | Mixed legacy UTC + new `+07:00` timestamps across midnight | `TelemetryRepository` and `PersistentStateStore` sort chronologically in Python; `frontend/src/lib/time.ts` renders in `Asia/Ho_Chi_Minh`. | `Confirmed Requirement` / `Observed Implementation` |
-| `evaluate_response_faithfulness` parity | Runs in Gateway fallback, **not** invoked in `conversation_service` primary path (which runs `evaluate_runtime_safety_envelope` instead). | `Observed Implementation` (`Open Decision` `OD-005`) |
-| `CircuitBreaker` in Gateway | Implemented in `services/gateway/src/circuit_breaker.py` but not wired into live Gateway calls. | `Observed Implementation` (`Open Decision` `OD-007`) |
+| `evaluate_response_faithfulness` parity | Shared via `contracts/safety.py` and invoked on both Gateway fallback (`evaluate_response_faithfulness`) and Conversation Service primary `/chat` & `/chat_stream` (`evaluate_runtime_safety_envelope`, `FAITHFULNESS_THRESHOLD=0.70` + `order_data` numeric grounding). | `Confirmed Requirement` / `Observed Implementation` (`OD-005` resolved) |
+| `CircuitBreaker` in Gateway | Wired into `services/gateway/src/main.py` (`/query`, `/query_stream`, `/health`) via `conversation_circuit_breaker` (`circuit_breaker_tripped=True` on open fast-fail). | `Observed Implementation` (`OD-007` resolved; verified in `test_contracts_and_integration.py`) |
 
 ---
 

@@ -71,6 +71,9 @@ jobs:
             tests/test_guardrails.py \
             tests/test_rbac_step1.py \
             tests/test_conversation_order_pipeline.py \
+            tests/test_conversation_service.py \
+            tests/test_module3_orders.py \
+            tests/test_policy_filter.py \
             tests/test_policy_audit_rollback.py \
             tests/test_agent_skills.py \
             tests/test_agent_harness_eval.py \

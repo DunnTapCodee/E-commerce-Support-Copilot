@@ -12,8 +12,12 @@ from services.telemetry_service.src.cache import OrderLRUCache, normalize_phone
 from services.telemetry_service.src.database import get_db_connection, init_db, migrate_mock_orders
 from services.telemetry_service.src.repository import TelemetryRepository
 
+import gc
+import tempfile
+
 ROOT_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = ROOT_DIR / "copilot_telemetry.sqlite3"
+_TMP_DB_DIR = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+DB_PATH = Path(_TMP_DB_DIR.name) / "copilot_telemetry.sqlite3"
 ORDERS_JSON = ROOT_DIR / "data" / "mock_orders.json"
 
 
@@ -23,6 +27,12 @@ class TestModule3OrdersAndTools(unittest.TestCase):
         init_db(DB_PATH)
         migrate_mock_orders(DB_PATH, ORDERS_JSON, force=True)
         cls.repo = TelemetryRepository(DB_PATH, ORDERS_JSON)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.repo = None
+        gc.collect()
+        _TMP_DB_DIR.cleanup()
 
     def test_database_migration_count(self):
         """Verify that all 100 Tiki mock orders are migrated into SQLite."""

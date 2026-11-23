@@ -70,6 +70,13 @@ class CircuitBreaker:
             self.state = CircuitState.OPEN
             self.total_trips += 1
 
+    def reset(self) -> None:
+        """Reset circuit state back to CLOSED."""
+        self.state = CircuitState.CLOSED
+        self.failure_count = 0
+        self.last_failure_time = 0.0
+        self.total_trips = 0
+
     def get_status(self) -> Dict[str, Any]:
         """Return circuit telemetry."""
         return {

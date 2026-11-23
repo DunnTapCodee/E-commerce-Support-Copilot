@@ -30,27 +30,31 @@ INTENT_DESCRIPTIONS: Dict[str, str] = {
     "delivery_time": "Hỏi về thời gian giao hàng, khi nào nhận được hàng, mất bao nhiêu ngày (ví dụ: 'khi nào giao tới', 'bao giờ nhận được hàng')",
     "delivery_issue": "Khiếu nại sự cố vận chuyển: giao trễ hạn, shipper không gọi, báo giao thành công nhưng chưa nhận được (ví dụ: 'giao quá chậm', 'delivery delay problem')",
     "shipping_costs": "Hỏi về biểu phí giao hàng, cước ship, có được miễn phí vận chuyển không (ví dụ: 'phí ship bao nhiêu', 'shipping fee')",
-    "return_policy": "Hỏi về quy định, điều kiện, thời hạn, chính sách đổi hoặc trả hàng, chính sách bảo hành sản phẩm, sửa chữa hoặc bảo hành điện tử (ví dụ: 'chính sách đổi trả thế nào', 'hàng này có được bảo hành không', 'chính sách bảo hành')",
+    "return_policy": "Hỏi về quy định, điều kiện, thời hạn, chính sách đổi hoặc trả hàng (ví dụ: 'chính sách đổi trả thế nào', 'đổi trả hàng trong bao nhiêu ngày')",
     "return_product": "Yêu cầu đổi hoặc trả một sản phẩm cụ thể bị lỗi, hỏng hóc hoặc không ưng ý (ví dụ: 'tôi muốn trả lại áo này do rách', 'đổi cái mới do lỗi')",
     "refund_policy": "Hỏi về quy định, điều kiện, phương thức hoàn lại tiền (ví dụ: 'chính sách hoàn tiền quy định sao', 'hoàn tiền mất bao lâu')",
     "request_refund": "Yêu cầu trực tiếp được hoàn tiền, hủy đơn lấy lại tiền (ví dụ: 'hoàn tiền lại cho tôi', 'tôi muốn lấy lại tiền')",
     "refund_status": "Tra cứu tiến độ hoàn tiền, hỏi tiền đã về thẻ/tài khoản ngân hàng chưa (ví dụ: 'tiền hoàn đã về chưa', 'refund status check')",
     "payment_issue": "Thắc mắc, hướng dẫn, lựa chọn hoặc sự cố thanh toán: các phương thức thanh toán (tiền mặt COD, thẻ ngân hàng, ví MoMo, VNPAY), cách thanh toán khi đặt hàng, lỗi trừ tiền nhiều lần, thẻ bị từ chối (ví dụ: 'chỉ cho thanh toán bằng tiền mặt thì làm sao', 'phương thức thanh toán gồm những gì', 'bị trừ tiền 2 lần')",
     "human_agent": "Yêu cầu gặp trực tiếp nhân viên tư vấn người thật, kết nối tổng đài viên (ví dụ: 'cho tôi gặp nhân viên', 'talk to human agent')",
+    "warranty": "Hỏi về chính sách, thời hạn, điều kiện bảo hành, sửa chữa hoặc bảo dưỡng sản phẩm (ví dụ: 'chính sách bảo hành sản phẩm điện tử', 'bảo hành máy hút bụi bao lâu', 'hàng này có được bảo hành không')",
     "get_discounts": "Hỏi về chương trình khuyến mãi, ưu đãi, voucher, mã giảm giá, coupon hoặc quà tặng, tích xu (ví dụ: 'có ưu đãi gì không', 'có mã giảm giá không')",
+    "create_account": "Hỏi cách đăng ký, mở tài khoản thành viên hoặc tạo tài khoản mới trên sàn (ví dụ: 'tạo tài khoản mới thế nào', 'đăng ký thành viên mới')",
+    "recover_password": "Hỏi cách khôi phục, lấy lại hoặc đổi mật khẩu đăng nhập khi quên mật khẩu (ví dụ: 'quên mật khẩu đăng nhập', 'tôi muốn đổi mật khẩu tài khoản')",
     "out_of_scope": "Các câu hỏi hoàn toàn KHÔNG liên quan đến thương mại điện tử, mua sắm hoặc CSKH (ví dụ: hỏi thời tiết, giải toán, thể thao, người nổi tiếng, chính trị, triết học)",
 }
 
 INTENT_SYSTEM_PROMPT = f"""Bạn là chuyên gia NLU phân loại ý định khách hàng (Intent Classification) cho sàn thương mại điện tử E-commerce Tiki/Shopee.
 
-Hệ thống có các Ý ĐỊNH CHÍNH (TARGET_INTENTS) sau:
+Hệ thống có 16 Ý ĐỊNH CHÍNH (TARGET_INTENTS) và `out_of_scope` sau:
 {chr(10).join(f"- {name}: {desc}" for name, desc in INTENT_DESCRIPTIONS.items())}
 
 QUY TẮC PHÂN LOẠI & PHẠM VI (SCOPE BOUNDARY):
 1. Đọc kỹ câu hỏi khách hàng (hỗ trợ cả Tiếng Việt và Tiếng Anh).
-2. TẤT CẢ câu hỏi liên quan đến mua sắm, đặt hàng, thanh toán, vận chuyển, đổi trả, bảo hành, voucher, CSKH trên sàn TMĐT ĐỀU LÀ IN-SCOPE và BẮT BUỘC gán vào 1 trong 12 intent nghiệp vụ ở trên:
+2. TẤT CẢ câu hỏi liên quan đến mua sắm, đặt hàng, tài khoản, thanh toán, vận chuyển, đổi trả, bảo hành, voucher, CSKH trên sàn TMĐT ĐỀU LÀ IN-SCOPE và BẮT BUỘC gán vào 1 trong 16 intent nghiệp vụ ở trên:
    - Thắc mắc phương thức thanh toán (tiền mặt COD, thẻ, ví điện tử) -> gán `payment_issue`.
-   - Hỏi về bảo hành, sửa chữa sản phẩm -> gán `return_policy`.
+   - Hỏi về bảo hành, sửa chữa, bảo dưỡng sản phẩm -> gán `warranty`.
+   - Hỏi tạo mới / đăng ký tài khoản -> gán `create_account`; quên / đổi / khôi phục mật khẩu -> gán `recover_password`.
    - Hỏi kiểm tra lại thông tin đơn, xuất hóa đơn VAT, giá đơn hàng -> gán `track_order`.
    - Yêu cầu gặp nhân viên, chuyển máy hỗ trợ -> BẮT BUỘC gán `human_agent`.
 3. TUYỆT ĐỐI CHỈ DÙNG `out_of_scope` khi câu hỏi hoàn toàn không thuộc về mua sắm hay TMĐT (như thời tiết, toán học, ronaldo, bóng đá, thơ ca).
@@ -69,7 +73,9 @@ VÍ DỤ TIÊU BIỂU (FEW-SHOT EXAMPLES):
 - "Hiện tại Tiki có ưu đãi hay voucher gì không" -> intent: "get_discounts"
 - "Tiki xu dùng để làm gì" -> intent: "get_discounts"
 - "Chính sách đổi trả trong vòng bao nhiêu ngày" -> intent: "return_policy"
-- "Hàng này có được bảo hành chính hãng không" -> intent: "return_policy"
+- "Hàng này có được bảo hành chính hãng không" -> intent: "warranty"
+- "Tạo tài khoản mới thế nào" -> intent: "create_account"
+- "Quên mật khẩu đăng nhập" -> intent: "recover_password"
 - "Áo này bị rách chỉ tôi muốn đổi cái khác" -> intent: "return_product"
 - "Cho tôi hủy đơn hàng vừa đặt" -> intent: "cancel_order"
 - "Tôi muốn lấy lại tiền đã thanh toán" -> intent: "request_refund"
@@ -79,9 +85,9 @@ VÍ DỤ TIÊU BIỂU (FEW-SHOT EXAMPLES):
 Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài):
 {{
   "intent": "<tên intent thuộc danh sách trên>",
-  "confidence": <số thực từ 0.70 đến 0.99>,
+  "confidence": <số thực từ 0.00 đến 1.00 phản ánh đúng mức độ chắc chắn; chỉ >= 0.85 khi rõ ràng, dưới 0.60 nếu câu hỏi mơ hồ hoặc thiếu ngữ cảnh>,
   "reasoning": "<lý do ngắn gọn>",
-  "is_in_scope": <true nếu thuộc 12 intent, false nếu out_of_scope>,
+  "is_in_scope": <true nếu thuộc 16 intent, false nếu out_of_scope>,
   "probabilities": {{
     "<top_intent_1>": <xác suất>,
     "<top_intent_2>": <xác suất>
@@ -157,8 +163,11 @@ class LLMIntentClassifier:
                     if intent not in INTENT_DESCRIPTIONS:
                         intent = "out_of_scope"
 
-                    conf = float(parsed.get("confidence", 0.90))
-                    is_in_scope = bool(parsed.get("is_in_scope", intent != OOS_LABEL and intent in TARGET_INTENTS))
+                    try:
+                        conf = max(0.0, min(1.0, float(parsed.get("confidence", 0.50))))
+                    except (TypeError, ValueError):
+                        conf = 0.0
+                    is_in_scope = intent != OOS_LABEL and intent in TARGET_INTENTS
                     probs = parsed.get("probabilities", {intent: conf})
 
                     return IntentPredictionResponse(
@@ -216,8 +225,11 @@ class LLMIntentClassifier:
                     if intent not in INTENT_DESCRIPTIONS:
                         intent = "out_of_scope"
 
-                    conf = float(parsed.get("confidence", 0.90))
-                    is_in_scope = bool(parsed.get("is_in_scope", intent != OOS_LABEL and intent in TARGET_INTENTS))
+                    try:
+                        conf = max(0.0, min(1.0, float(parsed.get("confidence", 0.50))))
+                    except (TypeError, ValueError):
+                        conf = 0.0
+                    is_in_scope = intent != OOS_LABEL and intent in TARGET_INTENTS
                     probs = parsed.get("probabilities", {intent: conf})
 
                     return IntentPredictionResponse(
@@ -300,8 +312,12 @@ class LLMIntentClassifier:
         if re.search(r"\b(tiền mặt|phương thức thanh toán|hình thức thanh toán|thanh toán bằng|cách thanh toán|trừ.*(2 lần|hai lần)|lỗi thanh toán|thanh toán thất bại|thẻ.*bị từ chối|vnpay|momo|zalopay|mã qr.*thanh toán|payment failed|payment error|charged twice|trừ tiền|credit card.*error|sự cố trừ tiền|không thanh toán được|chỉ cho thanh toán)\b", q_lower):
             return self._build_resp("payment_issue", 0.95, query)
 
-        # 9. Return policy & Warranty (guidelines/rules for returns and warranties)
-        if re.search(r"\b(chính sách.*đổi trả|quy định.*(đổi|trả)|thời hạn.*(đổi|trả)|điều kiện.*(đổi|trả)|return policy|quy trình đổi trả|bóc seal.*đổi trả|newest.*return policy|đổi trả.*bao nhiêu ngày|return.*condition|can i return|bảo hành|bảo dưỡng|chính sách bảo hành|có được bảo hành|hàng chính hãng|chính hãng)\b", q_lower):
+        # 9. Warranty guidelines / terms (separated cleanly under canonical 16-intent taxonomy)
+        if re.search(r"\b(bảo hành|bao hanh|bảo dưỡng|chính sách bảo hành|có được bảo hành|sửa chữa bảo hành|warranty)\b", q_lower):
+            return self._build_resp("warranty", 0.94, query)
+
+        # 9b. Return policy (guidelines/rules for returns)
+        if re.search(r"\b(chính sách.*đổi trả|quy định.*(đổi|trả)|thời hạn.*(đổi|trả)|điều kiện.*(đổi|trả)|return policy|quy trình đổi trả|bóc seal.*đổi trả|newest.*return policy|đổi trả.*bao nhiêu ngày|return.*condition|can i return|hàng chính hãng|chính hãng)\b", q_lower):
             return self._build_resp("return_policy", 0.94, query)
 
         # 10. Return product (action on a specific item)
@@ -323,6 +339,12 @@ class LLMIntentClassifier:
         # 13b. Get discounts / Promotions / Vouchers
         if re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|chiết khấu|quà tặng|tiki xu)\b", q_lower):
             return self._build_resp("get_discounts", 0.95, query)
+
+        # 13c. Account creation & password recovery
+        if re.search(r"\b(quên mật khẩu|đổi mật khẩu|khôi phục mật khẩu|lấy lại mật khẩu|reset password|recover password|forgot password)\b", q_lower):
+            return self._build_resp("recover_password", 0.94, query)
+        if re.search(r"\b(tạo tài khoản|đăng ký tài khoản|đăng ký thành viên|mở tài khoản|create account|sign up|register account)\b", q_lower):
+            return self._build_resp("create_account", 0.94, query)
 
         # 14. Track order & Order details (status, progress, price, amount, VAT invoice)
         if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|kiểm tra lại đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status|bao nhiêu tiền|hết bao nhiêu|tổng tiền|giá bao nhiêu|đơn.*của mình.*là gì|hóa đơn.*vat|hóa đơn đỏ|xuất hóa đơn)\b", q_lower):

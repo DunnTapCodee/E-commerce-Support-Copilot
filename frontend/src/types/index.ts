@@ -16,6 +16,7 @@ export interface IntentPredictionResponse {
   intent: string;
   confidence: number;
   is_in_scope: boolean;
+  all_probabilities?: Record<string, number>;
   language?: string;
   model_name?: string;
   latency_ms?: number;
@@ -28,6 +29,8 @@ export interface GuardrailResult {
   faithfulness_score?: number;
   hallucination_detected?: boolean;
   temporal_status?: string;
+  is_hard_fail?: boolean;
+  violations?: string[];
 }
 
 export interface GatewayResponse {
@@ -47,6 +50,8 @@ export interface GatewayResponse {
   customer_acknowledgement?: string;
   session_turns?: Array<Record<string, any>>;
   context_summary?: string;
+  retrieval_status?: string;
+  circuit_breaker_tripped?: boolean;
   components_used?: Record<string, string>;
   rewritten_query?: string;
 }

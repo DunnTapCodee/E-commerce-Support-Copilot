@@ -35,9 +35,10 @@
 - **`GET /health`**
   - **Output:** `status` (`healthy` | `degraded`), `service`, `model_loaded`, `ml_artifacts_loaded` (`bool`), `intent_backend` (`llm` | `hybrid` | `ml`), `routing_mode` (`router` | `multilingual`), `models`, `error`.
 
-### Taxonomy (`Observed Implementation` / `Open Decision` `OD-004`)
-- `pipeline/dataset.py` defines **16** `TARGET_INTENTS` (`track_order`, `cancel_order`, `delivery_time`, `delivery_issue`, `shipping_costs`, `return_policy`, `return_product`, `refund_policy`, `request_refund`, `refund_status`, `payment_issue`, `human_agent`, `warranty`, `get_discounts`, `create_account`, `recover_password`) + `out_of_scope`.
-- *Known mismatch (`Observed`):* `llm_classifier.py` `INTENT_DESCRIPTIONS` lists 14 keys (13 in-scope + `out_of_scope`; omits `warranty`, `create_account`, `recover_password` and maps warranty to `return_policy`), while prompt text and `README_MODULE1.md` refer to "12 intents". Canonical taxonomy awaits `OD-004`.
+### Taxonomy (`Confirmed Requirement` — `OD-004` Resolved)
+- `pipeline/dataset.py` defines **16** canonical `TARGET_INTENTS` (`track_order`, `cancel_order`, `delivery_time`, `delivery_issue`, `shipping_costs`, `return_policy`, `return_product`, `refund_policy`, `request_refund`, `refund_status`, `payment_issue`, `human_agent`, `warranty`, `get_discounts`, `create_account`, `recover_password`) + `out_of_scope` (12 core operational intents + 4 practical additions confirmed by project owner).
+- `services/intent_service/src/llm_classifier.py` (`INTENT_DESCRIPTIONS`, `INTENT_SYSTEM_PROMPT`, `_semantic_fallback`) and `services/conversation_service/src/dialogue_state/tracker.py` are aligned to all **16** canonical intents + `out_of_scope` (`tests/test_intent_llm.py::test_canonical_16_intents_taxonomy_and_extended_fallbacks`).
+- *Training pipeline note (`Observed`):* `services/intent_service/README_MODULE1.md` and `build_datasets.py` still note that Kaggle Bitext translation splits map `warranty` -> `out_of_scope` until Module 1 ML training data (`OD-002`) is expanded for all 16 intents.
 
 ---
 

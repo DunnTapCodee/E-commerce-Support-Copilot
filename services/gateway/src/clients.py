@@ -177,7 +177,13 @@ class MicroserviceClients:
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(
                 f"{CONVERSATION_SERVICE_URL}/api/v1/conversation/handover",
-                json={"session_id": session_id, "is_live_chat": is_live_chat, "agent_id": agent_id},
+                params={"session_id": session_id, "enable_live_chat": is_live_chat},
+                json={
+                    "session_id": session_id,
+                    "is_live_chat": is_live_chat,
+                    "enable_live_chat": is_live_chat,
+                    "agent_id": agent_id,
+                },
             )
             resp.raise_for_status()
             return resp.json()

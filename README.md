@@ -1,6 +1,6 @@
 # E-commerce Support Copilot
 
-Hệ thống AI Copilot hỗ trợ chăm sóc khách hàng (CSKH) thương mại điện tử: UI Streamlit Workbench, API Gateway, Intent Classification (Phân loại ý định song ngữ), RAG Policy Retrieval & Drafting (Truy xuất chính sách & soạn thảo nháp), Quản lý vòng đời chính sách và SQLite Audit Telemetry.
+Hệ thống AI Copilot hỗ trợ chăm sóc khách hàng (CSKH) thương mại điện tử: React/Vite SPA (`frontend/`, UI chính thức theo `ADR-001`), legacy Streamlit Workbench (`services/ui_service/`), API Gateway, Intent Classification (Phân loại ý định song ngữ), RAG Policy Retrieval & Drafting (Truy xuất chính sách & soạn thảo nháp), Quản lý vòng đời chính sách và SQLite Audit Telemetry.
 
 ---
 
@@ -25,8 +25,9 @@ docker compose up -d --build
 
 ## 🌐 Các cổng truy cập sau khi khởi chạy
 
-Sau khi Docker Compose khởi chạy thành công, truy cập các địa chỉ sau trên trình duyệt:
-- **Giao diện CSKH Workbench UI:** [http://localhost:8501](http://localhost:8501)
+Sau khi khởi chạy hệ thống, truy cập các địa chỉ sau trên trình duyệt:
+- **Giao diện chính React/Vite SPA (`frontend/`, chạy dev server qua `npm run dev`):** [http://localhost:5173](http://localhost:5173)
+- **Legacy CSKH Streamlit Workbench UI (Docker Compose):** [http://localhost:8501](http://localhost:8501)
 - **API Gateway (Swagger UI):** [http://localhost:8000/docs](http://localhost:8000/docs)
 - **Knowledge / Document Management Service:** [http://localhost:18004/docs](http://localhost:18004/docs)
 - **RAG & Policy Service:** [http://localhost:18002/docs](http://localhost:18002/docs)
@@ -52,7 +53,7 @@ The UI produces drafts for human review. Approve/Edit actions record an audit en
 
 ## Module 2: Retrieval experiments
 
-The retrieval benchmark compares the existing TF-IDF + cosine baseline, BM25, dense embeddings, BM25+dense RRF, and RRF with cross-encoder reranking. It uses `data/retrieval_eval.json`, a manually labeled Vietnamese query set covering every active policy. All methods search the same 47 active policies and use `title + content`; inactive policies are filtered before ranking. Tags are excluded by default and can be tested as an ablation.
+The retrieval benchmark compares the existing TF-IDF + cosine baseline, BM25, dense embeddings, BM25+dense RRF, and RRF with cross-encoder reranking. It uses `data/retrieval_eval.json`, a manually labeled Vietnamese query set covering active policies (historically 47 active policies at benchmark authoring time; `data/knowledge_base/policies.json` currently stores 51 total / 48 active policies). Inactive policies are filtered before ranking, and tags are excluded by default (tested as an ablation).
 
 Install the optional experiment dependencies and run the benchmark from the repository root:
 
@@ -61,7 +62,7 @@ python -m pip install -r requirements-retrieval-experiments.txt
 python scripts/benchmark_retrieval.py
 ```
 
-The first dense run downloads the model. Defaults use `keepitreal/vietnamese-sbert` and `BAAI/bge-reranker-base`; pass `--dense-model BAAI/bge-m3` to compare BGE-M3. Dense query latency includes query embedding; reranked latency also includes candidate scoring. The report records index/model setup separately and writes results to `reports/module2_retrieval_benchmark.json`. The target is p95 query latency below 15 ms. FAISS `IndexFlatIP` is used when its Python wheel is available; otherwise the exact NumPy cosine implementation is used, which is sufficient for this 47-document corpus.
+The first dense run downloads the model. Defaults use `keepitreal/vietnamese-sbert` and `BAAI/bge-reranker-base`; pass `--dense-model BAAI/bge-m3` to compare BGE-M3. Dense query latency includes query embedding; reranked latency also includes candidate scoring. The report records index/model setup separately and writes results to `reports/module2_retrieval_benchmark.json`. The target is p95 query latency below 15 ms. FAISS `IndexFlatIP` is used when its Python wheel is available; otherwise the exact NumPy cosine implementation is used, which is sufficient for this ~48-active-policy corpus.
 
 Use `--methods tfidf,bm25` for a quick sparse-only run, or add `--include-tags` to repeat all selected methods with policy tags included.
 

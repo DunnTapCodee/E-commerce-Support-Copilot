@@ -298,6 +298,60 @@ class TestGatewayGuardrails(unittest.TestCase):
         res_out = adapter.apply_output_rails(draft, citations)
         self.assertTrue(res_out.allow_llm)
 
+    def test_runtime_safety_envelope_faithfulness_and_order_numeric_grounding(self):
+        """Conversation Service runtime safety envelope blocks fabricated numbers/claims (OD-005 parity)."""
+        from services.conversation_service.src.policies.safety_guard import evaluate_runtime_safety_envelope
+
+        citations = [
+            RetrievedDocument(
+                doc_id="POL-RET-001",
+                title="Chính sách đổi trả tiêu chuẩn",
+                content="Khách hàng có thể đổi trả trong vòng 30 ngày đối với Tiki Trading.",
+                version="2.0",
+                is_active=True,
+            )
+        ]
+        bad_policy_draft = (
+            "Chính sách của Tiki cho phép đổi trả trong vòng 90 ngày với mọi sản phẩm không cần lý do."
+        )
+        blocked = evaluate_runtime_safety_envelope(
+            customer_query="Chính sách đổi trả như thế nào?",
+            draft_text=bad_policy_draft,
+            citations=citations,
+        )
+        self.assertFalse(blocked.allow_llm)
+        self.assertTrue(blocked.is_hard_fail)
+        self.assertTrue(blocked.hallucination_detected)
+
+        order_data = {"order_id": "ORD-1003", "status": "Đang giao hàng", "total_amount": 250000}
+        truthful_order_draft = "Đơn ORD-1003 đang giao hàng, tổng thanh toán là 250.000đ."
+        ok_order = evaluate_runtime_safety_envelope(
+            customer_query="Đơn ORD-1003 hết bao nhiêu tiền?",
+            draft_text=truthful_order_draft,
+            order_data=order_data,
+        )
+        self.assertTrue(ok_order.allow_llm)
+
+        hallucinated_order_draft = "Đơn ORD-1003 có tổng thanh toán là 9.999.999đ."
+        bad_order = evaluate_runtime_safety_envelope(
+            customer_query="Đơn ORD-1003 hết bao nhiêu tiền?",
+            draft_text=hallucinated_order_draft,
+            order_data=order_data,
+        )
+        self.assertFalse(bad_order.allow_llm)
+        self.assertTrue(bad_order.hallucination_detected)
+
+    def test_canonical_scope_decoupled_from_confidence_threshold(self):
+        """CANONICAL_INTENTS matches TARGET_INTENTS and is_intent_in_scope is orthogonal to confidence."""
+        from contracts.safety import CANONICAL_INTENTS, is_intent_in_scope
+        from services.intent_service.src.pipeline.dataset import TARGET_INTENTS
+
+        self.assertEqual(list(CANONICAL_INTENTS), TARGET_INTENTS)
+        self.assertTrue(is_intent_in_scope("track_order"))
+        self.assertFalse(is_intent_in_scope("out_of_scope"))
+        self.assertFalse(is_intent_in_scope("unknown_query"))
+        self.assertTrue(is_intent_in_scope("chitchat_greeting", allow_chitchat_internal=True))
+
 
 if __name__ == "__main__":
     unittest.main()

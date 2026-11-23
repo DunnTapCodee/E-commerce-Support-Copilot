@@ -11,6 +11,15 @@ import math
 import re
 from typing import Any, Dict, List, Optional, Tuple
 
+from contracts.safety import (
+    PURE_COURTESY_PATTERNS,
+    PROMPT_INJECTION_PATTERNS,
+    evaluate_prompt_injection,
+    evaluate_response_faithfulness as _shared_evaluate_response_faithfulness,
+    evaluate_runtime_safety_envelope as _shared_evaluate_runtime_safety_envelope,
+    extract_numeric_entities as _extract_numeric_entities,
+    split_into_claims as _split_into_claims,
+)
 from contracts.schemas import (
     GuardrailResult,
     IntentPredictionResponse,
@@ -299,52 +308,6 @@ def evaluate_policy_guard(
     )
 
 
-# =====================================================================
-# 4. Response Faithfulness & Hallucination Guardrails
-# =====================================================================
-# Courteous / pleasantry phrases that are common in Vietnamese CS chitchat
-# These should never be flagged as ungrounded factual claims or hallucinations unless containing numbers
-PURE_COURTESY_PATTERNS = [
-    r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào)\s*(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
-    r"^(?:cảm ơn|cam on)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
-    r"^(?:em\s+)?(?:luôn\s+)?sẵn sàng hỗ trợ\s*(?:anh/chị|anh|chị|quý khách|thêm)?.*$",
-    r"^(?:nếu\s+)?(?:anh/chị|anh|chị|quý khách|mình)\s+cần hỗ trợ thêm.*$",
-    r"^chúc\s+(?:anh/chị|anh|chị|quý khách|bạn|mình).*$",
-    r"^(?:rất\s+)?vui được hỗ trợ.*$",
-    r"^(?:dạ\s+)?(?:em\s+)?(?:đã\s+)?ghi nhận.*$",
-]
-
-
-def _split_into_claims(text: str) -> List[str]:
-    """Break text down into atomic statements for claim verification.
-    Strips polite greeting prefixes and filters out purely courteous closing statements.
-    """
-    clean = re.sub(r"\[POL-[A-Z0-9_-]+\]", "", text)
-    sentences = [s.strip() for s in re.split(r"[.\n!?]+", clean) if len(s.strip()) > 8]
-    claims = []
-    for s in sentences:
-        has_nums = len(_extract_numeric_entities(s)) > 0
-        is_pure = any(re.match(p, s.lower().strip()) for p in PURE_COURTESY_PATTERNS)
-        if is_pure and not has_nums:
-            continue
-        stripped = re.sub(
-            r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào|cảm ơn)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)[^,.:\n!?]*[,:]\s*",
-            "",
-            s,
-            flags=re.IGNORECASE,
-        ).strip()
-        target = stripped if len(stripped) > 5 else s
-        is_target_pure = any(re.match(p, target.lower().strip()) for p in PURE_COURTESY_PATTERNS)
-        if not is_target_pure or has_nums:
-            claims.append(target)
-    return claims
-
-
-def _extract_numeric_entities(text: str) -> List[str]:
-    """Identify numbers, percentages, and temporal entities in text."""
-    return re.findall(r"\b\d+(?:[\.,]\d+)?%?|\b\d+\s*(?:ngày|tháng|năm|giờ|%|k|đ|vnd|triệu)\b", text, flags=re.IGNORECASE)
-
-
 def evaluate_response_faithfulness(
     draft_text: str,
     citations: List[RetrievedDocument],
@@ -352,122 +315,13 @@ def evaluate_response_faithfulness(
     customer_query: Optional[str] = None,
     order_data: Optional[Dict[str, Any]] = None,
 ) -> GuardrailResult:
-    """NLI Entailment & Hallucination Check:
-    Verify whether every claim in the LLM draft is faithfully supported by the retrieved context.
-    - Premise: Concatenated text of all cited documents + customer query + system order data.
-    - Hypothesis: Individual claims made by the draft response.
-    - Hallucination detection: Flags fabricated facts, made-up timeframes, or contradictory claims.
-    """
-    if not draft_text or not draft_text.strip():
-        return _escalate(
-            "Bản nháp phản hồi rỗng; chặn phản hồi an toàn.",
-            faithfulness_score=0.0,
-            hallucination_detected=True,
-        )
-
-    # Template fallback draft is generated directly from system template and active citations
-    if draft_text.startswith("[BẢN NHÁP DỰ PHÒNG"):
-        return GuardrailResult(
-            allow_llm=True,
-            action_type="PROCEED_TO_LLM",
-            faithfulness_score=1.0,
-            hallucination_detected=False,
-            reason="Bản nháp dự phòng được tổng hợp an toàn từ tài liệu chính sách đã kiểm duyệt.",
-        )
-
-    if not citations:
-        return _escalate(
-            "Không có tài liệu trích dẫn tham chiếu để kiểm tra độ trung thực.",
-            faithfulness_score=0.0,
-            hallucination_detected=True,
-        )
-
-    # 1. Build Ground Truth Premise from citations, customer query, and system order data
-    premise_parts = [f"{doc.title} {doc.content}" for doc in citations]
-    if customer_query:
-        premise_parts.append(customer_query)
-    if order_data:
-        order_str = " ".join(f"{k} {v}" for k, v in order_data.items() if k not in ("shipping_timeline", "items"))
-        if "items" in order_data and isinstance(order_data["items"], list):
-            order_str += " " + " ".join(it.get("name", "") if isinstance(it, dict) else str(it) for it in order_data["items"])
-        if "shipping_timeline" in order_data and isinstance(order_data["shipping_timeline"], list):
-            order_str += " " + " ".join(t.get("status", "") if isinstance(t, dict) else str(t) for t in order_data["shipping_timeline"])
-        premise_parts.append(order_str)
-    premise_text = " ".join(premise_parts).lower()
-
-    # 2. Extract atomic claims from draft text
-    claims = _split_into_claims(draft_text)
-    if not claims:
-        return GuardrailResult(
-            allow_llm=True,
-            action_type="PROCEED_TO_LLM",
-            faithfulness_score=1.0,
-            hallucination_detected=False,
-            reason="Bản nháp ngắn gọn, không phát hiện khẳng định nằm ngoài tài liệu.",
-        )
-
-    entailed_claims = 0
-    contradicted_claims = []
-    unsupported_claims = []
-
-    for claim in claims:
-        claim_lower = claim.lower()
-        claim_numbers = set(_extract_numeric_entities(claim_lower))
-
-        # Check for numeric entity contradiction (e.g., claiming 90 days when policy says 30 days)
-        unsupported_nums = [n for n in claim_numbers if n not in premise_text]
-        if unsupported_nums:
-            contradicted_claims.append(
-                f"Khẳng định chứa số liệu/thời hạn không có trong chính sách: '{claim}' (Số liệu lạ: {', '.join(unsupported_nums)})"
-            )
-            continue
-
-        # Semantic token overlap check (Heuristic NLI token containment)
-        words = [w for w in re.findall(r"\w+", claim_lower) if len(w) > 3]
-        if words:
-            overlap = sum(1 for w in words if w in premise_text)
-            overlap_ratio = overlap / len(words)
-        else:
-            overlap_ratio = 1.0
-
-        if overlap_ratio >= 0.40:
-            entailed_claims += 1
-        else:
-            unsupported_claims.append(f"Khẳng định không tìm thấy căn cứ trong tài liệu: '{claim}'")
-
-    total_claims = len(claims)
-    faithfulness_score = round(entailed_claims / total_claims, 2) if total_claims > 0 else 1.0
-
-    # Decision logic
-    has_contradiction = len(contradicted_claims) > 0
-    is_faithful = (faithfulness_score >= threshold) and not has_contradiction
-
-    if not is_faithful:
-        violation_details = []
-        if contradicted_claims:
-            violation_details.extend(contradicted_claims)
-        if unsupported_claims:
-            violation_details.extend(unsupported_claims)
-
-        detail_summary = " | ".join(violation_details[:2])
-        return _escalate(
-            reason=(
-                f"Phát hiện nguy cơ ảo giác (Faithfulness Score: {faithfulness_score:.0%}, "
-                f"ngưỡng yêu cầu: {threshold:.0%}). {detail_summary}"
-            ),
-            faithfulness_score=faithfulness_score,
-            hallucination_detected=True,
-        )
-
-    return GuardrailResult(
-        allow_llm=True,
-        action_type="PROCEED_TO_LLM",
-        faithfulness_score=faithfulness_score,
-        hallucination_detected=False,
-        reason=(
-            f"Câu trả lời đã vượt qua kiểm tra NLI Entailment "
-            f"(Faithfulness Score: {faithfulness_score:.0%}). Nội dung trung thực với chính sách."
-        ),
+    """Delegate NLI entailment & numeric faithfulness verification to contracts.safety."""
+    return _shared_evaluate_response_faithfulness(
+        draft_text=draft_text,
+        citations=citations,
+        threshold=threshold,
+        customer_query=customer_query,
+        order_data=order_data,
     )
 
 
@@ -505,79 +359,19 @@ class SpecializedGuardrailAdapter:
         return evaluate_response_faithfulness(draft_text, citations)
 
 
-# =====================================================================
-# 6. Hard-Blocking Safety Envelopes & Prompt Injection Defense
-# =====================================================================
-PROMPT_INJECTION_PATTERNS = [
-    re.compile(r"(ignore|disregard|forget)\s+(?:all\s+)?(?:previous\s+)?(instructions|prompts|rules)", re.IGNORECASE),
-    re.compile(r"(bỏ qua|quên đi|hủy bỏ)\s+(mọi|tất cả)?\s*(hướng dẫn|chỉ thị|quy tắc|quy định)", re.IGNORECASE),
-    re.compile(r"(in ra|tiết lộ|show me|reveal)\s+(system prompt|prompts hệ thống|chỉ dẫn hệ thống)", re.IGNORECASE),
-    re.compile(r"\b(jailbreak|dan mode|bẻ khóa ai|developer mode)\b", re.IGNORECASE),
-    re.compile(r"\b(đóng vai là|act as a|pretend you are)\s+(unrestricted|không bị giới hạn)", re.IGNORECASE),
-]
-
-
-def evaluate_prompt_injection(query: str) -> Tuple[bool, Optional[str]]:
-    """Detect prompt injection and adversarial jailbreak attempts."""
-    for pattern in PROMPT_INJECTION_PATTERNS:
-        match = pattern.search(query)
-        if match:
-            return True, f"Phát hiện mẫu Prompt Injection / Jailbreak: '{match.group(0)}'"
-    return False, None
-
-
 def evaluate_runtime_safety_envelope(
     customer_query: str,
     draft_text: str,
     order_data: Optional[Dict[str, Any]] = None,
     citations: Optional[List[RetrievedDocument]] = None,
+    faithfulness_threshold: float = FAITHFULNESS_THRESHOLD,
 ) -> GuardrailResult:
-    """Rigorous runtime safety envelope:
-    1. Prompt Injection Attack check on query.
-    2. Unauthorized Financial Action check on draft.
-    3. PII Boundary check.
-    Aligns with CMU MLIP Chapter 18: System Quality (Fail-closed safety envelopes).
-    """
-    violations: List[str] = []
-
-    # 1. Prompt Injection Check
-    is_injection, injection_msg = evaluate_prompt_injection(customer_query)
-    if is_injection:
-        violations.append(injection_msg)
-
-    # 2. Financial Hard Gate on Draft
-    # LLM must NEVER promise to refund money unless verified order has status 'REFUND_PENDING' or 'CANCELLED'
-    refund_promise_match = re.search(
-        r"(sẽ hoàn lại|đã hoàn|hoàn trả lại số tiền|chuyển khoản lại cho anh/chị|bồi thường)\s+(\d+[\d.,]*\s*(?:đ|vnd|đồng)?)",
-        draft_text,
-        re.IGNORECASE,
-    )
-    if refund_promise_match:
-        authorized = False
-        if order_data:
-            order_status = str(order_data.get("status", "")).upper()
-            if order_status in {"REFUND_PENDING", "CANCELLED", "RETURN_APPROVED"}:
-                authorized = True
-        if not authorized:
-            violations.append(
-                f"LLM tự ý phát ngôn cam kết bồi thường / hoàn tiền trái thẩm quyền: '{refund_promise_match.group(0)}'"
-            )
-
-    # 3. Decision
-    if violations:
-        return GuardrailResult(
-            allow_llm=False,
-            action_type="ESCALATE_HUMAN",
-            reason=" | ".join(violations),
-            is_hard_fail=True,
-            violations=violations,
-        )
-
-    return GuardrailResult(
-        allow_llm=True,
-        action_type="PROCEED_TO_LLM",
-        reason="Đạt chuẩn kiểm định an toàn (Safety Envelope passed).",
-        is_hard_fail=False,
-        violations=[],
+    """Delegate hard-blocking safety envelope & faithfulness parity check to contracts.safety."""
+    return _shared_evaluate_runtime_safety_envelope(
+        customer_query=customer_query,
+        draft_text=draft_text,
+        order_data=order_data,
+        citations=citations,
+        faithfulness_threshold=faithfulness_threshold,
     )
 

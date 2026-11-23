@@ -29,7 +29,7 @@
 
 | Area | Why sensitive |
 | --- | --- |
-| `contracts/schemas.py` | Shared DTOs; divergence remains with `frontend/src/types/index.ts` and `conversation_service` extra kwargs (`OD-007`). *Historical note:* legacy `+12 hours` shift in `get_system_now()` was removed per `ADR-003` (`Asia/Ho_Chi_Minh`, `+07:00`). |
+| `contracts/schemas.py`, `contracts/safety.py` | Shared DTOs and unified safety/faithfulness/canonical-scope rules (`OD-004`, `OD-005`, `OD-007` resolved across Gateway, Conversation Service, and Frontend). *Historical note:* legacy `+12 hours` shift in `get_system_now()` was removed per `ADR-003` (`Asia/Ho_Chi_Minh`, `+07:00`). |
 | `services/gateway/src/guardrails.py` | Financial, temporal, and faithfulness invariants (`SC-001`..`SC-006`); changes alter safety behavior. |
 | `services/document_service/src/policy_manager.py` | Mutates policy JSON/audit files and triggers RAG KB synchronization. |
 | `services/conversation_service/src/main.py` | Stateful SQLite orchestration and background continual-learning CSV writes (`scripts/export_continual_learning_dataset.py`, PII-redacted + disableable via `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT`). |
@@ -44,7 +44,7 @@
 
 **Do not maintain a separate test list here.** Consult [docs/development/verification.md](../development/verification.md) as the authoritative source for:
 - Confirmed safe deterministic offline & CI test commands (with `DISABLE_EXTERNAL_LLM=true` and temp DB isolation).
-- Tests excluded from default CI due to side effects (`test_module3_orders.py` mutates root `copilot_telemetry.sqlite3`; `test_policy_audit_rollback.py` calls unmocked `/sync-kb`; `test_conversation_service.py` initializes root DB on import; `evaluation/run_release_gates.py` overwrites `reports/mlip_release_gates_results.json`).
+- Tests excluded from default CI due to artifact/runtime side effects (`test_robustness.py` / `test_mlip_evaluation.py` depend on legacy `1.6.1` sklearn pickle or local vector index; `test_intent_llm.py` calls `LLMIntentClassifier.predict()` unless `DISABLE_EXTERNAL_LLM=true`; `evaluation/run_release_gates.py` overwrites `reports/mlip_release_gates_results.json`).
 - Frontend TypeScript check (`tsc --noEmit`), docs link checks, and AI/ML evaluation blockers.
 
 Always check side effects and isolation before running any command; never treat a full `pytest` run or live service startup as harmless by default.
@@ -55,7 +55,7 @@ Always check side effects and isolation before running any command; never treat 
 
 ## Documentation status
 
-- `README.md` still reflects the Streamlit-centric Compose quick start and older policy counts (`47` vs `51` total / `48` active in `policies.json`).
+- `README.md` is updated for the primary React/Vite UI (`frontend/`, `:5173`) alongside legacy Streamlit (`:8501`) and current `policies.json` counts (`51` total / `48` active), while referencing the `47` active policies used when the retrieval benchmark baseline was authored.
 - `services/intent_service/README_MODULE1.md` assumes trained artifacts in `artifacts/models/intent/` (currently only `.gitkeep` is present; legacy sklearn `1.6.1` pickle exists in `ML-model/`).
 - Historical `reports/*.md` may be stale on service count, UI, and config defaults.
 
@@ -65,7 +65,7 @@ Use current code/config to verify runtime behavior and `docs/product/requirement
 
 ### Confirmed decisions (implemented/documented in Baseline v1)
 1. **Primary UI (`ADR-001`):** React/Vite (`frontend/`) is the official primary UI; Streamlit (`services/ui_service/`) is retained as legacy/reference without deleting it or changing Compose UI deployment yet.
-2. **Intent Classification (`ADR-002`):** `LLM primary -> ML fallback (only when valid artifacts loaded) -> fail-closed human escalation` using CKEY.VN (`https://api.xah.io/v1`, `mainnewnol/gpt-oss-120b`), with no silent Gemini fallback.
+2. **Intent Classification (`ADR-002`):** `LLM primary -> ML fallback (only when valid artifacts loaded) -> fail-closed human escalation` using CKEY.VN (`https://api.xah.io/v1`, `mainnewnol/gpt-oss-120b`), with no silent Gemini fallback. Canonical taxonomy is confirmed at **16** `TARGET_INTENTS` + `out_of_scope` (`OD-004`).
 3. **Time Handling (`ADR-003`):** `+12 hours` shift removed; real Vietnam time (`Asia/Ho_Chi_Minh`, `+07:00`) used for new records without batch-migrating history.
 4. **TLS Security (`ADR-004`):** `verify=True` enabled by default with optional CA bundle support (`LLM_CA_BUNDLE`, `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`).
 
@@ -73,7 +73,7 @@ Use current code/config to verify runtime behavior and `docs/product/requirement
 1. Branch integration workflow: `main` (stable), `refine` (integration), `feature/*`, `fix/*`, `docs/*` proposed — confirm CI/merge rules before acting.
 2. Whether/when to containerize `frontend/` in `docker-compose.yml` (`OD-001`) and deploy trained Module 1 artifacts into `artifacts/models/intent/` (`OD-002`).
 3. Online TLS handshake verification for `https://api.xah.io/v1` (`OD-003`, `ASM-001`).
-4. Canonical intent taxonomy (`12` vs `16`, `OD-004`), guardrail threshold/parity sign-off (`OD-005`), quantitative SLAs (`OD-006`), contract/CircuitBreaker cleanup (`OD-007`), and historical timestamp / CSV Git-tracking policy (`OD-008`).
+4. Quantitative SLAs (`OD-006`) and historical timestamp / CSV Git-tracking policy (`OD-008`). (`OD-004` 16-intent taxonomy, `OD-005` unified `0.60` guardrail/faithfulness parity, and `OD-007` contract/CircuitBreaker cleanup are resolved in code/docs.)
 
 ## Reference checks for cross-repo or adoption tasks
 

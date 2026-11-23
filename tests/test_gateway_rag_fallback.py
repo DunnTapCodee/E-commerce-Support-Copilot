@@ -9,10 +9,12 @@ from fastapi.testclient import TestClient
 
 from contracts.schemas import RetrievedDocument
 from services.gateway.src.clients import MicroserviceClients
-from services.gateway.src.main import app
+from services.gateway.src.main import app, conversation_circuit_breaker
 
 
 class TestGatewayRagFallback(unittest.TestCase):
+    def setUp(self):
+        conversation_circuit_breaker.reset()
     def _mock_async_client_factory(self, handler):
         real_async_client = httpx.AsyncClient
         transport = httpx.MockTransport(handler)

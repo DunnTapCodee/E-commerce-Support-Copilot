@@ -1,6 +1,12 @@
 """Unit tests for Conversation Service modules."""
 import asyncio
+import os
+import tempfile
 import unittest
+from pathlib import Path
+
+_TMP_CONV_DIR = tempfile.TemporaryDirectory(ignore_cleanup_errors=True)
+os.environ["CONVERSATIONS_DB_PATH"] = str(Path(_TMP_CONV_DIR.name) / "test_copilot_conversations.sqlite3")
 
 from contracts.schemas import (
     ConversationTurnItem,
@@ -99,6 +105,44 @@ class TestDialogueTracker(unittest.TestCase):
         self.assertEqual(new_intent, "delivery_time")
         self.assertTrue(switched)
 
+    def test_transition_uses_unified_confidence_threshold(self):
+        """Values in [0.50, 0.60) no longer auto-switch intent blindly under aligned 0.60 threshold."""
+        self.state.active_intent = "track_order"
+        low_conf_ml = IntentPredictionResponse(
+            intent="get_discounts",
+            confidence=0.55,
+            is_in_scope=True,
+            all_probabilities={"get_discounts": 0.55},
+        )
+        intent_low, conf_low, _ = self.tracker.resolve_intent_transition_sync(
+            user_text="cho hỏi thông tin đơn hàng",
+            input_type="query_with_intent",
+            extracted_facts={},
+            ml_intent_resp=low_conf_ml,
+            state=self.state,
+        )
+        self.assertEqual(intent_low, "track_order")
+        self.assertGreaterEqual(conf_low, 0.60)
+
+        in_scope_low_conf = IntentPredictionResponse(
+            intent="return_policy",
+            confidence=0.45,
+            is_in_scope=True,
+            all_probabilities={"return_policy": 0.45},
+        )
+        guard, _, _, _, mode = ResponsePolicyDispatcher.dispatch(
+            user_query="đổi trả sao",
+            input_type="query_with_intent",
+            intent_resp=in_scope_low_conf,
+            order_data=None,
+            citations=[],
+            has_expired_policy=False,
+            is_live_chat=False,
+        )
+        self.assertFalse(guard.allow_llm)
+        self.assertEqual(guard.action_type, "ESCALATE_HUMAN")
+        self.assertEqual(mode, "low_confidence_abstain")
+
 
 class TestMemoryAndSummary(unittest.TestCase):
     def test_turn_buffer_and_summary(self):
@@ -175,7 +219,7 @@ class TestResponseDispatcher(unittest.TestCase):
             has_expired_policy=False,
             is_live_chat=False,
         )
-        self.assertEqual(mode, "low_confidence_abstain")
+        self.assertEqual(mode, "blocked_intent_unavailable")
         self.assertEqual(guard.action_type, "ESCALATE_HUMAN")
         self.assertIn("tự gõ câu trả lời", guidance)
 

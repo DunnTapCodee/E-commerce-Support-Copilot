@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 
 from contracts.llm_failover import call_chat_completion_with_failover
 from contracts.schemas import IntentPredictionResponse
-from services.conversation_service.src.config import OPENAI_MODEL
+from services.conversation_service.src.config import INTENT_CONFIDENCE_THRESHOLD, OPENAI_MODEL
 from services.conversation_service.src.dialogue_state.state import ConversationState
 
 logger = logging.getLogger("dialogue_tracker")
@@ -87,7 +87,11 @@ class IntentTracker:
 
         # 3. Negation reversal (e.g. "thôi không hủy nữa, xem bao giờ giao")
         if input_type == "negation_reversal":
-            if ml_intent_resp and ml_intent_resp.intent != state.active_intent and ml_intent_resp.confidence >= 0.50:
+            if (
+                ml_intent_resp
+                and ml_intent_resp.intent != state.active_intent
+                and ml_intent_resp.confidence >= INTENT_CONFIDENCE_THRESHOLD
+            ):
                 return ml_intent_resp.intent, ml_intent_resp.confidence, True
             if state.active_intent == "cancel_order":
                 return "delivery_time", 0.75, True
@@ -97,13 +101,13 @@ class IntentTracker:
             new_intent = ml_intent_resp.intent
             new_conf = ml_intent_resp.confidence
 
-            # Clear switch if confident (threshold >= 0.50)
-            if new_conf >= 0.50:
+            # Clear switch if confident (threshold >= INTENT_CONFIDENCE_THRESHOLD)
+            if new_conf >= INTENT_CONFIDENCE_THRESHOLD:
                 switched = (new_intent != state.active_intent)
                 return new_intent, new_conf, switched
 
             # If low confidence but user already has active order and question seems related
-            if state.active_intent and new_conf < 0.50:
+            if state.active_intent and new_conf < INTENT_CONFIDENCE_THRESHOLD:
                 if any(k in user_text.lower() for k in ["nó", "đơn", "hàng", "sản phẩm", "ship"]):
                     return state.active_intent, 0.65, False
 
@@ -142,24 +146,28 @@ class IntentTracker:
                     "QUY TẮC PHÂN XỬ:\n"
                     "1. Chọn 'CONTINUE' khi: Khách hỏi tiếp về cùng một đối tượng/vấn đề đang bàn (ví dụ đang tra đơn mà hỏi thêm 'thế giao sáng hay chiều', 'shipper có gọi trước không', 'bao nhiêu tiền').\n"
                     "2. Chọn 'SWITCH' khi: Khách chuyển hẳn sang một nghiệp vụ khác (ví dụ từ tra đơn sang hỏi mã giảm giá 'tiki có voucher gì không', từ khiếu nại sang hỏi đổi trả 'chính sách đổi hàng thế nào').\n\n"
-                    "12 Intent chuẩn E-commerce Tiki:\n"
+                    "16 Intent chuẩn E-commerce Tiki (+ out_of_scope):\n"
                     "- track_order: Tra cứu tình trạng, vị trí, giá tiền đơn hàng.\n"
                     "- cancel_order: Hủy đơn hàng.\n"
-                    "- return_product: Đổi trả sản phẩm cụ thể do lỗi/hỏng.\n"
                     "- delivery_time: Hỏi thời gian giao hàng, ngày nhận.\n"
-                    "- payment_issue: Phương thức thanh toán, tiền COD, sự cố thẻ.\n"
-                    "- change_shipping_address: Thay đổi địa chỉ, số điện thoại nhận hàng.\n"
-                    "- get_discounts: Tìm kiếm mã giảm giá, khuyến mãi, Tiki Xu.\n"
-                    "- return_policy: Quy định, điều kiện đổi trả chung hoặc bảo hành.\n"
-                    "- refund_policy: Quy định hoàn tiền, thời gian tiền về.\n"
-                    "- promotion_policy: Thể lệ chương trình khuyến mãi.\n"
-                    "- complaint: Khiếu nại thái độ, dịch vụ giao nhận.\n"
+                    "- delivery_issue: Khiếu nại sự cố giao nhận, trễ hạn, thất lạc.\n"
+                    "- shipping_costs: Hỏi phí ship, cước vận chuyển, freeship.\n"
+                    "- return_policy: Quy định, điều kiện, thời hạn đổi trả chung.\n"
+                    "- return_product: Yêu cầu đổi trả sản phẩm cụ thể do lỗi/hỏng.\n"
+                    "- refund_policy: Quy định, điều kiện, phương thức hoàn tiền.\n"
+                    "- request_refund: Yêu cầu trực tiếp được hoàn tiền.\n"
+                    "- refund_status: Tra cứu tiến độ tiền hoàn đã về hay chưa.\n"
+                    "- payment_issue: Phương thức thanh toán, COD, sự cố thẻ/trừ tiền.\n"
                     "- human_agent: Yêu cầu gặp nhân viên trực tiếp.\n"
+                    "- warranty: Chính sách, thời hạn, điều kiện bảo hành sản phẩm.\n"
+                    "- get_discounts: Tìm kiếm mã giảm giá, khuyến mãi, Tiki Xu.\n"
+                    "- create_account: Hướng dẫn tạo / đăng ký tài khoản mới.\n"
+                    "- recover_password: Khôi phục / đổi mật khẩu đăng nhập.\n"
                     "- out_of_scope: Ngoài phạm vi mua sắm thương mại điện tử Tiki.\n\n"
                     "VÍ DỤ PHÂN XỬ:\n"
                     "- Trước là track_order, câu mới 'thế có được freeship không' -> SWITCH sang get_discounts\n"
                     "- Trước là track_order, câu mới 'khoảng mấy giờ thì tới' -> CONTINUE (hoặc delivery_time)\n"
-                    "- Trước là get_discounts, câu mới 'voucher này dùng cho đơn ORD-1002 được không' -> CONTINUE hoặc promotion_policy\n"
+                    "- Trước là get_discounts, câu mới 'voucher này dùng cho đơn ORD-1002 được không' -> CONTINUE hoặc get_discounts\n"
                     "- Trước là cancel_order, câu mới 'chuyển máy cho người thật đi' -> SWITCH sang human_agent\n\n"
                     "Chỉ trả về JSON duy nhất (không kèm markdown thừa):\n"
                     '{"action": "CONTINUE"|"SWITCH", "intent": "<intent_hợp_lý_nhất>", "confidence": 0.85, "reason": "<giải thích ngắn>"}'
@@ -193,7 +201,10 @@ class IntentTracker:
                     parsed = json.loads(raw_text)
                     action = parsed.get("action", "CONTINUE").upper()
                     intent_cand = parsed.get("intent", state.active_intent)
-                    conf = float(parsed.get("confidence", 0.85))
+                    try:
+                        conf = max(0.0, min(1.0, float(parsed.get("confidence", 0.50))))
+                    except (TypeError, ValueError):
+                        conf = 0.0
 
                     if action == "CONTINUE":
                         return state.active_intent, max(conf, 0.85), False

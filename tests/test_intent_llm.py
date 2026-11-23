@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import unittest
 from typing import Dict, List, Tuple
-from services.intent_service.src.llm_classifier import LLMIntentClassifier
+from services.intent_service.src.llm_classifier import INTENT_DESCRIPTIONS, LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
 
 
@@ -237,6 +237,23 @@ class TestLLMIntentBenchmark(unittest.TestCase):
             0.92,
             f"Overall accuracy {overall_accuracy:.1%} is lower than expected 92%",
         )
+
+    def test_canonical_16_intents_taxonomy_and_extended_fallbacks(self):
+        """Verify INTENT_DESCRIPTIONS and offline fallback cover all 16 TARGET_INTENTS + out_of_scope (OD-004)."""
+        self.assertEqual(set(INTENT_DESCRIPTIONS.keys()), set(TARGET_INTENTS) | {OOS_LABEL})
+        self.assertEqual(len(TARGET_INTENTS), 16)
+        extended_cases = [
+            ("Chính sách bảo hành sản phẩm điện tử", "warranty"),
+            ("Bảo hành máy hút bụi bao lâu", "warranty"),
+            ("Tạo tài khoản mới thế nào", "create_account"),
+            ("Đăng ký thành viên mới", "create_account"),
+            ("Tôi muốn đổi mật khẩu tài khoản", "recover_password"),
+            ("Quên mật khẩu đăng nhập", "recover_password"),
+        ]
+        for query, expected in extended_cases:
+            pred = self.classifier.predict(query)
+            self.assertEqual(pred.intent, expected, f"Failed for '{query}': got {pred.intent}")
+            self.assertTrue(pred.is_in_scope)
 
 
 if __name__ == "__main__":

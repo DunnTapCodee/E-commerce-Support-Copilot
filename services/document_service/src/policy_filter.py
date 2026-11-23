@@ -81,7 +81,7 @@ def _extract_dates_from_text(text: str) -> Tuple[Optional[str], Optional[str]]:
         r"(\d{1,2}/\d{1,2}/\d{4})",
         r"(\d{1,2}-\d{1,2}-\d{4})",
     ]
-    found_dates = []
+    found_dates: List[Tuple[int, str]] = []
     for pat in date_patterns:
         for m in re.finditer(pat, text):
             d_str = m.group(1)
@@ -96,12 +96,13 @@ def _extract_dates_from_text(text: str) -> Tuple[Optional[str], Optional[str]]:
                 else:
                     parts = d_str.split("-")
                     dt = datetime(int(parts[0]), int(parts[1]), int(parts[2])).date()
-                found_dates.append(dt.strftime("%Y-%m-%d"))
+                found_dates.append((m.start(), dt.strftime("%Y-%m-%d")))
             except Exception:
                 pass
 
-    eff_date = found_dates[0] if len(found_dates) >= 1 else None
-    exp_date = found_dates[1] if len(found_dates) >= 2 else None
+    found_dates.sort(key=lambda item: item[0])
+    eff_date = found_dates[0][1] if len(found_dates) >= 1 else None
+    exp_date = found_dates[1][1] if len(found_dates) >= 2 else None
     return eff_date, exp_date
 
 

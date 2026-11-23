@@ -22,7 +22,8 @@ from contracts.schemas import (
     RetrievedDocument,
 )
 from scripts.export_continual_learning_dataset import append_single_interaction_to_csv, redact_pii
-from services.gateway.src.main import app as gateway_app
+from services.gateway.src.clients import MicroserviceClients
+from services.gateway.src.main import app as gateway_app, conversation_circuit_breaker
 from services.rag_service.src.main import app as rag_app
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -77,6 +78,8 @@ class TestBackendFrontendContracts(unittest.TestCase):
 
 
 class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
+    def setUp(self):
+        conversation_circuit_breaker.reset()
     def _mock_factory(self, handler):
         real_async_client = httpx.AsyncClient
         transport = httpx.MockTransport(handler)
@@ -235,6 +238,62 @@ class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
         self.assertEqual(data["guardrail"]["action_type"], "ESCALATE_HUMAN")
         self.assertEqual(data["generation_mode"], "blocked_intent_guard")
         self.assertIn("Unavailable", data["components_used"]["intent_classifier"])
+
+    def test_gateway_circuit_breaker_trips_and_fast_fails(self):
+        """CircuitBreaker opens after threshold failures, fast-fails without hitting Conversation Service, and reports status."""
+        conv_calls = 0
+
+        def handler(request: httpx.Request) -> httpx.Response:
+            nonlocal conv_calls
+            path = request.url.path
+            if path.endswith("/api/v1/conversation/chat"):
+                conv_calls += 1
+                raise httpx.ConnectError("Service down", request=request)
+            if path.endswith("/predict"):
+                raise httpx.ConnectError("Intent down", request=request)
+            if "/orders/" in path:
+                return httpx.Response(404, json={"detail": "Not found"})
+            if path.endswith("/audit/log"):
+                return httpx.Response(200, json={"status": "logged"})
+            return httpx.Response(404, json={"detail": path})
+
+        factory = self._mock_factory(handler)
+        threshold = conversation_circuit_breaker.failure_threshold
+        with patch("services.gateway.src.main.httpx.AsyncClient", side_effect=factory), patch(
+            "services.gateway.src.clients.httpx.AsyncClient", side_effect=factory
+        ):
+            with TestClient(gateway_app) as client:
+                for idx in range(threshold):
+                    r = client.post("/api/v1/copilot/query", json={"query": "Kiểm tra đơn", "session_id": f"cb-{idx}"})
+                    self.assertEqual(r.status_code, 200)
+                calls_at_trip = conv_calls
+                self.assertEqual(calls_at_trip, threshold)
+                r_open = client.post("/api/v1/copilot/query", json={"query": "Kiểm tra đơn", "session_id": "cb-open"})
+                self.assertEqual(r_open.status_code, 200)
+                self.assertTrue(r_open.json()["circuit_breaker_tripped"])
+                self.assertEqual(conv_calls, calls_at_trip)
+
+    def test_handover_session_client_and_conversation_route_compatibility(self):
+        """MicroserviceClients.handover_session payload & params work cleanly against Conversation Service."""
+        import asyncio
+        from services.conversation_service.src.dialogue_state.sqlite_state_store import PersistentStateStore
+        import services.conversation_service.src.main as conv_main
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+            tmp_store = PersistentStateStore(Path(tmpdir) / "handover_conv.sqlite3")
+            transport = httpx.ASGITransport(app=conv_main.app)
+            real_async_client = httpx.AsyncClient
+            with patch.object(conv_main, "state_store", tmp_store), patch(
+                "services.gateway.src.clients.httpx.AsyncClient",
+                side_effect=lambda *a, **kw: real_async_client(
+                    transport=transport, **{k: v for k, v in kw.items() if k != "transport"}
+                ),
+            ):
+                clients = MicroserviceClients()
+                res = asyncio.run(clients.handover_session("sess-handover-test", True, agent_id="agent_99"))
+                self.assertEqual(res["session_id"], "sess-handover-test")
+                self.assertTrue(res["is_live_chat"])
+                self.assertEqual(res["agent_id"], "agent_99")
 
 
 class TestPrivacyContinualLearningCsvExport(unittest.TestCase):
