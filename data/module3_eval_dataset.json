@@ -1,0 +1,282 @@
+[
+  {
+    "id": 1,
+    "query": "Kiểm tra đơn hàng ORD-1001 giúp tôi với",
+    "expected_order_id": "ORD-1001",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 2,
+    "query": "Đơn ORD-1002 khi nào giao đến nhà tôi?",
+    "expected_order_id": "ORD-1002",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 3,
+    "query": "Xem chi tiết đơn ORD-1003 gồm những món gì",
+    "expected_order_id": "ORD-1003",
+    "expected_phone": null,
+    "expected_action": "details"
+  },
+  {
+    "id": 4,
+    "query": "Hủy đơn ORD-1026 giúp tôi vì tôi đổi ý không mua nữa",
+    "expected_order_id": "ORD-1026",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 5,
+    "query": "Tôi muốn hủy đơn ORD-1027 do đặt nhầm kích thước",
+    "expected_order_id": "ORD-1027",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 6,
+    "query": "Tra cứu đơn hàng qua số điện thoại 0938.242.854",
+    "expected_order_id": null,
+    "expected_phone": "0938.242.854",
+    "expected_action": "status"
+  },
+  {
+    "id": 7,
+    "query": "SĐT 0912345678 có đơn nào đang giao không?",
+    "expected_order_id": null,
+    "expected_phone": "0912345678",
+    "expected_action": "status"
+  },
+  {
+    "id": 8,
+    "query": "Kiểm tra đơn ord-1004 viết thường",
+    "expected_order_id": "ORD-1004",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 9,
+    "query": "Đơn 1005 của tôi đi tới bưu cục nào rồi",
+    "expected_order_id": "ORD-1005",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 10,
+    "query": "Mã đơn hàng số 1006 giao nhanh giùm tôi",
+    "expected_order_id": "ORD-1006",
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 11,
+    "query": "Đơn #1007 tổng tiền thanh toán là bao nhiêu?",
+    "expected_order_id": "ORD-1007",
+    "expected_phone": null,
+    "expected_action": "details"
+  },
+  {
+    "id": 12,
+    "query": "Cancel đơn #1028 ngay lập tức cho mình",
+    "expected_order_id": "ORD-1028",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 13,
+    "query": "Hủy hàng ord1029 do tìm thấy chỗ khác rẻ hơn",
+    "expected_order_id": "ORD-1029",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 14,
+    "query": "Số 0987.654.321 kiểm tra lịch trình vận chuyển",
+    "expected_order_id": null,
+    "expected_phone": "0987.654.321",
+    "expected_action": "status"
+  },
+  {
+    "id": 15,
+    "query": "Số điện thoại của tôi là 0903123456 muốn xem trạng thái hàng",
+    "expected_order_id": null,
+    "expected_phone": "0903123456",
+    "expected_action": "status"
+  },
+  {
+    "id": 16,
+    "query": "Liệt kê danh sách đơn của tài khoản tôi",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "customer_orders"
+  },
+  {
+    "id": 17,
+    "query": "Tôi đã mua những gì trong lịch sử đơn?",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "customer_orders"
+  },
+  {
+    "id": 18,
+    "query": "Cho tôi hỏi chính sách đổi trả hàng trong mấy ngày?",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 19,
+    "query": "Phí vận chuyển đi tỉnh là bao nhiêu tiền vậy shop",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 20,
+    "query": "Hàng bị móp méo lúc giao thì khiếu nại ở đâu?",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 21,
+    "query": "Bưu tá đã giao đơn ORD-1008 chưa shop?",
+    "expected_order_id": "ORD-1008",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 22,
+    "query": "Tra cứu mã vận đơn GIAO89254563 xem hàng ở đâu",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 23,
+    "query": "Hủy đơn ORD-1030 vì thời gian giao quá lâu",
+    "expected_order_id": "ORD-1030",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 24,
+    "query": "Bỏ đơn ORD-1031 giùm mình nhé shop",
+    "expected_order_id": "ORD-1031",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 25,
+    "query": "Kiểm tra mã đơn 1009 với sđt 0938242854",
+    "expected_order_id": "ORD-1009",
+    "expected_phone": "0938242854",
+    "expected_action": "lookup"
+  },
+  {
+    "id": 26,
+    "query": "Đơn hàng ORD-1010 có được áp mã giảm giá không?",
+    "expected_order_id": "ORD-1010",
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 27,
+    "query": "Tracking của đơn ORD-1011 đang là gì thế?",
+    "expected_order_id": "ORD-1011",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 28,
+    "query": "Đơn 1012 ai là người giao hàng vậy?",
+    "expected_order_id": "ORD-1012",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 29,
+    "query": "Muốn hủy đơn hàng số 1032 do trùng đơn",
+    "expected_order_id": "ORD-1032",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 30,
+    "query": "Không mua nữa đâu hủy ord-1033 đi",
+    "expected_order_id": "ORD-1033",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 31,
+    "query": "Xem hóa đơn của ORD-1013",
+    "expected_order_id": "ORD-1013",
+    "expected_phone": null,
+    "expected_action": "details"
+  },
+  {
+    "id": 32,
+    "query": "Sản phẩm trong đơn ORD-1014 có bảo hành không?",
+    "expected_order_id": "ORD-1014",
+    "expected_phone": null,
+    "expected_action": "lookup"
+  },
+  {
+    "id": 33,
+    "query": "Số điện thoại 0978 123 456 đang có đơn gì",
+    "expected_order_id": null,
+    "expected_phone": "0978 123 456",
+    "expected_action": "lookup"
+  },
+  {
+    "id": 34,
+    "query": "Tra cứu đơn của sđt +84912345678",
+    "expected_order_id": null,
+    "expected_phone": "+84912345678",
+    "expected_action": "status"
+  },
+  {
+    "id": 35,
+    "query": "Đơn ORD-1015 bao giờ nhận được hàng",
+    "expected_order_id": "ORD-1015",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 36,
+    "query": "Cho mình hủy đơn ORD-1034 nhé, cảm ơn shop",
+    "expected_order_id": "ORD-1034",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 37,
+    "query": "Đơn hàng ORD-1016 đang ở đâu rồi shop ơi",
+    "expected_order_id": "ORD-1016",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 38,
+    "query": "Hỏi thông tin vận chuyển đơn 1017",
+    "expected_order_id": "ORD-1017",
+    "expected_phone": null,
+    "expected_action": "status"
+  },
+  {
+    "id": 39,
+    "query": "Hủy đơn số 1035 vì đặt nhầm màu sắc",
+    "expected_order_id": "ORD-1035",
+    "expected_phone": null,
+    "expected_action": "cancel"
+  },
+  {
+    "id": 40,
+    "query": "Kiểm tra đơn hàng cho tôi",
+    "expected_order_id": null,
+    "expected_phone": null,
+    "expected_action": "status"
+  }
+]

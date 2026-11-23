@@ -1,0 +1,9 @@
+# Kaggle end-to-end pipeline; keep scikit-learn aligned with serving artifacts.
+scikit-learn==1.6.1
+pandas>=2.2,<3
+pyarrow>=17,<24
+datasets>=3,<5
+transformers==4.46.3
+sentencepiece>=0.2
+threadpoolctl>=3.5
+joblib>=1.4

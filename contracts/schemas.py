@@ -1,7 +1,44 @@
 """Data contracts and Pydantic DTOs shared across all microservices."""
-from datetime import datetime
-from typing import Any, Dict, List, Optional
+import uuid
+from datetime import date, datetime, timedelta, timezone
+from typing import Any, Dict, List, Optional, Literal
 from pydantic import BaseModel, Field
+
+try:
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+except ImportError:  # pragma: no cover
+    ZoneInfo = None  # type: ignore[assignment]
+    ZoneInfoNotFoundError = Exception  # type: ignore[assignment]
+
+
+def _resolve_vn_timezone():
+    if ZoneInfo is not None:
+        try:
+            return ZoneInfo("Asia/Ho_Chi_Minh")
+        except ZoneInfoNotFoundError:
+            pass
+    return timezone(timedelta(hours=7), name="Asia/Ho_Chi_Minh")
+
+
+VN_TZ = _resolve_vn_timezone()
+
+
+def get_vn_now() -> datetime:
+    """Return timezone-aware current datetime in Vietnam time (Asia/Ho_Chi_Minh, UTC+7)."""
+    return datetime.now(VN_TZ)
+
+
+def get_vn_today() -> date:
+    """Return current calendar date in Vietnam time (Asia/Ho_Chi_Minh, UTC+7)."""
+    return get_vn_now().date()
+
+
+def get_system_now(fmt: Optional[str] = None) -> str:
+    """Return current Vietnam timestamp (ISO 8601 with +07:00 offset by default)."""
+    now = get_vn_now()
+    if fmt:
+        return now.strftime(fmt)
+    return now.isoformat(timespec="seconds")
 
 
 # -------------------------------------------------------------------
@@ -10,7 +47,7 @@ from pydantic import BaseModel, Field
 class QueryRequest(BaseModel):
     """Client request sent to the API Gateway."""
     query: str = Field(..., description="Customer message or inquiry text")
-    session_id: str = Field(..., description="Unique conversation session ID")
+    session_id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()), description="Unique conversation session ID")
     customer_id: Optional[str] = Field(default=None, description="Optional customer account ID")
 
 
@@ -27,6 +64,9 @@ class IntentPredictionResponse(BaseModel):
     intent: str = Field(..., description="Predicted intent name")
     confidence: float = Field(ge=0.0, le=1.0, description="Prediction confidence score")
     is_in_scope: bool = Field(..., description="Whether intent belongs to operational scope")
+    language: Optional[str] = None
+    model_name: Optional[str] = None
+    latency_ms: Optional[float] = Field(default=None, ge=0)
     all_probabilities: Dict[str, float] = Field(
         default_factory=dict,
         description="Probability distribution across candidate classes"
@@ -37,12 +77,28 @@ class IntentPredictionResponse(BaseModel):
 # 3. Knowledge Base & RAG Contracts
 # -------------------------------------------------------------------
 class RetrievedDocument(BaseModel):
-    """Policy or knowledge base document item."""
+    """Policy or knowledge base document item.
+
+    policy_type:
+      - "permanent"  : Standard operational policies with no fixed end date.
+                       expiration_date is null; only is_active=False blocks it.
+      - "temporary"  : Time-bound campaigns or promotions with start/end date.
+      - "superseded" : Old version of a policy, replaced by a newer one.
+                       Always treated as inactive regardless of dates.
+    """
     doc_id: str = Field(..., description="Unique document / policy ID")
+    category: Optional[str] = Field(default=None, description="Policy category (e.g. return_refund, shipping, payment, promotions, support, warranty)")
     title: str = Field(..., description="Document title")
     content: str = Field(..., description="Policy body / chunk content")
-    version: str = Field(..., description="Document version")
-    is_active: bool = Field(..., description="Active status of this document")
+    version: str = Field(default="1.0", description="Document version")
+    is_active: bool = Field(default=True, description="Active status of this document")
+    policy_type: str = Field(
+        default="permanent",
+        description="Policy type: 'permanent' | 'temporary' | 'superseded'",
+    )
+    effective_date: Optional[str] = Field(default=None, description="ISO effective start date (YYYY-MM-DD)")
+    expiration_date: Optional[str] = Field(default=None, description="ISO expiration end date (YYYY-MM-DD). Null for permanent policies.")
+    tags: List[str] = Field(default_factory=list, description="Associated policy tags")
     score: Optional[float] = Field(default=None, description="Relevance similarity score")
 
 
@@ -61,10 +117,11 @@ class RAGGenerateRequest(BaseModel):
 
 
 class RAGGenerateResponse(BaseModel):
-    """LLM generation response."""
-    draft_text: str = Field(..., description="Grounded response text with [doc_id] citations")
-    citations: List[RetrievedDocument] = Field(default_factory=list, description="Citations used in draft")
-    latency_ms: int = Field(ge=0, description="Inference latency in milliseconds")
+    draft_text: str
+    citations: List[RetrievedDocument] = Field(default_factory=list)
+    latency_ms: int = Field(ge=0)
+    generation_mode: str = "unknown"
+    fallback_reason: Optional[str] = None
 
 
 # -------------------------------------------------------------------
@@ -75,6 +132,11 @@ class GuardrailResult(BaseModel):
     allow_llm: bool = Field(..., description="Whether generation with LLM is permitted")
     action_type: str = Field(..., description="Action: PROCEED_TO_LLM, DIRECT_REFUND_FORM, ESCALATE_HUMAN")
     reason: str = Field(..., description="Audit rationale explaining the decision")
+    faithfulness_score: Optional[float] = Field(default=None, description="Response faithfulness / NLI entailment score (0.0 to 1.0)")
+    hallucination_detected: Optional[bool] = Field(default=None, description="Whether hallucination was detected in response")
+    temporal_status: Optional[str] = Field(default=None, description="Temporal status: ACTIVE, EXPIRED, NOT_YET_EFFECTIVE")
+    is_hard_fail: bool = Field(default=False, description="Whether this is a release/operation blocking hard fail")
+    violations: List[str] = Field(default_factory=list, description="Specific safety/contract violations detected")
 
 
 # -------------------------------------------------------------------
@@ -82,23 +144,31 @@ class GuardrailResult(BaseModel):
 # -------------------------------------------------------------------
 class AuditLogCreate(BaseModel):
     """Initial interaction telemetry log to persist."""
-    interaction_id: str = Field(..., description="Unique UUID trace ID")
-    customer_query: str = Field(..., description="Customer input text")
+    interaction_id: str = Field(..., description="Unique interaction trace ID")
+    customer_query: str = Field(..., description="Customer message")
     predicted_intent: str = Field(..., description="Predicted intent")
-    intent_confidence: float = Field(..., description="Confidence score")
-    guardrail_action: str = Field(..., description="Guardrail action chosen")
-    retrieved_doc_ids: str = Field(..., description="Comma-separated cited document IDs")
-    raw_draft_text: str = Field(..., description="Generated draft text")
+    intent_confidence: float = Field(..., description="Prediction confidence")
+    guardrail_action: str = Field(..., description="Applied guardrail action")
+    retrieved_doc_ids: str = Field(default="", description="Comma-separated IDs of retrieved docs")
+    raw_draft_text: str = Field(..., description="Unedited LLM draft text")
     latency_ms: int = Field(default=0, ge=0, description="End-to-end processing latency")
 
 
 class HumanActionUpdate(BaseModel):
     """CS Support agent action recorded on a draft."""
     interaction_id: str = Field(..., description="Target interaction ID")
-    action: str = Field(..., description="Action: APPROVE, EDIT, REJECT, ESCALATE")
+    action: Literal["APPROVE", "EDIT", "REJECT", "ESCALATE"]
     final_text: Optional[str] = Field(default=None, description="Final sent text after agent edit")
     agent_notes: Optional[str] = Field(default=None, description="Agent notes")
     handling_time_ms: int = Field(default=0, ge=0, description="Time spent by agent in milliseconds")
+
+
+class TelemetryStats(BaseModel):
+    total_queries: int
+    auto_approved_rate: float
+    escalation_rate: float
+    avg_latency_ms: float
+    intent_distribution: Dict[str, int] = Field(default_factory=dict)
 
 
 # -------------------------------------------------------------------
@@ -112,3 +182,153 @@ class GatewayResponse(BaseModel):
     citations: List[RetrievedDocument] = Field(default_factory=list, description="Policy citations")
     draft_text: str = Field(..., description="Generated draft response")
     order_data: Optional[Dict[str, Any]] = Field(default=None, description="Mock order data for financial reviews")
+    tool_calls: List[Dict[str, Any]] = Field(default_factory=list, description="Tools invoked during processing")
+    generation_mode: str = "not_generated"
+    suggested_reply: Optional[str] = Field(default=None, description="Suggested customer reply template")
+    agent_guidance: Optional[str] = Field(default=None, description="Internal guidance and warnings for support agent")
+    input_type: Optional[str] = Field(default=None, description="Input classification: question, fact_supplement, negation_reversal, chitchat")
+    active_facts: Dict[str, Any] = Field(default_factory=dict, description="Active dialogue facts (order_id, phone, etc.)")
+    is_live_chat: bool = Field(default=False, description="Whether session is in live human agent chat mode")
+    customer_acknowledgement: Optional[str] = Field(default=None, description="Immediate buffer response for customer (Phần 1)")
+    session_turns: List[Dict[str, Any]] = Field(default_factory=list, description="Recent conversation turns")
+    context_summary: Optional[str] = Field(default=None, description="Running dialogue context summary")
+    retrieval_status: str = Field(default="SUFFICIENT", description="Semantic retrieval quality: SUFFICIENT, INSUFFICIENT_EVIDENCE, EMPTY_RETRIEVAL")
+    circuit_breaker_tripped: bool = Field(default=False, description="Whether fallback was invoked due to circuit breaker trip")
+    components_used: Dict[str, str] = Field(default_factory=dict, description="Active system components and models invoked during this request")
+    rewritten_query: Optional[str] = Field(default=None, description="Context-rewritten user query")
+
+
+# -------------------------------------------------------------------
+# 7. Order & Tool Calling Contracts (Module 3)
+# -------------------------------------------------------------------
+class OrderCancelRequest(BaseModel):
+    """Request payload to cancel an order."""
+    reason: str = Field(default="Khách hàng yêu cầu hủy đơn", description="Reason for cancellation")
+
+
+class OrderCancelResponse(BaseModel):
+    """Response payload for order cancellation."""
+    success: bool = Field(..., description="Whether cancellation succeeded")
+    order_id: str = Field(..., description="Target order ID")
+    message: str = Field(..., description="Status message explaining cancellation result")
+    updated_status: Optional[str] = Field(default=None, description="New order status")
+
+
+class ToolCallRecord(BaseModel):
+    """Audit record for a tool called by the Agent/LLM."""
+    tool_name: str = Field(..., description="Name of the executed tool")
+    arguments: Dict[str, Any] = Field(default_factory=dict, description="Arguments passed to tool")
+    result: Any = Field(default=None, description="Output returned by tool")
+    latency_ms: float = Field(default=0.0, description="Execution latency in milliseconds")
+
+
+# -------------------------------------------------------------------
+# 8. Policy Filter & Management Contracts
+# -------------------------------------------------------------------
+class RawPolicyFilterRequest(BaseModel):
+    """Payload containing raw policy text supplied by staff."""
+    raw_text: str = Field(..., description="Unstructured policy text to be parsed")
+    suggested_category: Optional[str] = Field(default=None, description="Optional hint for category")
+
+
+class PolicyFilterResult(BaseModel):
+    """Result of automatic extraction, ready for human review/edit."""
+    extracted_policy: RetrievedDocument
+    warnings: List[str] = Field(default_factory=list, description="Extraction or validation warnings")
+    confidence_score: float = Field(default=0.85, ge=0.0, le=1.0, description="Confidence of automatic parsing")
+
+
+class PolicyCreateRequest(BaseModel):
+    """Final payload to persist a new policy after human confirmation."""
+    policy: RetrievedDocument
+    admin_note: Optional[str] = None
+    performed_by: Optional[str] = "Admin"
+    updated_by_staff_id: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class PolicyUpdateRequest(BaseModel):
+    """Payload to partially update an existing policy with audit tracking."""
+    updates: Dict[str, Any]
+    performed_by: Optional[str] = "Admin"
+    updated_by_staff_id: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class PolicyAuditLogEntry(BaseModel):
+    """Audit log entry capturing policy lifecycle changes for traceability and rollback."""
+    log_id: str
+    timestamp: str
+    doc_id: str
+    doc_title: Optional[str] = None
+    action: str  # "CREATE", "UPDATE", "SUPERSEDE", "AUTO_EXPIRE", "AUTO_ACTIVATE", "ROLLBACK", "DELETE"
+    performed_by: str = "Admin"
+    reason: Optional[str] = None
+    before_snapshot: Optional[Dict[str, Any]] = None
+    after_snapshot: Optional[Dict[str, Any]] = None
+
+
+class PolicyRollbackRequest(BaseModel):
+    """Request to rollback a policy to a prior version/state based on an audit log ID."""
+    log_id: str
+    performed_by: Optional[str] = "Admin"
+    reason: Optional[str] = None
+
+
+# -------------------------------------------------------------------
+# 9. Conversation Service State & Turn Contracts
+# -------------------------------------------------------------------
+class ChatMessageItem(BaseModel):
+    role: Literal["customer", "agent", "system"]
+    content: str
+    timestamp: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M"))
+
+
+class ConversationTurnItem(BaseModel):
+    turn_id: int
+    customer_query: str
+    agent_response: str
+    intent: Optional[str] = None
+    confidence: Optional[float] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    timestamp: str = Field(default_factory=lambda: get_system_now("%Y-%m-%d %H:%M"))
+
+
+class ConversationSessionState(BaseModel):
+    session_id: str
+    customer_id: Optional[str] = None
+    active_intent: Optional[str] = None
+    active_order_id: Optional[str] = None
+    facts: Dict[str, Any] = Field(default_factory=dict)
+    is_live_chat: bool = False
+    turns: List[ConversationTurnItem] = Field(default_factory=list)
+    context_summary: Optional[str] = None
+    updated_at: str = Field(default_factory=get_system_now)
+
+
+# -------------------------------------------------------------------
+# 10. Role-Based Access & Entities (Staff & Customer)
+# -------------------------------------------------------------------
+class StaffProfile(BaseModel):
+    """Support staff member responsible for assigned customers and policies."""
+    staff_id: str
+    name: str
+    email: str
+    role: str = "CS Agent"
+    department: str = "Customer Support"
+    created_at: Optional[str] = None
+
+
+class CustomerProfile(BaseModel):
+    """Customer profile linked to orders, chat sessions, and an assigned staff."""
+    customer_id: str
+    name: str
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    assigned_staff_id: Optional[str] = None
+    assigned_staff_name: Optional[str] = None
+    created_at: Optional[str] = None
+
+
+
+

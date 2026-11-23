@@ -28,7 +28,7 @@ def run_benchmark(n_iterations: int = 50, gateway_url: str = "http://127.0.0.1:8
     print(f"Running Latency Benchmark ({n_iterations} iterations per component)...")
     print("=" * 65)
 
-    model_path = ROOT_DIR / "artifacts" / "models" / "intent_model.pkl"
+    model_path = ROOT_DIR / "artifacts" / "models" / "intent"
     predictor = IntentPredictor(model_path)
 
     index_path = ROOT_DIR / "artifacts" / "vector_store" / "policy_index.pkl"

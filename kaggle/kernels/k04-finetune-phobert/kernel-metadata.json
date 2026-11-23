@@ -1,0 +1,16 @@
+{
+  "id": "KUSER/k04-finetune-phobert",
+  "title": "k04-finetune-phobert",
+  "code_file": "k04_finetune_phobert.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "KUSER/ecom-intent-data"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

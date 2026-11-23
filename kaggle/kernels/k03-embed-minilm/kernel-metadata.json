@@ -1,0 +1,16 @@
+{
+  "id": "KUSER/k03-embed-minilm",
+  "title": "k03-embed-minilm",
+  "code_file": "k03_embed_minilm.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "KUSER/ecom-intent-data"
+  ],
+  "kernel_sources": [],
+  "competition_sources": []
+}

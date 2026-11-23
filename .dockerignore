@@ -1,0 +1,38 @@
+# Git & Environments
+.git
+.gitignore
+.gitattributes
+.vscode/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local databases & big telemetry
+*.sqlite3
+*.sqlite3-journal
+*.sqlite3-wal
+
+# Temporary files & scratches
+scratch/
+gateway-openapi.json
+gateway-schemas.json
+*.log
+*.tmp
+
+# Documentation, Notebooks, Reports
+reports/
+kaggle/
+notebooks/
+
+# Secrets
+.env
+*.pem
+*.key
+

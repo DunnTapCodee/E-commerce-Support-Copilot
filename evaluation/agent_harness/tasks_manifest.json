@@ -1,0 +1,415 @@
+{
+  "schema_version": "agent_task_manifest.v1",
+  "project_adapter": "E-commerce-Support-Copilot",
+  "notes": "Phase VI candidate dataset distinguishing Task-Ready (readiness_status) from fair A/B comparison readiness (ab_readiness).",
+  "tasks": [
+    {
+      "task_id": "TASK-EVAL-001",
+      "category": "Bug Fixing",
+      "description": "Isolate tests/test_module3_orders.py so it runs against tempfile.TemporaryDirectory() instead of mutating root copilot_telemetry.sqlite3, preserving all order lookup, LRU cache, cancellation, and matcher assertions.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "tests/test_module3_orders.py",
+          "data/mock_orders.json",
+          "services/telemetry_service/src/repository.py",
+          "docs/development/verification.md"
+        ],
+        "fixture_reference": "docs/development/verification.md#22-test_module3_orderspy",
+        "notes": "Recommended #1 real paired A/B pilot task: pure Python/SQLite isolation, identical files in A and B, and behavioral isolation grader."
+      },
+      "allowed_scope": [
+        "tests/test_module3_orders.py",
+        "docs/development/verification.md"
+      ],
+      "forbidden_actions": [
+        "Do not modify services/telemetry_service/src/ production code.",
+        "Do not modify data/mock_orders.json or create/mutate root copilot_telemetry.sqlite3.",
+        "Do not weaken or delete existing test assertions in tests/test_module3_orders.py.",
+        "Do not run git reset, git clean, or external LLM calls."
+      ],
+      "acceptance_criteria": [
+        "tests/test_module3_orders.py uses an isolated temporary SQLite path and never creates or mutates copilot_telemetry.sqlite3 in repository root.",
+        "python -m pytest tests/test_module3_orders.py -v passes with DISABLE_EXTERNAL_LLM=true and all original test assertions intact.",
+        "data/mock_orders.json and services/telemetry_service/src/ remain unmodified."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [
+          "verify_module3_orders_isolation",
+          "static_security_time_guard"
+        ],
+        "manual_rubric_required": false,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 15,
+        "max_tool_calls": 30,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "pilot",
+      "readiness_status": "EXECUTABLE",
+      "ab_readiness": "AB_READY",
+      "readiness_axes": {
+        "TASK_READY": true,
+        "GRADER_READY": true,
+        "WORKSPACE_READY": true,
+        "OPERATIONALLY_READY": false
+      },
+      "ab_readiness_notes": "Both A_BASELINE and B_FULL_HARNESS contain identical required files and evaluator-owned independent acceptance checks; OPERATIONALLY_READY remains false on host IDE sessions lacking OS-level filesystem/network confinement."
+    },
+    {
+      "task_id": "TASK-EVAL-002",
+      "category": "API / Contract Changes",
+      "description": "Reconcile TypeScript interfaces in frontend/src/types/index.ts (GatewayResponse, GuardrailResult, IntentPredictionResponse) with contracts/schemas.py by adding the missing observed fields: retrieval_status, circuit_breaker_tripped, is_hard_fail, violations, and all_probabilities.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "frontend/src/types/index.ts",
+          "frontend/tsconfig.json",
+          "contracts/schemas.py",
+          "docs/specs/copilot-workflow.md"
+        ],
+        "fixture_reference": "docs/specs/copilot-workflow.md#1-entrypoints--contracts",
+        "notes": "Tracked under Open Decision OD-007 contract alignment."
+      },
+      "allowed_scope": [
+        "frontend/src/types/index.ts",
+        "frontend/src/"
+      ],
+      "forbidden_actions": [
+        "Do not modify contracts/schemas.py or backend services/.",
+        "Do not use TypeScript 'any' suppressions or ts-ignore to bypass type errors.",
+        "Do not start live servers or run external LLM calls."
+      ],
+      "acceptance_criteria": [
+        "frontend/src/types/index.ts defines retrieval_status, circuit_breaker_tripped, is_hard_fail, violations, and all_probabilities on the matching target interfaces with accurate optionality and types.",
+        "npx tsc --noEmit passes cleanly inside frontend/.",
+        "tests/test_contracts_and_integration.py passes offline."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [
+          "frontend_ts_contract_parity",
+          "typescript_typecheck",
+          "pytest_contracts"
+        ],
+        "manual_rubric_required": false,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 15,
+        "max_tool_calls": 25,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "pilot",
+      "readiness_status": "EXECUTABLE",
+      "ab_readiness": "PARTIAL",
+      "ab_readiness_notes": "Requires provisioning frontend/node_modules inside isolated sandboxes before typescript_typecheck (npx tsc --noEmit) can execute; static interface check alone is only a partial signal."
+    },
+    {
+      "task_id": "TASK-EVAL-003",
+      "category": "Documentation Consistency",
+      "description": "Reconcile observed documentation drift without breaking internal links: update docs/agent/REPO_GUIDE.md so test_policy_audit_rollback.py is no longer listed as excluded from CI, and update README.md active policy counts to match data/knowledge_base/policies.json (48 active / 51 total).",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "docs/agent/REPO_GUIDE.md",
+          "README.md",
+          "data/knowledge_base/policies.json"
+        ],
+        "fixture_reference": "docs/agent/REPO_GUIDE.md#verification-routing-single-source-of-truth",
+        "notes": "Task-Ready for Harness maintenance, but NOT_AB_READY because docs/agent/REPO_GUIDE.md is a Harness-only file stripped from A_BASELINE."
+      },
+      "allowed_scope": [
+        "docs/agent/REPO_GUIDE.md",
+        "README.md"
+      ],
+      "forbidden_actions": [
+        "Do not edit Python source files, tests/, data/knowledge_base/policies.json, or CI workflows.",
+        "Do not alter confirmed architectural decisions or open decisions."
+      ],
+      "acceptance_criteria": [
+        "README.md active/total policy count phrases match live data/knowledge_base/policies.json (48 active / 51 total).",
+        "docs/agent/REPO_GUIDE.md no longer claims test_policy_audit_rollback.py is excluded from default CI.",
+        "All internal Markdown links across docs/**/*.md resolve cleanly."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [
+          "policies_readme_consistency",
+          "repo_guide_excluded_test_sync",
+          "docs_link_check"
+        ],
+        "manual_rubric_required": false,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 10,
+        "max_tool_calls": 20,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "development",
+      "readiness_status": "EXECUTABLE",
+      "ab_readiness": "NOT_AB_READY",
+      "ab_readiness_notes": "Targets docs/agent/REPO_GUIDE.md, which belongs to HARNESS_ONLY_PATHS and does not exist in A_BASELINE; excluded from paired A/B evaluation."
+    },
+    {
+      "task_id": "TASK-EVAL-004",
+      "category": "Change Impact Analysis",
+      "description": "Perform a read-only pre-implementation impact analysis of wiring CircuitBreaker (services/gateway/src/circuit_breaker.py) into services/gateway/src/clients.py and services/gateway/src/main.py (OD-007), writing the analysis to eval_outputs/circuit_breaker_impact.md without editing code.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "services/gateway/src/circuit_breaker.py",
+          "services/gateway/src/clients.py",
+          "services/gateway/src/main.py"
+        ],
+        "fixture_reference": "services/gateway/src/circuit_breaker.py",
+        "notes": "Requires blinded manual rubric review for analytical quality alongside deterministic read-only scope check."
+      },
+      "allowed_scope": [
+        "eval_outputs/circuit_breaker_impact.md"
+      ],
+      "forbidden_actions": [
+        "Do not modify any file in services/, contracts/, tests/, frontend/, or docs/.",
+        "Do not run paid or external LLM calls."
+      ],
+      "acceptance_criteria": [
+        "Zero repository code, test, or docs files are modified.",
+        "eval_outputs/circuit_breaker_impact.md maps callers, shared failure/timeout behavior, R2 risks, and minimal offline tests.",
+        "Findings explicitly separate Verified/Observed symbols from Inferred/Open Decision items."
+      ],
+      "grader_definition": {
+        "grader_type": "hybrid",
+        "deterministic_checks": [
+          "static_security_time_guard"
+        ],
+        "required_artifacts": [
+          "eval_outputs/circuit_breaker_impact.md"
+        ],
+        "manual_rubric_required": true,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 15,
+        "max_tool_calls": 25,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "development",
+      "readiness_status": "PARTIAL",
+      "ab_readiness": "PARTIAL",
+      "ab_readiness_notes": "Required source files exist in both A and B, but final grading requires blinded manual rubric scoring."
+    },
+    {
+      "task_id": "TASK-EVAL-005",
+      "category": "Context Recovery / Task Resume",
+      "description": "Known regression case: inspect docs/tasks/TASK-20261122-isolate-policy-audit-test-handoff.md in read-only mode, reconcile against live Git and disk state, and report completion status and documentation drift to eval_outputs/task_resume_report.md without re-applying completed work.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "docs/tasks/TASK-20261122-isolate-policy-audit-test-handoff.md",
+          "tests/test_policy_audit_rollback.py"
+        ],
+        "fixture_reference": "docs/tasks/TASK-20261122-isolate-policy-audit-test-handoff.md",
+        "notes": "Reused known regression case from SKILLS_AND_AUTOMATION.md §5; restricted strictly to development split and NOT_AB_READY because docs/tasks/ is Harness Task Memory."
+      },
+      "allowed_scope": [
+        "eval_outputs/task_resume_report.md"
+      ],
+      "forbidden_actions": [
+        "Do not modify tests/test_policy_audit_rollback.py, services/document_service/, .github/workflows/, or handoff/plan files.",
+        "Do not run git reset, git clean, or external LLM calls."
+      ],
+      "acceptance_criteria": [
+        "Zero tracked repository files are modified.",
+        "eval_outputs/task_resume_report.md accurately reports COMPLETED / LOCALLY_VERIFIED status and cites actual files on disk without proposing redundant edits."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [
+          "static_security_time_guard"
+        ],
+        "required_artifacts": [
+          "eval_outputs/task_resume_report.md"
+        ],
+        "manual_rubric_required": false,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 10,
+        "max_tool_calls": 20,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "development",
+      "readiness_status": "EXECUTABLE",
+      "ab_readiness": "NOT_AB_READY",
+      "ab_readiness_notes": "Depends on docs/tasks/ Harness Task Memory files absent from A_BASELINE; retained solely as a development regression check."
+    },
+    {
+      "task_id": "TASK-EVAL-006",
+      "category": "Verification and Safety Compliance",
+      "description": "Isolate tests/test_conversation_service.py so importing dialogue_state.state does not initialize root copilot_conversations.sqlite3, and reconcile test_low_confidence_dispatch with ADR-002 fail-closed blocked_intent_unavailable behavior without changing production code.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "tests/test_conversation_service.py",
+          "services/conversation_service/src/dialogue_state/state.py",
+          "services/conversation_service/src/policies/response_dispatcher.py",
+          "docs/decisions/ADR-002-intent-llm-primary-ml-fallback.md",
+          "docs/development/verification.md"
+        ],
+        "fixture_reference": "docs/development/verification.md#22-test_conversation_servicepy",
+        "notes": "A/B-ready pilot candidate with behavioral import-and-pytest isolation grader."
+      },
+      "allowed_scope": [
+        "tests/test_conversation_service.py",
+        "docs/development/verification.md"
+      ],
+      "forbidden_actions": [
+        "Do not alter services/conversation_service/src/ production logic to make tests pass.",
+        "Do not create or mutate root copilot_conversations.sqlite3.",
+        "Do not call external LLM APIs."
+      ],
+      "acceptance_criteria": [
+        "Importing services.conversation_service.src.dialogue_state.state with CONVERSATIONS_DB_PATH unset does not create copilot_conversations.sqlite3 in repository root.",
+        "python -m pytest tests/test_conversation_service.py -v passes with CONVERSATIONS_DB_PATH unset and DISABLE_EXTERNAL_LLM=true.",
+        "test_low_confidence_dispatch reflects ADR-002 fail-closed semantics for is_in_scope=False."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [
+          "verify_conversation_service_isolation",
+          "static_security_time_guard"
+        ],
+        "manual_rubric_required": false,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 15,
+        "max_tool_calls": 30,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "pilot",
+      "readiness_status": "EXECUTABLE",
+      "ab_readiness": "AB_READY",
+      "readiness_axes": {
+        "TASK_READY": true,
+        "GRADER_READY": true,
+        "WORKSPACE_READY": true,
+        "OPERATIONALLY_READY": false
+      },
+      "ab_readiness_notes": "Both A_BASELINE and B_FULL_HARNESS contain identical source, ADR-002, and evaluator-owned independent acceptance checks; OPERATIONALLY_READY remains false on host IDE sessions lacking OS-level filesystem/network confinement."
+    },
+    {
+      "task_id": "TASK-EVAL-007",
+      "category": "Repository Onboarding",
+      "description": "Perform a read-only onboarding survey of the repository and write eval_outputs/onboarding_summary.md mapping service entrypoints, confirmed UI/LLM/time/TLS decisions, safe vs unsafe test suites, and open decisions without triggering side-effectful scripts.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "README.md",
+          "docs/architecture/overview.md",
+          "docs/development/verification.md"
+        ],
+        "fixture_reference": "README.md",
+        "notes": "Requires blinded manual rubric evaluation to judge accuracy and epistemic discipline."
+      },
+      "allowed_scope": [
+        "eval_outputs/onboarding_summary.md"
+      ],
+      "forbidden_actions": [
+        "Do not run test_module3_orders.py, evaluation/run_release_gates.py, or live services.",
+        "Do not edit any tracked repository files."
+      ],
+      "acceptance_criteria": [
+        "Zero repository code, docs, DB, or report files are mutated.",
+        "eval_outputs/onboarding_summary.md accurately separates Confirmed, Observed, and Assumed findings and flags unsafe test commands."
+      ],
+      "grader_definition": {
+        "grader_type": "hybrid",
+        "deterministic_checks": [
+          "static_security_time_guard"
+        ],
+        "required_artifacts": [
+          "eval_outputs/onboarding_summary.md"
+        ],
+        "manual_rubric_required": true,
+        "held_out_protected": false
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 15,
+        "max_tool_calls": 30,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "development",
+      "readiness_status": "PARTIAL",
+      "ab_readiness": "PARTIAL",
+      "ab_readiness_notes": "Read-only artifact and scope are verifiable deterministically, but quality assessment requires blinded manual rubric scoring."
+    },
+    {
+      "task_id": "TASK-EVAL-008",
+      "category": "Verification and Safety Compliance",
+      "description": "Add comprehensive offline unit and mocked integration tests for services/document_service/src/policy_filter.py covering category detection, temporary/superseded policy parsing, Vietnam date normalization, and zero-external-call fallback when LLM keys are disabled.",
+      "initial_state": {
+        "base_commit": "d3b2e8b33c344304eceb4756ff0b2d07d0a74ec8",
+        "branch": "harness",
+        "workspace_isolation_required": true,
+        "required_files": [
+          "services/document_service/src/policy_filter.py"
+        ],
+        "fixture_reference": "services/document_service/src/policy_filter.py",
+        "notes": "Marked NOT_READY / NOT_AB_READY because independent external held-out validation assertions and synthetic .docx fixtures outside the trial workspace are not yet authored."
+      },
+      "allowed_scope": [
+        "tests/test_policy_filter.py"
+      ],
+      "forbidden_actions": [
+        "Do not modify services/document_service/src/policy_filter.py unless fixing a verified bug within scope.",
+        "Do not make live OpenAI/CKEY.VN API calls or disable TLS verification."
+      ],
+      "acceptance_criteria": [
+        "Offline unit tests verify _detect_category, _detect_policy_type, _extract_dates_from_text, and heuristic fallback with zero outbound HTTP calls.",
+        "Independent external held-out test suite passes against the implementation."
+      ],
+      "grader_definition": {
+        "grader_type": "deterministic",
+        "deterministic_checks": [],
+        "manual_rubric_required": false,
+        "held_out_protected": true,
+        "blocker_reason": "External held-out fixtures and private verifier tests are not yet authored."
+      },
+      "timeout_or_budget": {
+        "max_wall_minutes": 20,
+        "max_tool_calls": 35,
+        "max_human_interventions": 0,
+        "offline_only": true
+      },
+      "dataset_split": "held_out",
+      "readiness_status": "NOT_READY",
+      "ab_readiness": "NOT_AB_READY",
+      "ab_readiness_notes": "External held-out verifier and synthetic .docx fixtures are not yet authored."
+    }
+  ]
+}

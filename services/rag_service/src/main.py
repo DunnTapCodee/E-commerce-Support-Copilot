@@ -23,10 +23,14 @@ from services.rag_service.src.retriever import PolicyRetriever
 
 POLICIES_PATH = Path(os.getenv("POLICIES_PATH", str(ROOT_DIR / "data" / "knowledge_base" / "policies.json")))
 INDEX_PATH = Path(os.getenv("INDEX_PATH", str(ROOT_DIR / "artifacts" / "vector_store" / "policy_index.pkl")))
+RETRIEVAL_METHOD = os.getenv("RETRIEVAL_METHOD", "bm25").strip().lower()
+DENSE_EMBEDDING_MODEL = os.getenv("DENSE_EMBEDDING_MODEL", "keepitreal/vietnamese-sbert")
+RERANKER_MODEL = os.getenv("RERANKER_MODEL", "BAAI/bge-reranker-base")
+RETRIEVAL_DEVICE = os.getenv("RETRIEVAL_DEVICE", "cpu")
 
 indexer_instance = PolicyVectorIndexer()
 retriever_instance: PolicyRetriever = None
-generator_instance = LLMGenerator(timeout_seconds=8)
+generator_instance = LLMGenerator(timeout_seconds=int(os.getenv("LLM_TIMEOUT_SECONDS", "30")))
 
 
 def init_knowledge_base():
@@ -35,8 +39,14 @@ def init_knowledge_base():
     print(f"[rag_service] Loading policies from {POLICIES_PATH.name}...")
     docs = load_policy_documents(POLICIES_PATH)
     indexer_instance.fit_and_save(docs, INDEX_PATH)
-    retriever_instance = PolicyRetriever(indexer_instance)
-    print(f"[rag_service] Indexed {len(docs)} documents. Ready.")
+    retriever_instance = PolicyRetriever(
+        indexer_instance,
+        method=RETRIEVAL_METHOD,
+        dense_model=DENSE_EMBEDDING_MODEL,
+        reranker_model=RERANKER_MODEL,
+        device=RETRIEVAL_DEVICE,
+    )
+    print(f"[rag_service] Indexed {len(docs)} documents with {RETRIEVAL_METHOD}. Ready.")
 
 
 @asynccontextmanager
@@ -62,10 +72,12 @@ def health_check():
         "service": "rag_service",
         "documents_indexed": num_docs,
         "index_path": str(INDEX_PATH),
+        "retrieval_method": retriever_instance.method if retriever_instance else RETRIEVAL_METHOD,
     }
 
 
 @app.post("/ingest")
+@app.post("/api/v1/rag/sync-kb")
 def trigger_ingestion():
     """Trigger ingestion of policies.json to update vector store index."""
     try:
@@ -82,6 +94,7 @@ def trigger_ingestion():
 
 
 @app.post("/retrieve", response_model=List[RetrievedDocument])
+@app.post("/api/v1/rag/retrieve", response_model=List[RetrievedDocument])
 def retrieve_policies(request: RAGRetrieveRequest):
     """Retrieve top-k policy documents with active version filtering."""
     if not retriever_instance:
@@ -98,6 +111,7 @@ def retrieve_policies(request: RAGRetrieveRequest):
 
 
 @app.post("/generate", response_model=RAGGenerateResponse)
+@app.post("/api/v1/rag/generate", response_model=RAGGenerateResponse)
 async def generate_draft(request: RAGGenerateRequest):
     """Generate grounded draft response citing policy documents."""
     try:

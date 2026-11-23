@@ -1,0 +1,125 @@
+name: Offline Deterministic CI Baseline
+
+on:
+  pull_request:
+    branches: [main, refine]
+  push:
+    branches: [main, refine]
+
+permissions:
+  contents: read
+
+jobs:
+  backend-offline-tests:
+    runs-on: ubuntu-latest
+    env:
+      DISABLE_EXTERNAL_LLM: "true"
+      DISABLE_CONTINUAL_LEARNING_CSV_EXPORT: "true"
+      CONVERSATIONS_DB_PATH: "/tmp/ci_copilot_conversations.sqlite3"
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install offline test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r services/gateway/requirements.txt \
+                      -r services/document_service/requirements.txt \
+                      -r services/rag_service/requirements.txt \
+                      pytest
+
+      - name: Static guard check (zero verify=False and zero +12h offset)
+        run: |
+          python -c "
+          import pathlib, re, sys
+          roots = [pathlib.Path(d) for d in ('services', 'contracts', 'scripts', 'evaluation')]
+          pat = re.compile(r'verify=False|hours=12')
+          hits = []
+          for r in roots:
+              for p in r.rglob('*.py'):
+                  if '__pycache__' in p.parts:
+                      continue
+                  for idx, line in enumerate(p.read_text(encoding='utf-8', errors='ignore').splitlines(), 1):
+                      if pat.search(line):
+                          hits.append(f'{p}:{idx}: {line.strip()}')
+          if hits:
+              print('\n'.join(hits))
+              sys.exit(1)
+          print('CLEAN: zero verify=False or hours=12')
+          "
+
+      - name: Validate repository agent skills
+        run: python scripts/validate_skills.py
+
+      - name: Validate agent evaluation manifest and offline smoke runner
+        run: |
+          python -m evaluation.agent_harness.run_eval validate-manifest
+          python -m evaluation.agent_harness.run_eval smoke-test --quiet
+
+      - name: Run verified deterministic offline pytest suite
+        run: |
+          python -m pytest \
+            tests/test_contracts_and_integration.py \
+            tests/test_architecture_decisions_alignment.py \
+            tests/test_llm_failover_and_offline_isolation.py \
+            tests/test_gateway_rag_fallback.py \
+            tests/test_guardrails.py \
+            tests/test_rbac_step1.py \
+            tests/test_conversation_order_pipeline.py \
+            tests/test_policy_audit_rollback.py \
+            tests/test_agent_skills.py \
+            tests/test_agent_harness_eval.py \
+            -v
+
+  frontend-typecheck:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Run TypeScript typecheck
+        run: npx tsc --noEmit
+
+  docs-link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify internal Markdown links in docs/
+        run: |
+          python -c "
+          import pathlib, re, sys
+          root = pathlib.Path('docs')
+          broken = []
+          for f in sorted(root.rglob('*.md')):
+              txt = f.read_text(encoding='utf-8')
+              for m in re.finditer(r'\[[^\]]+\]\(([^)]+)\)', txt):
+                  target = m.group(1).split('#')[0]
+                  if not target or target.startswith(('http://', 'https://', 'mailto:', 'file://')):
+                      continue
+                  if not (f.parent / target).resolve().exists():
+                      broken.append(f'{f} -> {target}')
+          if broken:
+              print('BROKEN LINKS:\n' + '\n'.join(broken))
+              sys.exit(1)
+          print('DOCS LINKS OK')
+          "

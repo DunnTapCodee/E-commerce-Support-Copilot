@@ -11,8 +11,8 @@ except Exception:
 
 p = IntentPredictor()
 print("Predictor initialized successfully.")
-print("Is multi-component (LinearSVC):", p.is_multi_component)
-print("Total classes:", len(p.classes))
+print("Routing mode:", p.routing_mode)
+print("Total classes:", p.models)
 
 queries = [
     "I want to track my order status",

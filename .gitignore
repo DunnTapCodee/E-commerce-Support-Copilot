@@ -1,8 +1,54 @@
-.env
 __pycache__/
-*.pyc
-*.sqlite3*
-CHỦ ĐỀ 1.docx
-Lec-*.pdf
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+/lib/
+/lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+.env
+.venv
 venv/
-.venv/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+artifacts/models/legacy_linearsvc_en/*.pkl
+
+kaggle/datasets/ecom-intent-data/*
+!kaggle/datasets/ecom-intent-data/dataset-metadata.json
+
+# Model comparison artifacts
+artifacts/models/intent_eval_en/
+
+# Runtime telemetry and conversation databases
+/copilot_telemetry.sqlite3
+/copilot_telemetry.sqlite3-shm
+/copilot_telemetry.sqlite3-wal
+/copilot_conversations.sqlite3
+/copilot_conversations.sqlite3-shm
+/copilot_conversations.sqlite3-wal
+
+# Generated RAG vector index
+/artifacts/vector_store/policy_index.pkl
+
+# Temporary & Editor
+.vscode/
+
+# Frontend build & dependencies
+frontend/node_modules/
+frontend/dist/
+
+docs/lectures
