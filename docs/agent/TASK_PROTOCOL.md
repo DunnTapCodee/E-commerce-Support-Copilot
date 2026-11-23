@@ -1,6 +1,6 @@
-# Task Execution Protocol — v0.2 candidate
+# Task Execution Protocol — v0.2 (Active Baseline v1)
 
-> The level of process should be proportional to complexity and impact. Risk classification is defined in `RISK_AND_APPROVAL.md`, and repo-specific verification candidates in `REPO_GUIDE.md`.
+> Task complexity and duration determine planning/handoff overhead; risk level (`RISK_AND_APPROVAL.md`) determines approval authority and verification depth. For repository-specific navigation use `REPO_GUIDE.md`, and for authoritative test/side-effect rules use `docs/development/verification.md`.
 
 ## Intake
 
@@ -17,11 +17,11 @@ Identify the observable goal, acceptance criteria, scope/non-goals, constraints,
 
 | Path | When useful | Required planning overhead |
 | --- | --- | --- |
-| Fast | Small, clear, reversible, low blast radius | Inline intention; no task file and no multi-section report |
-| Standard | Several steps, nontrivial bug or multiple modules | Short plan with expected edits, risks, and tests, typically in the conversation |
-| Extended | Multi-session, major cross-boundary/architectural work or sensitive migration design | Durable task-specific plan, milestones, acceptance criteria, checkpoints, rollback assumptions, and handoff |
+| Fast | Small, clear, single-session, low blast radius | Inline intention; **no** persistent plan or handoff file and no lengthy report |
+| Standard | Several steps, nontrivial bug or multiple modules finished in one session | Short inline plan with expected edits, risks, and tests; persistent handoff only if paused/blocked |
+| Extended | Multi-session, major cross-boundary/architectural work or sensitive migration design | Durable task-specific plan (`docs/agent/templates/EXECUTION_PLAN.md`), milestones, acceptance criteria, and handoff (`SESSION_HANDOFF.md`) when pausing |
 
-R3 actions require approval regardless of path. Replan if evidence changes assumptions or risk.
+Risk rules apply independently of path: `R2` work within already-authorized scope does **not** require step-by-step approval (only proportionate consumer/verification checks), while `R3` and explicit approval gates (`RISK_AND_APPROVAL.md`) always require specific authorization. Replan if evidence changes assumptions or risk.
 
 ## Implementation loop
 
@@ -51,8 +51,8 @@ Distinguish `IMPLEMENTED`, `LOCALLY_VERIFIED`, `INTEGRATION_VERIFIED`, `READY_FO
 - **Standard:** summarize change, verification evidence, remaining risk/unknowns, and follow-up.
 - **Extended:** keep a task-scoped status document with goal, approved scope, branch/base, decisions, work done, actual test results, blockers, and next actions.
 
-Do not create a handoff file for a finished trivial task. When resuming a task, reconcile handoff against current Git state and actual code; prior test results may be stale.
+Do not create a handoff file for a finished trivial task. For progressive context loading, Execution Plan / Session Handoff triggers, the 5-step Session Recovery Protocol, and the 4-axis progress model (without a global `PROGRESS.md`), follow `docs/agent/CONTEXT_AND_MEMORY.md` and use the reusable templates in `docs/agent/templates/EXECUTION_PLAN.md` and `docs/agent/templates/SESSION_HANDOFF.md`. When resuming a task, always reconcile any handoff snapshot against current Git state and actual code; prior test results may be stale.
 
-## Example (illustrative only)
+## Example (Historical — Resolved Illustrative Pattern)
 
-A reported Gateway/RAG response mismatch can be investigated by comparing the endpoint's actual JSON response with its client parser, then adding a regression test and checking downstream consumers. The repository review identified this as a concrete **investigation lead**; it still needs executable evidence before calling the fix verified.
+When investigating an inter-service contract bug (such as the historical Gateway/RAG `/retrieve` JSON array vs. `{"documents": []}` mismatch), compare the provider endpoint's actual JSON response against the client parser, add a mock-HTTP regression test, and verify downstream consumers before marking the fix `LOCALLY_VERIFIED` (resolved in `services/gateway/src/clients.py` and `tests/test_gateway_rag_fallback.py`).

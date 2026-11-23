@@ -21,7 +21,7 @@
 | `FR-DLG-001`, `FR-DLG-002` | Multi-turn dialogue persistence + Gateway standalone & SSE fallback | `conversation_service/src/`, `gateway/src/main.py`, `clients.py` | [SPEC-WF-001](../specs/copilot-workflow.md) | `test_gateway_rag_fallback.py`, `test_contracts_and_integration.py`, `test_rbac_step1.py`, `test_conversation_order_pipeline.py` | `Partially Verified` | Mocked Gateway primary/fallback/SSE + isolated SQLite verified; live multi-process E2E not run in offline baseline. |
 | `FR-RAG-001`, `FR-RAG-002` | Policy retrieval JSON array (`bm25` default) & CKEY.VN grounded drafting without silent Gemini fallback | `services/rag_service/src/main.py`, `retriever.py`, `generator.py`; `copilot_draft_engine.py` | [SPEC-WF-001](../specs/copilot-workflow.md) | `test_gateway_rag_fallback.py`, `test_contracts_and_integration.py`, `test_architecture_decisions_alignment.py` | `Partially Verified` | `/retrieve` contract & no-Gemini fallback verified; retrieval quality (`bm25` vs `dense`) requires separate offline benchmark (`scripts/benchmark_retrieval.py`). |
 | `FR-ORD-001` | Order lookup & cancellation rules | `services/telemetry_service/src/repository.py`, `conversation_service/src/tools/order_tools.py` | [SPEC-WF-001](../specs/copilot-workflow.md) | `test_conversation_order_pipeline.py`, `test_rbac_step1.py` | `Partially Verified` | `test_module3_orders.py` tests full cancellation/LRU but mutates root `copilot_telemetry.sqlite3` (unsafe for CI). |
-| `FR-POL-001` | Policy CRUD, dynamic `is_active`, audit log, rollback, RAG sync | `services/document_service/src/policy_manager.py`, `policy_filter.py`, `routers/` | [Architecture Overview](../architecture/overview.md) | `test_policy_audit_rollback.py` (temp dir, attempts HTTP POST to `RAG_SERVICE_URL/sync-kb`) | `Partially Verified` | Temp-dir isolated for disk, but `trigger_rag_sync()` is unmocked in `test_policy_audit_rollback.py`. |
+| `FR-POL-001` | Policy CRUD, dynamic `is_active`, audit log, rollback, RAG sync | `services/document_service/src/policy_manager.py`, `policy_filter.py`, `routers/` | [Architecture Overview](../architecture/overview.md) | `test_policy_audit_rollback.py` (temp dir, `AsyncMock` on `trigger_rag_sync`, 0 HTTP calls) | `Partially Verified` | CRUD, dynamic `is_active`, audit log, delete, rollback, and sync trigger counts verified offline; `policy_filter` parsing and live `rag_service /sync-kb` integration remain unverified in CI. |
 | `FR-TEL-001`, `FR-TEL-002` | Audit log, human action metrics, continual learning CSV PII safety | `services/telemetry_service/src/repository.py`, `metrics.py`; `scripts/export_continual_learning_dataset.py` | [SPEC-WF-001](../specs/copilot-workflow.md) | `test_architecture_decisions_alignment.py`, `test_contracts_and_integration.py`, `test_mlip_evaluation.py` | `Verified` (unit/isolated) | PII redaction, opt-out toggle, and `+07:00` chronological sorting verified on temp files/DBs. |
 | `NFR-SEC-001`, `NFR-SEC-002` | Default `verify=True` + CA bundle; zero hardcoded keys; offline isolation | `contracts/llm_failover.py`, `llm_classifier.py`, `generator.py`, `copilot_draft_engine.py` | [SPEC-INT-001](../specs/intent-classification.md) | Static check (`zero verify=False`), `test_architecture_decisions_alignment.py`, `test_llm_failover_and_offline_isolation.py` | `Partially Verified` | Unit/static checks **Verified**; live TLS handshake to `https://api.xah.io/v1` is **Blocked** (`ASM-001`, `OD-003`). |
 | `NFR-TIME-001` | Real `Asia/Ho_Chi_Minh` (`+07:00`), zero `+12h` offset, mixed UTC/VN sorting | `contracts/schemas.py`, `sqlite_state_store.py`, `state.py`, `policy_manager.py`, `repository.py`, `frontend/src/lib/time.ts` | [ADR-003](../decisions/ADR-003-vietnam-time-no-12h-offset.md) | Static check (`zero hours=12`), `test_architecture_decisions_alignment.py`, `frontend` `tsc --noEmit` | `Verified` (backend + TS typecheck) | Backend unit + midnight sorting verified; browser runtime test for `time.ts` not yet added (`Not Verified` in browser). |
@@ -39,7 +39,7 @@ Run with:
 $env:DISABLE_EXTERNAL_LLM="true"
 $env:DISABLE_CONTINUAL_LEARNING_CSV_EXPORT="true"
 $env:CONVERSATIONS_DB_PATH="$env:TEMP\ci_copilot_conversations.sqlite3"
-python -m pytest tests/test_contracts_and_integration.py tests/test_architecture_decisions_alignment.py tests/test_llm_failover_and_offline_isolation.py tests/test_gateway_rag_fallback.py tests/test_guardrails.py tests/test_rbac_step1.py tests/test_conversation_order_pipeline.py -v
+python -m pytest tests/test_contracts_and_integration.py tests/test_architecture_decisions_alignment.py tests/test_llm_failover_and_offline_isolation.py tests/test_gateway_rag_fallback.py tests/test_guardrails.py tests/test_rbac_step1.py tests/test_conversation_order_pipeline.py tests/test_policy_audit_rollback.py tests/test_agent_skills.py tests/test_agent_harness_eval.py -v
 ```
 
 | Test File | Test Type | Network / LLM | Disk / DB Side Effects | CI Safe? |
@@ -51,6 +51,9 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 | `tests/test_guardrails.py` | Unit (Safety Invariants) | None | None | **Yes** |
 | `tests/test_rbac_step1.py` | Unit, Integration | Mocked `_get_json` | Temp SQLite only | **Yes** |
 | `tests/test_conversation_order_pipeline.py` | Unit | None | Read-only `data/mock_orders.json` | **Yes** |
+| `tests/test_policy_audit_rollback.py` | Unit, Integration | Mocked (`trigger_rag_sync` & `httpx.AsyncClient`) | Temp dir only | **Yes** |
+| `tests/test_agent_skills.py` | Unit, Governance | None | Read-only `.agents/skills` & temp dir | **Yes** |
+| `tests/test_agent_harness_eval.py` | Unit, Eval Harness | None (synthetic fixtures only) | Read-only manifest/fixtures & temp dir | **Yes** |
 
 ### 2.2 Conditional / Artifact-Dependent / Unsafe Tests (Excluded from Default CI)
 
@@ -58,7 +61,6 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 | --- | --- | --- | --- |
 | `tests/test_robustness.py` | Robustness / Legacy ML | Loads `ML-model/` (sklearn `1.6.1` pickle -> `InconsistentVersionWarning` on `1.9.1`) and `artifacts/vector_store/policy_index.pkl` (gitignored, may not exist on fresh CI checkout). | Local offline run when `DISABLE_EXTERNAL_LLM=true` and `policy_index.pkl` exists. |
 | `tests/test_mlip_evaluation.py` | Behavioral / Safety Eval | Loads legacy ML + `evaluation/*`; emits 36 sklearn version warnings; tests offline heuristic fallback when `DISABLE_EXTERNAL_LLM=true`. | Local offline run with `DISABLE_EXTERNAL_LLM=true`. |
-| `tests/test_policy_audit_rollback.py` | Document Service Integration | Uses temp dir for JSON files, **but** `create_policy`/`update_policy`/`rollback_policy`/`sync-active-status` attempt unmocked HTTP `POST` to `RAG_SERVICE_URL/api/v1/rag/sync-kb`. | Mock `PolicyManager.trigger_rag_sync` before adding to CI. |
 | `tests/test_conversation_service.py` | Conversation Unit | **Side effect + stale expectation:** Importing `state.py` initializes `PersistentStateStore(DB_PATH)` at root `copilot_conversations.sqlite3` unless `CONVERSATIONS_DB_PATH` is overridden; `test_low_confidence_dispatch` expects legacy `mode="low_confidence_abstain"` for `is_in_scope=False` (now fail-closed `blocked_intent_unavailable` per `ADR-002`). | Needs `CONVERSATIONS_DB_PATH` isolation + review of expected `mode` before CI inclusion. |
 | `tests/test_module3_orders.py` | Order DB Integration | **UNSAFE against root DB:** Hardcodes `ROOT_DIR / "copilot_telemetry.sqlite3"` and runs `migrate_mock_orders(..., force=True)`, overwriting real local DB rows. | **Do not run** until refactored to `tempfile.TemporaryDirectory()`. |
 | `tests/test_intent_llm.py` | Intent Benchmark (130 cases) | Calls `LLMIntentClassifier.predict()` — triggers live external LLM calls if API keys are set in env (falls back to regex heuristic if `DISABLE_EXTERNAL_LLM=true`). | Run only as explicit offline heuristic check (`DISABLE_EXTERNAL_LLM=true`) or authorized live eval. |
@@ -69,7 +71,7 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 
 ## 3. AI/ML Evaluation Strategy (Separated from Unit Tests)
 
-> **Rule:** Offline unit tests with mocks verify **control flow, contracts, and fail-closed safety** — they do **not** measure real model quality.
+> **Rule:** Offline unit tests with mocks verify **control flow, contracts, and fail-closed safety** — they do **not** measure real model quality. Separately, **Coding Agent Harness evaluation** lives under `evaluation/agent_harness/` and [docs/agent/AGENT_EVALUATION.md](../agent/AGENT_EVALUATION.md) rather than product AI/ML release gates (`evaluation/run_release_gates.py`).
 
 | Capability | Current Evaluation Assets (`Observed`) | Recommended Metrics (Targets: **`TBD`** per `OD-006`) | Current Blockers |
 | --- | --- | --- | --- |
@@ -97,8 +99,8 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 ## 5. CI Baseline (`.github/workflows/ci-offline.yml`)
 
 A minimal, deterministic, offline-only GitHub Actions workflow has been created at `.github/workflows/ci-offline.yml` with 3 jobs:
-1. **`backend-offline-tests`**: Installs lightweight service deps (`gateway`, `document_service`, `rag_service`, `pytest`), enforces static guard (`zero verify=False` and `zero hours=12`), and runs the 7 verified deterministic offline pytest suites with `DISABLE_EXTERNAL_LLM=true`, `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT=true`, and isolated `CONVERSATIONS_DB_PATH=/tmp/ci_copilot_conversations.sqlite3`.
+1. **`backend-offline-tests`**: Installs lightweight service deps (`gateway`, `document_service`, `rag_service`, `pytest`), enforces static guard (`zero verify=False` and `zero hours=12`), validates `.agents/skills/` via `python scripts/validate_skills.py`, validates the Agent Evaluation manifest and offline smoke runner (`python -m evaluation.agent_harness.run_eval validate-manifest` and `smoke-test --quiet`), and runs the 10 verified deterministic offline pytest suites with `DISABLE_EXTERNAL_LLM=true`, `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT=true`, and isolated `CONVERSATIONS_DB_PATH=/tmp/ci_copilot_conversations.sqlite3`.
 2. **`frontend-typecheck`**: Runs `npm ci` and `npx tsc --noEmit` inside `frontend/`.
 3. **`docs-link-check`**: Verifies zero broken internal Markdown links across `docs/**/*.md`.
 
-*Explicitly excluded from CI:* Live LLM API tests (`test_intent_llm.py`), root-DB-mutating tests (`test_module3_orders.py`), unmocked-sync tests (`test_policy_audit_rollback.py`), legacy-pickle/gitignored-index tests (`test_robustness.py`, `test_mlip_evaluation.py`), and `evaluation/run_release_gates.py`.
+*Explicitly excluded from CI:* Live LLM API tests (`test_intent_llm.py`), root-DB-mutating tests (`test_module3_orders.py`), root-DB-initializing/stale-expectation tests (`test_conversation_service.py`), legacy-pickle/gitignored-index tests (`test_robustness.py`, `test_mlip_evaluation.py`), and `evaluation/run_release_gates.py`.

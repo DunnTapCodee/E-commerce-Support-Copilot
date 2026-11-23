@@ -1,4 +1,4 @@
-# Risk and Approval Policy — v0.2 candidate
+# Risk and Approval Policy — v0.2 (Active Baseline v1)
 
 > Canonical policy for risk and authority. The top-level `AGENTS.md` is only a summary. Markdown is not a security boundary: enforce key restrictions through least-privilege permissions, isolation, and CI where possible.
 
@@ -7,13 +7,13 @@
 - **Autonomy:** agent chooses investigation, design, implementation, and verification steps within the authorized task.
 - **Authority:** agent may perform a particular action or produce a particular side effect.
 
-Classify meaningful **actions**, not only entire tasks, using the highest applicable risk. A one-line change to an authorization rule can be high risk.
+Classify meaningful **actions**, not only entire tasks, using the highest applicable risk. Risk level governs **approval authority and verification rigor**, whereas task complexity/duration (`docs/agent/TASK_PROTOCOL.md`) governs whether a persistent Execution Plan file is needed. A one-line change to an authorization rule can be high risk.
 
 | Level | Examples | Default response |
 | --- | --- | --- |
 | R0 — inspection | Read non-secret code/docs, inspect `git status`, search symbols | Proceed within existing permissions; avoid exposing secret contents |
 | R1 — scoped/reversible | Localized bug fix, test, documentation edit, isolated UI change | Proceed within task scope; use only side-effect-assessed verification |
-| R2 — cross-boundary | Shared contracts, multi-service behavior, persistence changes, major dependencies | Create proportionate plan; map consumers, compatibility, test and rollback strategy; request approval if scope or agreed behavior changes |
+| R2 — cross-boundary | Shared contracts, multi-service behavior, persistence changes, major dependencies | Proceed within **authorized scope** without step-by-step approval: map consumers, compatibility, verification, and rollback proportionally; stop and request approval only if scope/agreed behavior changes or an approval gate is crossed |
 | R3 — sensitive/high-impact | Deleting or corrupting data, production access/deployment, financial/security policy change, credential actions, paid/unapproved outbound calls | Stop before the action and obtain specific explicit authorization |
 
 ## Approval gates

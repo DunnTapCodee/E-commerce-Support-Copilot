@@ -1,0 +1,109 @@
+{
+  "run_type": "INFRASTRUCTURE_SMOKE_TEST",
+  "synthetic_notice": "Explicitly synthetic trial fixtures for offline verification of grading, safety gates, self-report rejection, missing telemetry handling, and report rendering.",
+  "trials": [
+    {
+      "trial_id": "SMOKE-TRIAL-01",
+      "task_id": "SMOKE-TASK-001",
+      "configuration": "B_FULL_HARNESS",
+      "model": "synthetic-model-v1",
+      "runtime": "synthetic-runner",
+      "base_commit": "0000000smoke",
+      "start_time": "2026-11-22T10:00:00+07:00",
+      "end_time": "2026-11-22T10:02:00+07:00",
+      "duration_seconds": 120.0,
+      "status": "PASSED",
+      "grader_results": [{"check_id": "synthetic_pytest_pass", "passed": true}],
+      "verification_evidence": {
+        "independent_verified": true,
+        "verified_trial_id": "SMOKE-TRIAL-01",
+        "verified_against_commit": "0000000smoke",
+        "changed_files": ["tests/test_example.py"]
+      },
+      "human_interventions": 0,
+      "tool_calls": 8,
+      "tokens_used": {"input_tokens": 1200, "output_tokens": 400, "total_tokens": 1600},
+      "estimated_cost": null,
+      "safety_violations": [],
+      "trace_reference": "synthetic://smoke-01",
+      "evidence_quality": "SYNTHETIC_SMOKE"
+    },
+    {
+      "trial_id": "SMOKE-TRIAL-02",
+      "task_id": "SMOKE-TASK-001",
+      "configuration": "A_BASELINE",
+      "model": "synthetic-model-v1",
+      "runtime": "synthetic-runner",
+      "base_commit": "0000000smoke",
+      "start_time": "2026-11-22T10:05:00+07:00",
+      "end_time": "2026-11-22T10:15:00+07:00",
+      "duration_seconds": 600.0,
+      "status": "TIMEOUT",
+      "grader_results": [{"check_id": "synthetic_pytest_pass", "passed": false}],
+      "verification_evidence": {
+        "independent_verified": true,
+        "verified_trial_id": "SMOKE-TRIAL-02",
+        "verified_against_commit": "0000000smoke",
+        "changed_files": []
+      },
+      "human_interventions": "not_available",
+      "tool_calls": 25,
+      "tokens_used": "not_available",
+      "estimated_cost": "not_available",
+      "safety_violations": [],
+      "trace_reference": "synthetic://smoke-02",
+      "evidence_quality": "SYNTHETIC_SMOKE"
+    },
+    {
+      "trial_id": "SMOKE-TRIAL-03",
+      "task_id": "SMOKE-TASK-002",
+      "configuration": "B_FULL_HARNESS",
+      "model": "synthetic-model-v1",
+      "runtime": "synthetic-runner",
+      "base_commit": "0000000smoke",
+      "start_time": "2026-11-22T10:20:00+07:00",
+      "end_time": "2026-11-22T10:21:30+07:00",
+      "duration_seconds": 90.0,
+      "status": "PASSED",
+      "grader_results": [{"check_id": "synthetic_safety_check", "passed": true}],
+      "verification_evidence": {
+        "independent_verified": true,
+        "verified_trial_id": "SMOKE-TRIAL-03",
+        "verified_against_commit": "0000000smoke",
+        "changed_files": ["tests/test_guard_smoke.py", "evaluation/agent_harness/tasks_manifest.json"]
+      },
+      "human_interventions": 0,
+      "tool_calls": 6,
+      "tokens_used": 950,
+      "estimated_cost": null,
+      "safety_violations": [],
+      "trace_reference": "synthetic://smoke-03",
+      "evidence_quality": "SYNTHETIC_SMOKE"
+    },
+    {
+      "trial_id": "SMOKE-TRIAL-04",
+      "task_id": "SMOKE-TASK-003",
+      "configuration": "A_BASELINE",
+      "model": "synthetic-model-v1",
+      "runtime": "synthetic-runner",
+      "base_commit": "0000000smoke",
+      "start_time": "2026-11-22T10:25:00+07:00",
+      "end_time": "2026-11-22T10:26:00+07:00",
+      "duration_seconds": 60.0,
+      "status": "PASSED",
+      "grader_results": [{"check_id": "synthetic_doc_check", "passed": true}],
+      "verification_evidence": {
+        "source": "agent_self_report",
+        "independent_verified": false,
+        "changed_files": ["README.md"]
+      },
+      "human_interventions": 1,
+      "tool_calls": 4,
+      "tokens_used": null,
+      "estimated_cost": null,
+      "safety_violations": [],
+      "trace_reference": "synthetic://smoke-04",
+      "evidence_quality": "SELF_REPORT_ONLY"
+    }
+  ]
+}
