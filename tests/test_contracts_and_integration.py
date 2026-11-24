@@ -156,7 +156,7 @@ class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
                 "intent": "return_policy",
                 "confidence": 0.94,
                 "is_in_scope": True,
-                "model_name": "mainnewnol/gpt-oss-120b",
+                "model_name": "vantoanbk57/deepseek-v4.1-flash",
                 "all_probabilities": {"return_policy": 0.94},
             },
             "guardrail": {
@@ -173,7 +173,7 @@ class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
                 }
             ],
             "draft_text": "Theo [POL-RET-001], bạn có thể đổi trả trong 30 ngày.",
-            "components_used": {"intent_classifier": "LLM Intent Classifier (mainnewnol/gpt-oss-120b)"},
+            "components_used": {"intent_classifier": "LLM Intent Classifier (vantoanbk57/deepseek-v4.1-flash)"},
         }
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -192,7 +192,7 @@ class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         parsed = GatewayResponse(**resp.json())
         self.assertEqual(parsed.interaction_id, "int-primary-1")
-        self.assertEqual(parsed.intent.model_name, "mainnewnol/gpt-oss-120b")
+        self.assertEqual(parsed.intent.model_name, "vantoanbk57/deepseek-v4.1-flash")
         self.assertEqual(len(parsed.citations), 1)
         self.assertTrue(parsed.guardrail.allow_llm)
 
@@ -222,7 +222,7 @@ class TestGatewayPrimaryAndFallbackIntegration(unittest.TestCase):
                         "intent": "return_policy",
                         "confidence": 0.92,
                         "is_in_scope": True,
-                        "model_name": "mainnewnol/gpt-oss-120b",
+                        "model_name": "vantoanbk57/deepseek-v4.1-flash",
                         "all_probabilities": {"return_policy": 0.92},
                     },
                 )

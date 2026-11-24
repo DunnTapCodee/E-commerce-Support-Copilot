@@ -11,11 +11,14 @@ from typing import Any, AsyncGenerator, Dict, List, Optional
 import httpx
 
 from contracts.llm_failover import (
+    DEFAULT_OPENAI_BASE_URL,
     call_chat_completion_with_failover,
     get_available_api_keys,
+    get_default_openai_model,
     get_tls_verify_for_httpx,
     stream_chat_completion_with_failover,
 )
+from services.conversation_service.src.policies.offline_fallback import OfflineDraftFallback
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -23,8 +26,8 @@ GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_M
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL).rstrip("/")
+OPENAI_MODEL = get_default_openai_model()
 
 
 class CopilotDraftEngine:
@@ -119,6 +122,28 @@ class CopilotDraftEngine:
         return None
 
     @staticmethod
+    def _format_multi_order_candidates(multi_order_context: Optional[Dict[str, Any]], max_items: int = 15) -> str:
+        """Format candidate orders (including payment, carrier, amount) for LLM prompt or fallback."""
+        if not multi_order_context:
+            return ""
+        candidates = multi_order_context.get("candidates") or []
+        if not candidates:
+            return ""
+        lines: List[str] = []
+        for idx, o in enumerate(candidates[:max_items], 1):
+            oid = o.get("order_id", "N/A")
+            status = o.get("order_status") or o.get("status") or "Đang xử lý"
+            items = ", ".join(f"{it.get('name')} (x{it.get('quantity', 1)})" for it in o.get("items", [])) or "Sản phẩm đặt mua"
+            amount = f"{int(o.get('total_amount')):,.0f} VNĐ" if o.get("total_amount") else ""
+            pm = o.get("payment_method") or ""
+            carrier = o.get("carrier") or ""
+            eta = o.get("promised_delivery_date") or o.get("estimated_delivery")
+            meta_parts = [p for p in [amount, pm, carrier, f"Dự kiến: {eta}" if eta else ""] if p]
+            meta_str = f" | {' | '.join(meta_parts)}" if meta_parts else ""
+            lines.append(f"{idx}. #{oid} ({status}) — {items}{meta_str}")
+        return "\n".join(lines)
+
+    @staticmethod
     def build_full_context_prompt(
         user_query: str,
         intent: str,
@@ -127,18 +152,37 @@ class CopilotDraftEngine:
         context_summary: Optional[str],
         recent_turns_text: str,
         citations: List[Any],
+        multi_order_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Assemble all 6 context layers into a structured prompt."""
         # 1. Order details
         order_str = "Chưa có thông tin đơn hàng cụ thể."
-        if order_data:
+        if multi_order_context and multi_order_context.get("candidates"):
+            reason = multi_order_context.get("reason", "multiple_customer_orders")
+            filter_label = multi_order_context.get("filter_label")
+            candidates_str = CopilotDraftEngine._format_multi_order_candidates(multi_order_context)
+            summary = multi_order_context.get("computed_summary")
+            summary_str = ""
+            if isinstance(summary, dict):
+                summary_str = (
+                    f"\nTỔNG HỢP HỆ THỐNG ĐÃ TÍNH SẴN: "
+                    f"Tổng số đơn={summary.get('total_orders', 0)} | "
+                    f"Số đơn tính tiền hợp lệ={summary.get('paid_order_count', 0)} | "
+                    f"Tổng tiền đã thanh toán/hợp lệ={summary.get('total_paid_amount', 0):,} VNĐ | "
+                    f"Số đơn hủy/lỗi thanh toán={summary.get('excluded_count', 0)}"
+                )
+            order_str = (
+                f"KHÁCH HÀNG CÓ NHIỀU ĐƠN HÀNG PHÙ HỢP (Lý do: {reason}"
+                f"{f', bộ lọc: {filter_label}' if filter_label else ''}):{summary_str}\n{candidates_str}"
+            )
+        elif order_data:
             order_id = order_data.get("order_id", "N/A")
             status = order_data.get("order_status") or order_data.get("status", "N/A")
             amount = f"{order_data.get('total_amount', 0):,} VNĐ" if order_data.get("total_amount") else "N/A"
             payment_method = order_data.get("payment_method", "N/A")
-            carrier = order_data.get("carrier") or order_data.get("shipper_name", "Đơn vị vận chuyển Tiki")
+            carrier = order_data.get("carrier") or order_data.get("shipper_name") or "Đơn vị vận chuyển Tiki"
             tracking_code = order_data.get("tracking_code", "")
-            est_delivery = order_data.get("estimated_delivery", "N/A")
+            est_delivery = order_data.get("promised_delivery_date") or order_data.get("estimated_delivery") or "chưa có lịch hẹn cụ thể"
             customer_name = order_data.get("customer_name", "Khách hàng")
             phone = order_data.get("phone", "")
             items = ", ".join(f"{it.get('name')} (x{it.get('quantity', 1)})" for it in order_data.get("items", [])) or "Sản phẩm đặt mua"
@@ -192,6 +236,8 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
 6. ĐỘ DÀI & ĐỊNH DẠNG: Tối đa 150 từ, súc tích, mạch lạc (nếu là các bước thực hiện thì dùng tối đa 3 gạch đầu dòng rõ ràng).
 7. NẾU KHÁCH HỎI ƯU ĐÃI/VOUCHER: Giải đáp các chương trình ưu đãi, mã giảm giá, voucher freeship (trích dẫn [POL-PROMO-001] hoặc liên quan). TUYỆT ĐỐI KHÔNG lạc đề sang bưu tá hay vận chuyển khi khách hỏi khuyến mãi!
 8. CÂU HỎI NGOÀI PHẠM VI (Out of Scope): Nếu khách hỏi thời tiết, toán học, tin tức bên ngoài, hãy từ chối khéo léo, lịch sự và hỏi xem khách có cần hỗ trợ gì về mua sắm Tiki không.
+9. NẾU HỒ SƠ CÓ DANH SÁCH NHIỀU ĐƠN HÀNG PHÙ HỢP: Hãy liệt kê ngắn gọn mã đơn, tên sản phẩm và trạng thái của từng đơn (tối đa 5 đơn), đồng thời mời anh/chị xác nhận chính xác mã đơn (ví dụ ORD-1026) muốn kiểm tra hoặc thao tác tiếp.
+10. TUYỆT ĐỐI KHÔNG xuất ra tiêu đề, nhãn hệ thống (ví dụ: "**BẢN THẢO CÂU TRẢ LỜI**" hay "Dưới đây là bản thảo"). Hãy bắt đầu trực tiếp bằng lời chào lịch sự gửi cho khách hàng.
 """
         return prompt
 
@@ -206,6 +252,7 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
         recent_turns_text: str,
         citations: List[Any],
         is_live_chat: bool = False,
+        multi_order_context: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Generate response draft via hybrid AI generation + smart macro safety."""
 
@@ -217,16 +264,8 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
                 "Anh/chị chia sẻ chi tiết giúp em vấn đề để em xử lý ngay cho mình nhé ạ!"
             )
 
-        # Case 0: Short conversational acknowledgements / thanks / closings
-        q_clean = user_query.strip().lower()
-        if q_clean in {"oce", "ok", "oke", "oki", "dạ", "vâng", "cảm ơn", "cam on", "thanks", "thank you", "được rồi", "hiểu rồi"}:
-            return (
-                "Dạ em cảm ơn anh/chị! Nếu mình có bất kỳ thắc mắc hay cần hỗ trợ gì thêm trong quá trình mua sắm tại Tiki, "
-                "anh/chị cứ nhắn tin để em hỗ trợ ngay nhé. Chúc anh/chị một ngày nhiều niềm vui ạ!"
-            )
-
-        # Case 0b: Out-of-scope / off-topic question gentle refusal
-        if intent == "out_of_scope" or any(k in q_clean for k in ["ronaldo", "messi", "thời tiết", "phương trình", "toán học", "bóng đá", "thơ ca"]):
+        # Case 0b: Explicit out-of-scope from Intent Service when no order portfolio context applies
+        if not multi_order_context and intent == "out_of_scope":
             return (
                 "Dạ em chào anh/chị! Câu hỏi này hiện nằm ngoài phạm vi hỗ trợ thông tin đơn hàng và mua sắm của Tiki rồi ạ 😊. "
                 "Anh/chị có cần em hỗ trợ thêm thông tin gì về đơn hàng, vận chuyển hay các chính sách mua sắm trên sàn Tiki không ạ?"
@@ -253,6 +292,7 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
             context_summary=context_summary,
             recent_turns_text=recent_turns_text,
             citations=citations,
+            multi_order_context=multi_order_context,
         )
 
         provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
@@ -262,16 +302,20 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
         if provider in ("openai_compatible", "openai", "auto") and get_available_api_keys():
             draft = await cls._call_openai_compatible(prompt)
             if draft:
-                return draft
+                from contracts.safety import clean_draft_header
+                return clean_draft_header(draft)
 
         # 2. Secondary: Gemini API only when provider explicitly allows Gemini
         if provider in ("gemini", "auto") and gemini_key:
             draft = await cls._call_gemini(prompt, gemini_key)
             if draft:
-                return draft
+                from contracts.safety import clean_draft_header
+                return clean_draft_header(draft)
 
         # 3. Grounded Semantic Fallback Draft when LLMs are unavailable
-        return cls._build_semantic_fallback_draft(user_query, intent, facts, order_data, citations)
+        return cls._build_semantic_fallback_draft(
+            user_query, intent, facts, order_data, citations, multi_order_context=multi_order_context
+        )
 
     @classmethod
     async def generate_draft_stream(
@@ -284,6 +328,7 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
         recent_turns_text: str,
         citations: List[Any],
         is_live_chat: bool = False,
+        multi_order_context: Optional[Dict[str, Any]] = None,
     ) -> AsyncGenerator[str, None]:
         """Stream drafted response tokens in real-time (~0.8s TTFT)."""
         # Case 0: Live chat handover
@@ -311,6 +356,7 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
             context_summary=context_summary,
             recent_turns_text=recent_turns_text,
             citations=citations,
+            multi_order_context=multi_order_context,
         )
 
         provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
@@ -331,69 +377,10 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
                 recent_turns_text=recent_turns_text,
                 citations=citations,
                 is_live_chat=is_live_chat,
+                multi_order_context=multi_order_context,
             )
             yield static_draft
 
     @classmethod
-    def _build_semantic_fallback_draft(
-        cls,
-        user_query: str,
-        intent: str,
-        facts: Dict[str, Any],
-        order_data: Optional[Dict[str, Any]],
-        citations: List[Any],
-    ) -> str:
-        """Clean, grounded fallback draft without dumping full documents."""
-        citation_tags = " ".join([f"[{d.doc_id}]" for d in citations if getattr(d, "is_active", True)]) or "[POL-INFO]"
-        order_id = facts.get("order_id") or (order_data.get("order_id") if order_data else None)
-
-        if intent in ("track_order", "delivery_time"):
-            if order_data:
-                amount_str = f"{order_data.get('total_amount', 0):,} VNĐ" if order_data.get("total_amount") else "N/A"
-                if any(w in user_query.lower() for w in ["bao nhiêu tiền", "hết bao nhiêu", "tổng tiền", "giá bao nhiêu", "thanh toán bao nhiêu", "bao tien"]):
-                    return (
-                        f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
-                        f"Tổng giá trị thanh toán cho đơn hàng là {amount_str} (bao gồm đầy đủ thuế và phụ phí) {citation_tags} ạ. "
-                        f"Nếu anh/chị cần em hỗ trợ kiểm tra thêm chi tiết các món trong đơn, cứ nhắn lại cho em nhé!"
-                    )
-
-                shipper = order_data.get("shipper_name") or "bưu tá"
-                phone = f" ({order_data.get('shipper_phone')})" if order_data.get("shipper_phone") else ""
-                status = order_data.get("status", "đang được vận chuyển")
-                est = order_data.get("estimated_delivery", "trong ngày hôm nay")
-                return (
-                    f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
-                    f"Hiện đơn hàng {status} bởi {shipper}{phone} và dự kiến giao đến mình {est} {citation_tags} ạ. "
-                    f"Anh/chị chú ý giữ điện thoại để nhận hàng giúp em nhé!"
-                )
-            return (
-                f"Dạ Tiki chào anh/chị, để em hỗ trợ kiểm tra chi tiết lộ trình đơn hàng cho mình, "
-                f"Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
-            )
-
-        if intent in ("return_policy", "return_product"):
-            return (
-                f"Dạ em chào anh/chị, theo chính sách đổi trả của Tiki, quý khách được hỗ trợ đổi trả sản phẩm "
-                f"trong vòng 30 ngày kể từ ngày nhận hàng đối với sản phẩm còn nguyên tem mác hoặc có lỗi kỹ thuật {citation_tags} ạ. "
-                f"Anh/chị chỉ cần giữ lại hộp và phụ kiện ban đầu, bên em sẽ cho bưu tá đến tận nhà để thu hồi miễn phí cho mình ạ!"
-            )
-
-        if intent == "shipping_costs":
-            return (
-                f"Dạ em chào anh/chị, về cước phí vận chuyển, Tiki áp dụng biểu phí giao hàng tiêu chuẩn "
-                f"và hỗ trợ miễn phí vận chuyển cho các đơn hàng đạt giá trị tối thiểu theo quy định {citation_tags} ạ. "
-                f"Anh/chị có thể áp dụng thêm mã Freeship tại bước thanh toán để được giảm phí ship tối đa nhé!"
-            )
-
-        if intent in ("get_discounts", "promotion_policy"):
-            return (
-                f"Dạ em chào anh/chị, về chính sách ưu đãi cho đơn hàng {order_id or ''}, Tiki hiện hỗ trợ áp dụng đồng thời "
-                f"nhiều loại mã ưu đãi bao gồm mã giảm giá từ sàn/nhà bán, mã miễn phí vận chuyển Freeship và điểm tích lũy Tiki Xu {citation_tags} ạ. "
-                f"Nếu đơn hàng đã chuyển sang trạng thái vận chuyển, các mã giảm giá đã áp dụng sẽ được giữ nguyên theo đơn hàng anh/chị nhé!"
-            )
-
-        return (
-            f"Dạ em chào anh/chị, em đã kiểm tra thông tin về yêu cầu của mình. "
-            f"Dựa trên quy định hiện hành của Tiki {citation_tags}, trường hợp này sẽ được hỗ trợ xử lý nhanh chóng. "
-            f"Anh/chị hỗ trợ kiểm tra lại thông báo đơn hàng hoặc phản hồi lại nếu cần em hỗ trợ thêm nhé ạ!"
-        )
+    def _build_semantic_fallback_draft(cls, user_query: str, intent: str, facts: Dict[str, Any], order_data: Optional[Dict[str, Any]], citations: List[Any], multi_order_context: Optional[Dict[str, Any]] = None) -> str:
+        return OfflineDraftFallback.build_draft(user_query=user_query, intent=intent, facts=facts, order_data=order_data, citations=citations, multi_order_context=multi_order_context)

@@ -425,6 +425,184 @@ class TestGatewayGuardrails(unittest.TestCase):
         self.assertEqual(mode_idor, "blocked_unauthorized_order_access")
         self.assertIn("bảo mật", d_idor.lower())
 
+    def test_chat_endpoint_executes_without_name_error_and_blocks_idor(self):
+        """HTTP POST /api/v1/conversation/chat executes cleanly and blocks cross-customer CUST-* queries."""
+        import os
+        import tempfile
+        from unittest.mock import AsyncMock, patch
+        from fastapi.testclient import TestClient
+
+        with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as tmpdir:
+            from pathlib import Path
+            from services.conversation_service.src.dialogue_state.sqlite_state_store import PersistentStateStore
+            orig_db = os.environ.get("CONVERSATIONS_DB_PATH")
+            os.environ["CONVERSATIONS_DB_PATH"] = os.path.join(tmpdir, "conv_chat.sqlite3")
+            import services.conversation_service.src.main as conv_main
+            orig_store = conv_main.state_store
+            conv_main.state_store = PersistentStateStore(Path(tmpdir) / "conv_chat.sqlite3")
+            try:
+
+                mock_intent = AsyncMock(
+                    return_value=IntentPredictionResponse(
+                        intent="track_order",
+                        confidence=0.95,
+                        is_in_scope=True,
+                        all_probabilities={"track_order": 0.95},
+                    )
+                )
+                mock_rag = AsyncMock(return_value=[])
+                mock_lookup = AsyncMock(return_value=None)
+                mock_audit = AsyncMock(return_value=True)
+
+                client = TestClient(conv_main.app)
+                with patch.object(conv_main.intent_client, "predict_intent", mock_intent), \
+                     patch.object(conv_main.rag_client, "retrieve_policies", mock_rag), \
+                     patch.object(conv_main.telemetry_client, "lookup_order", mock_lookup), \
+                     patch.object(conv_main.telemetry_client, "record_audit_log", mock_audit):
+                    resp = client.post(
+                        "/api/v1/conversation/chat",
+                        json={
+                            "query": "Kiểm tra giúp mình đơn của CUST-1007",
+                            "session_id": "test_chat_endpoint_idor",
+                            "customer_id": "CUST-1100",
+                        },
+                    )
+                self.assertEqual(resp.status_code, 200)
+                body = resp.json()
+                self.assertFalse(body["guardrail"]["allow_llm"])
+                self.assertIsNone(body["order_data"])
+                self.assertEqual(body["guardrail"]["action_type"], "ESCALATE_HUMAN")
+                conv_main.state_store.delete_session("test_chat_endpoint_idor")
+            finally:
+                conv_main.state_store = orig_store
+                if orig_db is None:
+                    os.environ.pop("CONVERSATIONS_DB_PATH", None)
+                else:
+                    os.environ["CONVERSATIONS_DB_PATH"] = orig_db
+
+    def test_clean_draft_header_and_vietnamese_currency_sentence_split(self):
+        """Regression test: LLM meta-headers and thousands separators must not cause false hallucinations."""
+        from contracts.safety import clean_draft_header, split_into_claims, evaluate_runtime_safety_envelope
+        from contracts.schemas import RetrievedDocument
+
+        raw_draft = (
+            "**BẢN THẢO CÂU TRẢ LỜI (CSKH duyệt trước khi gửi):**\n"
+            "Dạ em chào anh/chị Bùi Thị An. "
+            "TikiPRO là gói hội viên của Tiki, có ưu đãi freeship và hỗ trợ phí vận chuyển theo [POL-SHIP-002]. "
+            "Khách hàng có hội viên TikiPRO hoặc đơn hàng đạt giá trị tối thiểu từ 149.000đ được áp dụng mã miễn phí vận chuyển Freeship hỗ trợ tối đa 30.000đ - 70.000đ. "
+            "Phí giao hàng cuối cùng hiển thị minh bạch tại trang thanh toán.\n"
+            "Anh/chị có cần em hỗ trợ thêm thông tin gì khác không ạ?"
+        )
+        cleaned = clean_draft_header(raw_draft)
+        self.assertFalse(cleaned.startswith("**BẢN THẢO"))
+        self.assertTrue(cleaned.startswith("Dạ em chào anh/chị Bùi Thị An"))
+
+        claims = split_into_claims(raw_draft)
+        # Sentence with 149.000đ and 30.000đ - 70.000đ must not be chopped into fragments
+        self.assertTrue(any("149.000đ" in c and "30.000đ" in c for c in claims))
+
+        doc = RetrievedDocument(
+            doc_id="POL-SHIP-002",
+            category="shipping_delivery",
+            title="Biểu phí vận chuyển và chính sách hỗ trợ phí ship (Freeship TikiPRO)",
+            content="Cước phí vận chuyển trên Tiki được tính tự động dựa trên khoảng cách và khối lượng kiện hàng: Đơn nội thành cước cơ bản từ 18.000đ đến 25.000đ. Đơn liên tỉnh cước từ 35.000đ đến 55.000đ. Khách hàng có hội viên TikiPRO hoặc đơn hàng đạt giá trị tối thiểu từ 149.000đ được áp dụng mã miễn phí vận chuyển Freeship hỗ trợ tối đa 30.000đ - 70.000đ. Phí giao hàng cuối cùng hiển thị minh bạch tại trang thanh toán.",
+            score=1.0,
+        )
+        guard = evaluate_runtime_safety_envelope(
+            customer_query="gói TikiPRO là gì vậy",
+            draft_text=raw_draft,
+            citations=[doc],
+            order_data={"customer_name": "Bùi Thị An", "order_id": "ORD-1070"},
+        )
+        self.assertTrue(guard.allow_llm, f"Expected allow_llm=True, got reason: {guard.reason}")
+        self.assertFalse(guard.hallucination_detected)
+
+    def test_multi_order_context_never_bypasses_mandatory_safety_gates(self):
+        """Regression test (Task 1): has_multi_order_context=True must NOT bypass out_of_scope, low-confidence, or expired-policy blocks."""
+        from services.conversation_service.src.policies.response_dispatcher import ResponsePolicyDispatcher
+
+        # 1. Out of scope must block even if has_multi_order_context=True
+        oos_intent = IntentPredictionResponse(
+            intent="out_of_scope",
+            confidence=0.92,
+            is_in_scope=False,
+            all_probabilities={"out_of_scope": 0.92},
+        )
+        g_oos, _, _, _, mode_oos = ResponsePolicyDispatcher.dispatch(
+            user_query="Giải phương trình bậc 2 này giúp tôi",
+            input_type="new_question",
+            intent_resp=oos_intent,
+            order_data=None,
+            citations=[],
+            has_expired_policy=False,
+            is_live_chat=False,
+            has_multi_order_context=True,
+        )
+        self.assertFalse(g_oos.allow_llm)
+        self.assertEqual(g_oos.action_type, "ESCALATE_HUMAN")
+        self.assertEqual(mode_oos, "out_of_scope_abstain")
+
+        # 2. Low confidence (< 0.60) must block even if has_multi_order_context=True
+        low_conf_intent = IntentPredictionResponse(
+            intent="track_order",
+            confidence=0.41,
+            is_in_scope=True,
+            all_probabilities={"track_order": 0.41},
+        )
+        g_low, _, _, _, mode_low = ResponsePolicyDispatcher.dispatch(
+            user_query="Xem các đơn hàng của tôi",
+            input_type="new_question",
+            intent_resp=low_conf_intent,
+            order_data=None,
+            citations=[],
+            has_expired_policy=False,
+            is_live_chat=False,
+            has_multi_order_context=True,
+        )
+        self.assertFalse(g_low.allow_llm)
+        self.assertEqual(g_low.action_type, "ESCALATE_HUMAN")
+        self.assertEqual(mode_low, "low_confidence_abstain")
+
+        # 3. Expired policy must block even if has_multi_order_context=True
+        valid_intent = IntentPredictionResponse(
+            intent="warranty",
+            confidence=0.91,
+            is_in_scope=True,
+            all_probabilities={"warranty": 0.91},
+        )
+        g_exp, _, _, _, mode_exp = ResponsePolicyDispatcher.dispatch(
+            user_query="Các đơn hàng của tôi áp dụng bảo hành cũ 2023 được không?",
+            input_type="new_question",
+            intent_resp=valid_intent,
+            order_data=None,
+            citations=[],
+            has_expired_policy=True,
+            is_live_chat=False,
+            has_multi_order_context=True,
+        )
+        self.assertFalse(g_exp.allow_llm)
+        self.assertEqual(g_exp.action_type, "ESCALATE_HUMAN")
+        self.assertEqual(mode_exp, "blocked_expired_policy")
+
+        # 4. Negative check: valid in-scope confident query WITH multi-order context and active policy proceeds
+        g_ok, _, _, _, mode_ok = ResponsePolicyDispatcher.dispatch(
+            user_query="Kiểm tra các đơn hàng của tôi",
+            input_type="new_question",
+            intent_resp=IntentPredictionResponse(
+                intent="track_order",
+                confidence=0.93,
+                is_in_scope=True,
+                all_probabilities={"track_order": 0.93},
+            ),
+            order_data=None,
+            citations=[],
+            has_expired_policy=False,
+            is_live_chat=False,
+            has_multi_order_context=True,
+        )
+        self.assertTrue(g_ok.allow_llm)
+        self.assertEqual(mode_ok, "multi_order_disambiguation")
+
 
 if __name__ == "__main__":
     unittest.main()

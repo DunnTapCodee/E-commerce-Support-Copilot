@@ -126,6 +126,88 @@ class TestDataAndPipelineQuality(unittest.TestCase):
                     self.assertTrue(d.is_active, f"Inactive policy {d.doc_id} leaked into active retrieval!")
                     self.assertNotIn("OLD", d.doc_id, f"Historical trap policy {d.doc_id} leaked into normal query!")
 
+    def test_generalized_expired_policy_detection_without_old_doc_id_or_hardcoded_years(self):
+        """Task 1 Anti-Hardcoding Regression: Expired/superseded policies with arbitrary doc_ids (no 'OLD')
+        and recent years (e.g. 2025) or distinctive campaign names are surfaced when filter_active_only=False
+        so Temporal Policy Guard blocks them, while never leaking into normal queries or filter_active_only=True.
+        """
+        import inspect
+        import services.rag_service.src.retriever as retriever_mod
+        from services.gateway.src.guardrails import evaluate_policy_guard
+
+        src = inspect.getsource(retriever_mod)
+        self.assertNotIn('"OLD" in doc.doc_id', src)
+        self.assertNotIn("quý mão", src.lower())
+
+        synthetic_expired_2025 = RetrievedDocument(
+            doc_id="POL-FLASH-2025",
+            category="promotions",
+            title="Chương trình ưu đãi hoàn tiền thẻ tín dụng Midnight Cyber Week 2025",
+            content="Chương trình hoàn 30% giá trị đơn hàng công nghệ dịp Midnight Cyber Week áp dụng đến hết 30/11/2025.",
+            version="1.0",
+            is_active=False,
+            policy_type="temporary",
+            effective_date="2025-11-01",
+            expiration_date="2025-11-30",
+            tags=["ưu đãi cyber week", "hoàn tiền 2025"],
+        )
+        synthetic_superseded = RetrievedDocument(
+            doc_id="POL-SHIP-LEGACY",
+            category="shipping_delivery",
+            title="Gói giao hàng siêu tốc DroneX thử nghiệm nội đô",
+            content="Dịch vụ giao hàng bằng thiết bị bay DroneX đã ngừng triển khai và thay thế bằng TikiNOW 2h.",
+            version="0.9",
+            is_active=True,  # Trap: active=True but policy_type=superseded
+            policy_type="superseded",
+            effective_date="2024-01-01",
+            expiration_date="2024-12-31",
+            tags=["dronex", "giao hàng thử nghiệm"],
+        )
+
+        aug_docs = [*self.documents, synthetic_expired_2025, synthetic_superseded]
+        aug_indexer = PolicyVectorIndexer()
+        aug_indexer.fit_and_save(aug_docs, Path(self.tmp_dir.name) / "aug_policy_index.pkl")
+
+        methods = ["tfidf", *(["bm25"] if importlib.util.find_spec("rank_bm25") is not None else [])]
+        for method in methods:
+            ret = PolicyRetriever(aug_indexer, method=method)
+
+            # 1. Unseen 2025 expired policy surfaced by year cue (no 'OLD' in doc_id)
+            hits_year = ret.retrieve(
+                "Chương trình ưu đãi hoàn tiền thẻ tín dụng năm 2025 còn hiệu lực không?",
+                filter_active_only=False,
+            )
+            self.assertIn("POL-FLASH-2025", [d.doc_id for d in hits_year])
+            self.assertFalse(evaluate_policy_guard(hits_year).allow_llm)
+
+            # 2. Unseen superseded program surfaced by distinctive campaign/program name without year or 'cũ'
+            hits_campaign = ret.retrieve(
+                "Cho hỏi gói giao hàng DroneX áp dụng ở quận nào?",
+                filter_active_only=False,
+            )
+            self.assertIn("POL-SHIP-LEGACY", [d.doc_id for d in hits_campaign])
+            self.assertFalse(evaluate_policy_guard(hits_campaign).allow_llm)
+
+            # 3. Existing Quý Mão 2023 expired promo still surfaced without hardcoded phrase
+            hits_tet = ret.retrieve(
+                "Chương trình hoàn xu Tết Quý Mão còn dùng được không?",
+                filter_active_only=False,
+            )
+            self.assertIn("POL-PROMO-OLD", [d.doc_id for d in hits_tet])
+
+            # 4. Negative checks: filter_active_only=True and normal current queries NEVER return inactive/superseded docs
+            active_only_hits = ret.retrieve(
+                "Chương trình ưu đãi Midnight Cyber Week 2025",
+                filter_active_only=True,
+            )
+            self.assertTrue(all(d.is_active and d.policy_type != "superseded" for d in active_only_hits))
+
+            normal_promo_hits = ret.retrieve(
+                "Chính sách áp dụng mã giảm giá voucher và ưu đãi hiện tại trên Tiki",
+                filter_active_only=False,
+            )
+            self.assertTrue(all(d.is_active and d.policy_type != "superseded" for d in normal_promo_hits))
+
 
 if __name__ == "__main__":
     unittest.main()

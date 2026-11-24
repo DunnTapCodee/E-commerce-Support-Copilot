@@ -1,0 +1,29 @@
+{
+  "backend": "numpy_linear",
+  "method": "tfidf_logreg_numpy_vi",
+  "classes": [
+    "cancel_order",
+    "create_account",
+    "delivery_issue",
+    "delivery_time",
+    "get_discounts",
+    "human_agent",
+    "out_of_scope",
+    "payment_issue",
+    "recover_password",
+    "refund_policy",
+    "refund_status",
+    "request_refund",
+    "return_policy",
+    "return_product",
+    "shipping_costs",
+    "track_order",
+    "warranty"
+  ],
+  "ngram_max": 2,
+  "sublinear_tf": true,
+  "temperature": 1.0,
+  "vocab_file": "vocab.json",
+  "weights_file": "weights.npz",
+  "train_samples": 328
+}

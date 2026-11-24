@@ -31,6 +31,7 @@ class ResponsePolicyDispatcher:
         has_expired_policy: bool,
         is_live_chat: bool,
         unauthorized_order_reason: Optional[str] = None,
+        has_multi_order_context: bool = False,
     ) -> Tuple[GuardrailResult, str, Optional[str], Optional[str], str]:
         """Dispatch policy based on dialogue state.
         Returns:
@@ -77,58 +78,9 @@ class ResponsePolicyDispatcher:
                 "blocked_unauthorized_order_access",
             )
 
-        # Case 0: Chitchat greeting or thanks
-        if input_type == "chitchat" or intent_name.startswith("chitchat_") or intent_name == "greeting":
-            q_lower = user_query.lower()
-            if any(k in q_lower for k in ["cam on", "cảm ơn", "thanks", "thank you"]) or intent_name == "chitchat_thanks":
-                reply = MACRO_TEMPLATES["chitchat_thanks"]
-            elif any(k in q_lower for k in ["ok", "oke", "vâng", "vang", "đúng", "dung"]) or intent_name == "chitchat_confirm":
-                reply = MACRO_TEMPLATES["chitchat_confirm"]
-            else:
-                reply = MACRO_TEMPLATES["chitchat_greeting"]
-
-            guard = GuardrailResult(
-                allow_llm=False,
-                action_type="CHITCHAT_RESPONSE",
-                reason="Tin nhắn xã giao, lịch sự; trả lời tức thì mà không cần gọi ML/RAG.",
-            )
-            return guard, reply, reply, "🟢 XÃ GIAO: Khách hàng chào hỏi / cảm ơn.", "chitchat_instant"
-
-        # Case 1: Khách đòi gặp người
-        if intent_name == "human_agent" or is_live_chat:
-            guard = GuardrailResult(
-                allow_llm=False,
-                action_type="ESCALATE_HUMAN",
-                reason="Khách hàng yêu cầu hỗ trợ trực tiếp từ nhân viên.",
-            )
-            return (
-                guard,
-                MACRO_TEMPLATES["live_chat_activated"],
-                None,
-                AGENT_GUIDANCE["live_chat"],
-                "live_chat_handover",
-            )
-
-        # Case 2: Rủi ro tài chính (Hoàn tiền / Lỗi thanh toán)
-        if intent_name in FINANCIAL_INTENTS:
-            order_id = (order_data.get("order_id") if order_data else None) or "của bạn"
-            if order_id and order_id != "của bạn":
-                suggested = MACRO_TEMPLATES["refund_pending"].format(order_id=order_id)
-            else:
-                suggested = MACRO_TEMPLATES["refund_general"]
-
-            guard = GuardrailResult(
-                allow_llm=False,
-                action_type="DIRECT_REFUND_FORM",
-                reason="Yêu cầu tài chính nhạy cảm. LLM bị khóa tuyệt đối để phòng tránh rủi ro hoàn tiền tự động.",
-            )
-            draft = (
-                "Hệ thống phát hiện yêu cầu hoàn tiền / thanh toán. "
-                "Vui lòng nhấn nút 'Xem hồ sơ đối soát' để kiểm tra dữ liệu đơn hàng và quyết định thủ công."
-            )
-            return guard, draft, suggested, AGENT_GUIDANCE["financial_risk"], "blocked_financial"
-
-        # Case 2a: Pre-generation Anti-Manipulation, Warehouse Seal & Brand Sensitivity Guards
+        # Case -0.2: Pre-generation Anti-Manipulation, Warehouse Seal & Brand Sensitivity Guards
+        # Evaluated before Chitchat (Case 0) and human_agent (Case 1) so greetings or phrasing
+        # like "tổng đài viên trước đã đồng ý..." cannot mask manipulation alerts.
         manipulation_msg = detect_fabricated_prior_promise(user_query)
         if manipulation_msg:
             guard = GuardrailResult(
@@ -183,13 +135,59 @@ class ResponsePolicyDispatcher:
                 "blocked_brand_sensitivity",
             )
 
-        # Case 2b: Câu hỏi Ngoài phạm vi nghiệp vụ (Out of Scope / Off-topic)
-        q_clean = user_query.lower()
-        is_off_topic = (
-            intent_name == "out_of_scope"
-            or any(k in q_clean for k in ["ronaldo", "messi", "thời tiết", "phương trình", "toán học", "bóng đá", "thơ ca"])
-        )
-        if is_off_topic:
+        # Case 0: Chitchat greeting or thanks
+        if input_type == "chitchat" or intent_name.startswith("chitchat_") or intent_name == "greeting":
+            q_lower = user_query.lower()
+            if any(k in q_lower for k in ["cam on", "cảm ơn", "thanks", "thank you"]) or intent_name == "chitchat_thanks":
+                reply = MACRO_TEMPLATES["chitchat_thanks"]
+            elif any(k in q_lower for k in ["ok", "oke", "vâng", "vang", "đúng", "dung"]) or intent_name == "chitchat_confirm":
+                reply = MACRO_TEMPLATES["chitchat_confirm"]
+            else:
+                reply = MACRO_TEMPLATES["chitchat_greeting"]
+
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="CHITCHAT_RESPONSE",
+                reason="Tin nhắn xã giao, lịch sự; trả lời tức thì mà không cần gọi ML/RAG.",
+            )
+            return guard, reply, reply, "🟢 XÃ GIAO: Khách hàng chào hỏi / cảm ơn.", "chitchat_instant"
+
+        # Case 1: Khách đòi gặp người
+        if intent_name == "human_agent" or is_live_chat:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason="Khách hàng yêu cầu hỗ trợ trực tiếp từ nhân viên.",
+            )
+            return (
+                guard,
+                MACRO_TEMPLATES["live_chat_activated"],
+                None,
+                AGENT_GUIDANCE["live_chat"],
+                "live_chat_handover",
+            )
+
+        # Case 2: Rủi ro tài chính (Hoàn tiền / Lỗi thanh toán)
+        if intent_name in FINANCIAL_INTENTS:
+            order_id = (order_data.get("order_id") if order_data else None) or "của bạn"
+            if order_id and order_id != "của bạn":
+                suggested = MACRO_TEMPLATES["refund_pending"].format(order_id=order_id)
+            else:
+                suggested = MACRO_TEMPLATES["refund_general"]
+
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="DIRECT_REFUND_FORM",
+                reason="Yêu cầu tài chính nhạy cảm. LLM bị khóa tuyệt đối để phòng tránh rủi ro hoàn tiền tự động.",
+            )
+            draft = (
+                "Hệ thống phát hiện yêu cầu hoàn tiền / thanh toán. "
+                "Vui lòng nhấn nút 'Xem hồ sơ đối soát' để kiểm tra dữ liệu đơn hàng và quyết định thủ công."
+            )
+            return guard, draft, suggested, AGENT_GUIDANCE["financial_risk"], "blocked_financial"
+
+        # Case 2b: Câu hỏi Ngoài phạm vi nghiệp vụ (Out of Scope từ Intent Service)
+        if intent_name == "out_of_scope":
             guard = GuardrailResult(
                 allow_llm=False,
                 action_type="ESCALATE_HUMAN",
@@ -208,6 +206,19 @@ class ResponsePolicyDispatcher:
             )
 
         # Case 3: Confidence thấp hoặc Ngoài phạm vi / Dịch vụ phân loại không khả dụng
+        intent_unavailable = getattr(intent_resp, "model_name", None) == "unavailable_fallback"
+        if intent_unavailable:
+            guard = GuardrailResult(
+                allow_llm=False,
+                action_type="ESCALATE_HUMAN",
+                reason="Dịch vụ phân loại ý định tạm gián đoạn; chuyển nhân viên xử lý.",
+            )
+            draft = (
+                "Dạ em chào anh/chị! Em đã tiếp nhận thông tin yêu cầu của mình. "
+                "Em đang chuyển tiếp để nhân viên kiểm tra chi tiết và hỗ trợ anh/chị ngay đây ạ."
+            )
+            return guard, draft, None, AGENT_GUIDANCE["low_confidence"], "blocked_intent_unavailable"
+
         if not intent_resp.is_in_scope or intent_name == "unknown_query":
             guard = GuardrailResult(
                 allow_llm=False,
@@ -226,18 +237,11 @@ class ResponsePolicyDispatcher:
                 action_type="ESCALATE_HUMAN",
                 reason="Yêu cầu nằm ngoài phạm vi chính sách mặc định hoặc cần đối soát ngữ cảnh.",
             )
-            if any(k in user_query.lower() for k in ["mã giảm", "voucher", "khuyến mãi", "coupon", "ưu đãi", "giảm giá"]):
-                draft = (
-                    "Dạ em chào anh/chị! Hiện tại Tiki có rất nhiều chương trình ưu đãi và mã giảm giá áp dụng trực tiếp tại mục 'Mã Giảm Giá' trên ứng dụng và website. "
-                    "Anh/chị có thể vào mục Mã Giảm Giá tại trang chủ hoặc ngay bước thanh toán giỏ hàng để chọn áp dụng mã cho đơn hàng của mình nhé ạ. "
-                    "Nếu anh/chị cần em hỗ trợ kiểm tra mã cụ thể nào, vui lòng nhắn lại để em kiểm tra ngay giúp mình nhé!"
-                )
-            else:
-                draft = (
-                    "Dạ em chào anh/chị! Em đã tiếp nhận thông tin yêu cầu của mình. "
-                    "Em đang kiểm tra chi tiết trên hệ thống để hỗ trợ giải đáp cho anh/chị ngay đây ạ. "
-                    "Anh/chị vui lòng đợi em trong giây lát nhé!"
-                )
+            draft = (
+                "Dạ em chào anh/chị! Em đã tiếp nhận thông tin yêu cầu của mình. "
+                "Em đang kiểm tra chi tiết trên hệ thống để hỗ trợ giải đáp cho anh/chị ngay đây ạ. "
+                "Anh/chị vui lòng đợi em trong giây lát nhé!"
+            )
             return guard, draft, None, AGENT_GUIDANCE["low_confidence"], "low_confidence_abstain"
 
         # Case 4: Dính chính sách cũ hết hạn (Temporal Policy Trap)
@@ -258,6 +262,21 @@ class ResponsePolicyDispatcher:
                 MACRO_TEMPLATES["expired_policy_buffer"],
                 AGENT_GUIDANCE["expired_policy"],
                 "blocked_expired_policy",
+            )
+
+        # Case 4b: Truy vấn đa đơn hàng hợp lệ (đã vượt qua mọi cổng an toàn bắt buộc)
+        if has_multi_order_context:
+            guard = GuardrailResult(
+                allow_llm=True,
+                action_type="PROCEED_TO_LLM",
+                reason="Phát hiện truy vấn liên quan nhiều đơn hàng của khách; tiến hành liệt kê hoặc xác nhận mã đơn.",
+            )
+            return (
+                guard,
+                "",
+                None,
+                "📦 NHIỀU ĐƠN HÀNG: Hệ thống đã lọc các đơn phù hợp và yêu cầu xác nhận mã đơn cụ thể trước khi thao tác.",
+                "multi_order_disambiguation",
             )
 
         # Case 5: Happy path (Cho phép LLM sinh nháp)

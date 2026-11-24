@@ -11,9 +11,11 @@ import time
 from typing import Any, Dict, List, Optional, Tuple
 
 import requests
+from contracts.llm_failover import DEFAULT_OPENAI_BASE_URL, get_default_openai_model
 from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
 from services.intent_service.src.normalizer import normalize_vietnamese_query
+from services.intent_service.src.offline_fallback import OfflineIntentFallback
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
@@ -21,8 +23,8 @@ GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMI
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
-OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
+OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", DEFAULT_OPENAI_BASE_URL).rstrip("/")
+OPENAI_MODEL = get_default_openai_model()
 
 INTENT_DESCRIPTIONS: Dict[str, str] = {
     "track_order": "Tra cứu thông tin, vị trí, giá tiền, tổng thanh toán, kiểm tra lại đơn, hóa đơn VAT, sản phẩm, tiến độ, trạng thái xử lý hoặc theo dõi bưu kiện đơn hàng (ví dụ: 'đơn ORD-1003 đang ở đâu', 'đơn hàng của mình bao nhiêu tiền', 'tôi muốn kiểm tra lại đơn', 'xuất hóa đơn VAT')",
@@ -268,94 +270,8 @@ class LLMIntentClassifier:
         return None
 
     def _semantic_fallback(self, query: str) -> IntentPredictionResponse:
-        """Accurate fallback classifier for testing and offline environments with unaccented normalization."""
-        norm_query, _ = normalize_vietnamese_query(query)
-        q_lower = norm_query.lower()
-
-        # Handle context tags from conversation service
-        prev_intent = None
-        prev_match = re.search(r"\[prev_intent:([a-z_]+)\]", q_lower)
-        if prev_match:
-            prev_intent = prev_match.group(1)
-
-        # 1. Negation switch cues (e.g. "thôi không hủy nữa, xem bao giờ giao")
-        if any(w in q_lower for w in ["thôi không hủy", "thoi khong huy", "không muốn hủy", "đổi ý"]):
-            if any(w in q_lower for w in ["giao", "khi nào", "bao giờ", "arrive", "time"]):
-                return self._build_resp("delivery_time", 0.94, query)
-            return self._build_resp("track_order", 0.90, query)
-
-        # 2. Context carryover for slot filling (e.g. query is just ORD-XXXX or short answer)
-        if prev_intent and len(query.split()) <= 5 and ("ord-" in q_lower or "mã đơn" in q_lower or "số đt" in q_lower):
-            return self._build_resp(prev_intent, 0.95, query)
-
-        # 3. Explicit Human Agent
-        if re.search(r"\b(gặp.*(nhân viên|người thật|chuyên viên)|nói chuyện với người|tổng đài viên|human agent|live agent|support representative|support staff|nhân viên tư vấn|nhân viên trực|chuyển máy.*nhân viên|connect.*customer support|talk to real)\b", q_lower):
-            return self._build_resp("human_agent", 0.96, query)
-
-        # 4. Request refund (action of requesting money back - prioritized over cancel if refund is asked)
-        if re.search(r"\b(yêu cầu hoàn tiền|hoàn lại tiền|muốn hoàn.*tiền|hoàn tiền cho tôi|hoàn trả.*tài khoản|hoàn tiền lại|lấy lại tiền|i want.*refund|demand.*refund|refund my money|hoàn tiền gấp|thủ tục.*lấy lại tiền|hủy.*hoàn tiền|hoàn tiền.*hủy|trả lại tiền cho tôi)\b", q_lower):
-            return self._build_resp("request_refund", 0.95, query)
-
-        # 5. Refund status (asking if refund arrived / checking status)
-        if re.search(r"\b(tiền hoàn|tiến độ hoàn tiền|trạng thái.*hoàn tiền|refund.*status|when.*refund|refund.*processed|thông báo hoàn tiền)\b", q_lower):
-            return self._build_resp("refund_status", 0.94, query)
-
-        # 6. Refund policy (rules/terms/methods of refunding)
-        if re.search(r"\b(chính sách hoàn tiền|quy định.*hoàn|thời hạn hoàn tiền|điều kiện.*hoàn tiền|refund policy|refund terms|chính sách trả lại tiền|hoàn tiền.*mất bao lâu|refund process|hoàn tiền.*(momo|ví|ngân hàng|thẻ)|hoàn.*về ví)\b", q_lower):
-            return self._build_resp("refund_policy", 0.94, query)
-
-        # 7. Cancel order (checked after refund)
-        if re.search(r"\b(hủy đơn|huy don|hủy lệnh|huy lenh|cancel.*order|cancel.*purchase|dừng đơn|dung don|không muốn mua|khong muon mua|muốn hủy đơn|hủy giúp tôi đơn)\b", q_lower):
-            return self._build_resp("cancel_order", 0.95, query)
-
-        # 8. Payment issues & payment methods
-        if re.search(r"\b(tiền mặt|phương thức thanh toán|hình thức thanh toán|thanh toán bằng|cách thanh toán|trừ.*(2 lần|hai lần)|lỗi thanh toán|thanh toán thất bại|thẻ.*bị từ chối|vnpay|momo|zalopay|mã qr.*thanh toán|payment failed|payment error|charged twice|trừ tiền|credit card.*error|sự cố trừ tiền|không thanh toán được|chỉ cho thanh toán)\b", q_lower):
-            return self._build_resp("payment_issue", 0.95, query)
-
-        # 9. Warranty guidelines / terms (separated cleanly under canonical 16-intent taxonomy)
-        if re.search(r"\b(bảo hành|bao hanh|bảo dưỡng|chính sách bảo hành|có được bảo hành|sửa chữa bảo hành|warranty)\b", q_lower):
-            return self._build_resp("warranty", 0.94, query)
-
-        # 9b. Return policy (guidelines/rules for returns)
-        if re.search(r"\b(chính sách.*đổi trả|quy định.*(đổi|trả)|thời hạn.*(đổi|trả)|điều kiện.*(đổi|trả)|return policy|quy trình đổi trả|bóc seal.*đổi trả|newest.*return policy|đổi trả.*bao nhiêu ngày|return.*condition|can i return|hàng chính hãng|chính hãng)\b", q_lower):
-            return self._build_resp("return_policy", 0.94, query)
-
-        # 10. Return product (action on a specific item)
-        if re.search(r"\b(đổi.*size|đổi.*áo|trả lại hàng|trả hàng|hàng.*lỗi.*đổi|đổi cái mới|đổi sang|defective.*return|exchange|damaged.*product|hàng không đúng mô tả|đổi trả món đồ|muốn trả lại|yêu cầu trả lại|yêu cầu trả sản phẩm|trả lại cái|return this product)\b", q_lower):
-            return self._build_resp("return_product", 0.93, query)
-
-        # 11. Shipping costs
-        if re.search(r"\b(phí ship|phi ship|phí vận chuyển|cước|freeship|shipping costs?|shipping fee|delivery fee|phí giao hàng|delivery free|free.*delivery|biểu phí giao hàng)\b", q_lower):
-            return self._build_resp("shipping_costs", 0.95, query)
-
-        # 12. Delivery issues (complaints about delivery)
-        if re.search(r"\b(chưa giao.*báo|giao trễ|giao chậm|chưa nhận được|quá hạn|shipper.*không|giao nhầm|nhầm địa chỉ|thất lạc|delivery delay|package delayed|courier|delivery problem)\b", q_lower):
-            return self._build_resp("delivery_issue", 0.94, query)
-
-        # 13. Delivery time (asking when parcel will arrive)
-        if re.search(r"\b(bao giờ.*(nhận|giao|tới)|khi nào.*(giao|tới|nhận)|mấy ngày.*(giao|có|nhận)|thời gian.*(giao|vận chuyển)|when.*arrive|how long.*(delivery|shipping)|estimated delivery|khi nào.*shipper|ngày mai có giao kịp|giao hàng tới|giao tới)\b", q_lower):
-            return self._build_resp("delivery_time", 0.94, query)
-
-        # 13b. Get discounts / Promotions / Vouchers
-        if re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|chiết khấu|quà tặng|tiki xu)\b", q_lower):
-            return self._build_resp("get_discounts", 0.95, query)
-
-        # 13c. Account creation & password recovery
-        if re.search(r"\b(quên mật khẩu|đổi mật khẩu|khôi phục mật khẩu|lấy lại mật khẩu|reset password|recover password|forgot password)\b", q_lower):
-            return self._build_resp("recover_password", 0.94, query)
-        if re.search(r"\b(tạo tài khoản|đăng ký tài khoản|đăng ký thành viên|mở tài khoản|create account|sign up|register account)\b", q_lower):
-            return self._build_resp("create_account", 0.94, query)
-
-        # 14. Track order & Order details (status, progress, price, amount, VAT invoice)
-        if re.search(r"\b(track|tracking|ord-[a-z0-9-]+|đơn hàng.*ở đâu|đơn hàng.*đến đâu|kiểm tra.*đơn|kiểm tra lại đơn|tra cứu.*đơn|xuất kho|định vị|bưu kiện|tiến độ.*đơn|where is my|delivery status|bao nhiêu tiền|hết bao nhiêu|tổng tiền|giá bao nhiêu|đơn.*của mình.*là gì|hóa đơn.*vat|hóa đơn đỏ|xuất hóa đơn)\b", q_lower):
-            return self._build_resp("track_order", 0.94, query)
-
-        # 15. General keywords
-        if "policy" in q_lower or "chính sách" in q_lower:
-            return self._build_resp("return_policy", 0.85, query)
-
-        # 16. Out of scope (weather, math, general trivia, unrelated chat)
-        return self._build_resp("out_of_scope", 0.90, query, is_in_scope=False)
+        """Delegate offline semantic classification to OfflineIntentFallback."""
+        return OfflineIntentFallback.classify(query)
 
     def _build_resp(
         self,
@@ -365,13 +281,7 @@ class LLMIntentClassifier:
         is_in_scope: bool = True,
         model_name: str = "semantic_rule_fallback",
     ) -> IntentPredictionResponse:
-        """Construct IntentPredictionResponse with language detection."""
-        is_vi = bool(re.search(r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", query.lower()))
-        return IntentPredictionResponse(
-            intent=intent,
-            confidence=conf,
-            is_in_scope=is_in_scope and intent in TARGET_INTENTS and intent != OOS_LABEL,
-            language="vi" if is_vi else "en",
-            model_name=model_name,
-            all_probabilities={intent: conf},
+        """Construct IntentPredictionResponse via OfflineIntentFallback."""
+        return OfflineIntentFallback.build_response(
+            intent, conf, query, is_in_scope=is_in_scope, model_name=model_name
         )

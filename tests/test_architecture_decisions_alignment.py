@@ -52,7 +52,7 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
             intent="out_of_scope",
             confidence=0.95,
             is_in_scope=False,
-            model_name="mainnewnol/gpt-oss-120b",
+            model_name="vantoanbk57/deepseek-v4.1-flash",
             all_probabilities={"out_of_scope": 0.95},
         )
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -69,7 +69,7 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
                     ) as mock_ml:
                         resp = predictor.predict("Hôm nay thời tiết sao?")
                         self.assertEqual(resp.intent, "out_of_scope")
-                        self.assertEqual(resp.model_name, "mainnewnol/gpt-oss-120b")
+                        self.assertEqual(resp.model_name, "vantoanbk57/deepseek-v4.1-flash")
                         mock_llm.assert_called_once()
                         mock_ml.assert_not_called()
 
@@ -108,6 +108,67 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
                         self.assertEqual(resp.model_name, "legacy_baseline")
                         mock_ml.assert_called_once()
                         mock_gemini.assert_not_called()
+
+    def test_online_llm_failure_with_low_confidence_ml_never_sneaks_semantic_regex_fallback(self):
+        """ADR-002 Regression: When primary LLM fails and ML returns low confidence (e.g. 0.10 OOV),
+        IntentPredictor must NOT call _semantic_fallback to inflate confidence; it must let downstream escalate.
+        """
+        low_ml = IntentPredictionResponse(
+            intent="track_order",
+            confidence=0.10,
+            is_in_scope=True,
+            model_name="legacy_baseline",
+            all_probabilities={"track_order": 0.10},
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with patch.dict(
+                os.environ,
+                {
+                    "INTENT_BACKEND": "llm",
+                    "OPENAI_API_KEY": "mock-broken-key",
+                    "DISABLE_EXTERNAL_LLM": "",
+                },
+                clear=False,
+            ):
+                with patch.object(IntentPredictor, "_load_legacy_model", return_value=None):
+                    predictor = IntentPredictor(model_source=tmpdir, intent_backend="llm")
+                    predictor.legacy_model = MagicMock()
+                    with (
+                        patch.object(predictor.llm_classifier, "predict", side_effect=RuntimeError("LLM timeout")),
+                        patch.object(predictor, "_predict_ml", return_value=low_ml) as mock_ml,
+                        patch.object(predictor.llm_classifier, "_semantic_fallback") as mock_sem,
+                    ):
+                        resp = predictor.predict("Kiểm tra đơn hàng ORD-1001 giúp tôi")
+                        self.assertEqual(resp.confidence, 0.10)
+                        self.assertEqual(resp.model_name, "legacy_baseline")
+                        mock_ml.assert_called_once()
+                        mock_sem.assert_not_called()
+
+                        guard = evaluate_intent_guard(resp)
+                        self.assertFalse(guard.allow_llm)
+                        self.assertEqual(guard.action_type, "ESCALATE_HUMAN")
+
+    def test_deployed_bilingual_numpy_linear_artifact_loads_without_sklearn_warnings(self):
+        """OD-002 Regression: Deployed Module 1 bilingual artifact supports VI & EN with zero pickle warnings."""
+        import warnings
+
+        model_dir = Path(__file__).resolve().parents[1] / "artifacts" / "models" / "intent"
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            predictor = IntentPredictor(model_source=model_dir, intent_backend="ml")
+            vi_in = predictor.predict("Tôi muốn hủy đơn hàng vừa đặt giúp mình")
+            en_in = predictor.predict("I want to track my order status")
+            vi_oos = predictor.predict("Hướng dẫn cách nấu phở bò ngon tại nhà")
+
+        inconsistent_warnings = [w for w in caught if "InconsistentVersionWarning" in str(w.category)]
+        self.assertEqual(inconsistent_warnings, [], f"Unexpected sklearn version warnings: {inconsistent_warnings}")
+        self.assertFalse(predictor.is_legacy)
+        self.assertEqual(vi_in.intent, "cancel_order")
+        self.assertGreaterEqual(vi_in.confidence, 0.60)
+        self.assertEqual(en_in.intent, "track_order")
+        self.assertGreaterEqual(en_in.confidence, 0.60)
+        self.assertEqual(vi_oos.intent, "out_of_scope")
+        self.assertFalse(vi_oos.is_in_scope)
 
     def test_both_llm_and_ml_unavailable_returns_safe_observable_abstention(self):
         """When both LLM and ML are unavailable, predictor returns fail-closed abstention that triggers ESCALATE_HUMAN."""
@@ -152,12 +213,12 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             with patch.dict(
                 os.environ,
-                {"INTENT_BACKEND": "hybrid", "OPENAI_MODEL": "mainnewnol/gpt-oss-120b"},
+                {"INTENT_BACKEND": "hybrid", "OPENAI_MODEL": "vantoanbk57/deepseek-v4.1-flash"},
                 clear=False,
             ):
                 with patch.object(IntentPredictor, "_load_legacy_model", return_value=None):
                     predictor = IntentPredictor(model_source=tmpdir, intent_backend="hybrid")
-                    self.assertEqual(predictor.models["primary"], "openai_compatible:mainnewnol/gpt-oss-120b")
+                    self.assertEqual(predictor.models["primary"], "openai_compatible:vantoanbk57/deepseek-v4.1-flash")
                     self.assertEqual(predictor.models["ml_fallback"], "unavailable")
 
                     with patch("services.intent_service.src.main.predictor_instance", predictor):
@@ -316,16 +377,16 @@ class TestConfigurationConsistencyAlignment(unittest.TestCase):
                 self.assertTrue(len(draft) > 0)
 
     def test_service_default_models_match_ckey_when_env_unset(self):
-        """Service config defaults align with mainnewnol/gpt-oss-120b when OPENAI_MODEL is not in env."""
+        """Service config defaults align with vantoanbk57/deepseek-v4.1-flash when OPENAI_MODEL is not in env."""
         from services.conversation_service.src import config as conv_cfg
         from services.document_service.src import config as doc_cfg
 
         clean_env = {k: v for k, v in os.environ.items() if k not in ("OPENAI_MODEL", "LLM_MODEL")}
         with patch.dict(os.environ, clean_env, clear=True):
-            self.assertEqual(os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b"), "mainnewnol/gpt-oss-120b")
+            self.assertEqual(os.getenv("OPENAI_MODEL", "vantoanbk57/deepseek-v4.1-flash"), "vantoanbk57/deepseek-v4.1-flash")
         # Direct code defaults verified in modules when imported without legacy overrides
         self.assertNotIn("openai-gpt-oss-20b", getattr(conv_cfg, "OPENAI_MODEL", ""))
-        self.assertNotIn("deepseek-v4.1-flash", getattr(doc_cfg, "OPENAI_MODEL", ""))
+        self.assertNotIn("openai-gpt-oss-20b", getattr(doc_cfg, "OPENAI_MODEL", ""))
 
 
 class TestTimeHandlingAlignment(unittest.TestCase):

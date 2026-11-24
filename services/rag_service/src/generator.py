@@ -64,10 +64,12 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest")
 GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
+from contracts.llm_failover import DEFAULT_OPENAI_BASE_URL, get_default_openai_model
+
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY") or os.getenv("LLM_API_KEY") or ""
-OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or "https://api.xah.io/v1").rstrip("/")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or "mainnewnol/gpt-oss-120b"
+OPENAI_BASE_URL = (os.getenv("OPENAI_BASE_URL") or os.getenv("LLM_BASE_URL") or DEFAULT_OPENAI_BASE_URL).rstrip("/")
+OPENAI_MODEL = get_default_openai_model()
 
 
 class LLMGenerator:

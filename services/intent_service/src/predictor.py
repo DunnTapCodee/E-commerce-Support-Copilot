@@ -2,12 +2,14 @@
 import importlib.metadata
 import json
 import os
+import re
 import time
+import warnings
 from pathlib import Path
 
 import logging
 import numpy as np
-from contracts.llm_failover import is_external_llm_disabled
+from contracts.llm_failover import get_default_openai_model, is_external_llm_disabled
 from contracts.schemas import IntentPredictionResponse
 from services.intent_service.src.llm_classifier import LLMIntentClassifier
 from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
@@ -90,7 +92,79 @@ class MiniLMLRBackend(OnnxTransformerBackend):
         return self.lr.predict_proba(pooled)[0]
 
 
-BACKENDS = {'sklearn': SklearnBackend, 'onnx_transformer': OnnxTransformerBackend, 'minilm_lr': MiniLMLRBackend}
+class NumpyLinearBackend:
+    """Serialization-safe TF-IDF + calibrated linear classifier using pure NumPy + JSON.
+
+    Eliminates scikit-learn pickle version coupling (e.g. 1.6.1 vs 1.9.1) across local,
+    CI, and Docker environments while preserving deterministic calibrated probabilities.
+    """
+
+    TOKEN_RE = re.compile(r"(?u)\b\w\w+\b")
+
+    def __init__(self, path: Path, meta: dict):
+        self.meta = meta
+        self.classes = [str(c) for c in meta["classes"]]
+        vocab_payload = json.loads((path / meta.get("vocab_file", "vocab.json")).read_text(encoding="utf-8"))
+        self.vocab: dict[str, int] = {str(k): int(v) for k, v in vocab_payload["vocab"].items()}
+        self.ngram_max = int(meta.get("ngram_max", 2))
+        self.sublinear_tf = bool(meta.get("sublinear_tf", True))
+        self.temperature = float(meta.get("temperature", 1.0))
+
+        weights = np.load(path / meta.get("weights_file", "weights.npz"), allow_pickle=False)
+        self.idf = np.asarray(weights["idf"], dtype=np.float64)
+        self.coef = np.asarray(weights["coef"], dtype=np.float64)
+        self.intercept = np.asarray(weights["intercept"], dtype=np.float64)
+
+        if self.coef.shape != (len(self.classes), len(self.idf)):
+            raise ValueError("NumpyLinearBackend coef shape does not match classes/vocabulary")
+        if self.intercept.shape != (len(self.classes),):
+            raise ValueError("NumpyLinearBackend intercept shape does not match classes")
+
+    def _vectorize(self, text: str) -> tuple[np.ndarray, int]:
+        tokens = self.TOKEN_RE.findall(text.lower())
+        counts: dict[int, int] = {}
+        n_tokens = len(tokens)
+        for n in range(1, self.ngram_max + 1):
+            if n_tokens < n:
+                continue
+            for i in range(n_tokens - n + 1):
+                feat = tokens[i] if n == 1 else " ".join(tokens[i : i + n])
+                idx = self.vocab.get(feat)
+                if idx is not None:
+                    counts[idx] = counts.get(idx, 0) + 1
+
+        vec = np.zeros(len(self.idf), dtype=np.float64)
+        if not counts:
+            return vec, 0
+
+        for idx, tf in counts.items():
+            tf_val = (1.0 + np.log(tf)) if self.sublinear_tf else float(tf)
+            vec[idx] = tf_val * self.idf[idx]
+
+        norm = float(np.linalg.norm(vec))
+        if norm > 0.0:
+            vec /= norm
+        return vec, len(counts)
+
+    def predict_proba(self, text: str) -> np.ndarray:
+        vec, nnz = self._vectorize(text)
+        if nnz == 0:
+            # Fail-safe OOV distribution: cap confidence well below 0.60 so downstream escalates
+            probs = np.full(len(self.classes), 0.85 / max(1, len(self.classes) - 1), dtype=np.float64)
+            if OOS_LABEL in self.classes:
+                probs[self.classes.index(OOS_LABEL)] = 0.15
+            return probs / probs.sum()
+
+        logits = (self.coef @ vec + self.intercept) / max(self.temperature, 1e-6)
+        return softmax(logits)
+
+
+BACKENDS = {
+    'sklearn': SklearnBackend,
+    'numpy_linear': NumpyLinearBackend,
+    'onnx_transformer': OnnxTransformerBackend,
+    'minilm_lr': MiniLMLRBackend,
+}
 
 
 class IntentPredictor:
@@ -147,9 +221,11 @@ class IntentPredictor:
         for d in multi_dirs:
             if d.exists() and (d / "model_intent_full.pkl").exists() and (d / "tfidf_vectorizer_full.pkl").exists() and (d / "label_encoder_full.pkl").exists():
                 try:
-                    self.legacy_model = joblib.load(d / "model_intent_full.pkl")
-                    self.legacy_vectorizer = joblib.load(d / "tfidf_vectorizer_full.pkl")
-                    self.legacy_encoder = joblib.load(d / "label_encoder_full.pkl")
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", category=UserWarning)
+                        self.legacy_model = joblib.load(d / "model_intent_full.pkl")
+                        self.legacy_vectorizer = joblib.load(d / "tfidf_vectorizer_full.pkl")
+                        self.legacy_encoder = joblib.load(d / "label_encoder_full.pkl")
                     self.legacy_classes = [str(c) for c in self.legacy_encoder.classes_]
                     self.is_multi_component = True
                     self.is_legacy = True
@@ -167,7 +243,9 @@ class IntentPredictor:
         for f in single_files:
             if f.exists():
                 try:
-                    self.legacy_model = joblib.load(f)
+                    with warnings.catch_warnings():
+                        warnings.simplefilter("ignore", category=UserWarning)
+                        self.legacy_model = joblib.load(f)
                     self.legacy_classes = [str(c) for c in getattr(self.legacy_model, "classes_", [])]
                     self.is_multi_component = False
                     self.is_legacy = True
@@ -182,7 +260,7 @@ class IntentPredictor:
 
     @property
     def models(self):
-        openai_model = os.getenv("OPENAI_MODEL", "mainnewnol/gpt-oss-120b")
+        openai_model = get_default_openai_model()
         ml_models = (
             {lang: meta["method"] for lang, meta in self.metadata.items()}
             if (not self.is_legacy and self.metadata)

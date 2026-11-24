@@ -9,10 +9,25 @@ import os
 from pathlib import Path
 import ssl
 from typing import Any, AsyncGenerator, Dict, List, Optional, Union
-import httpx
-import requests
+try:
+    import httpx
+except ImportError:  # Lightweight containers (e.g. telemetry_service) may omit httpx
+    httpx = None  # type: ignore[assignment]
+
+try:
+    import requests
+except ImportError:  # Lightweight containers (e.g. gateway) may omit requests
+    requests = None  # type: ignore[assignment]
 
 logger = logging.getLogger("contracts.llm_failover")
+
+DEFAULT_OPENAI_BASE_URL = "https://api.xah.io/v1"
+DEFAULT_OPENAI_MODEL = "vantoanbk57/deepseek-v4.1-flash"
+
+
+def get_default_openai_model() -> str:
+    """Single source of truth for configured OpenAI-compatible model ID."""
+    return os.getenv("OPENAI_MODEL") or os.getenv("LLM_MODEL") or DEFAULT_OPENAI_MODEL
 
 
 def _resolve_ca_bundle() -> Optional[str]:
@@ -152,13 +167,22 @@ def call_chat_completion_sync_with_failover(
         masked_key = f"{key[:8]}...{key[-4:]}"
 
         try:
-            resp = requests.post(
-                url,
-                json=payload,
-                headers=req_headers,
-                timeout=timeout,
-                verify=get_tls_verify_for_requests(),
-            )
+            if requests is not None:
+                resp = requests.post(
+                    url,
+                    json=payload,
+                    headers=req_headers,
+                    timeout=timeout,
+                    verify=get_tls_verify_for_requests(),
+                )
+            else:
+                resp = httpx.post(
+                    url,
+                    json=payload,
+                    headers=req_headers,
+                    timeout=timeout,
+                    verify=get_tls_verify_for_httpx(),
+                )
             if resp.status_code == 200:
                 data = resp.json()
                 choices = data.get("choices", [])
