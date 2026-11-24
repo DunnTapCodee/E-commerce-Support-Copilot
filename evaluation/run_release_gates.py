@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 import sys
 import time
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
@@ -34,7 +34,10 @@ from services.telemetry_service.src.metrics import (
 )
 
 
-def run_all_release_gates() -> Dict[str, Any]:
+def run_all_release_gates(
+    output_path: Optional[Path] = None,
+    registry_path: Optional[Path] = None,
+) -> Dict[str, Any]:
     print("=" * 70)
     print("CMU MLIP QUALITY ASSURANCE & RELEASE GATES RUNNER")
     print("E-commerce Support Copilot (Tiki / Shopee Production Quality)")
@@ -227,10 +230,21 @@ def run_all_release_gates() -> Dict[str, Any]:
         },
     }
 
-    # Save to reports directory
-    out_dir = ROOT_DIR / "reports"
-    out_dir.mkdir(parents=True, exist_ok=True)
-    out_path = out_dir / "mlip_release_gates_results.json"
+    if registry_path:
+        from contracts.release_config import ReleaseConfigRegistry
+        report_payload["rollback_advisory"] = ReleaseConfigRegistry(registry_path).evaluate_drift_and_recommend_rollback(
+            drift_report=drift_check,
+            release_report=report_payload,
+        )
+
+    # Save to reports directory (never overwriting tracked baseline when output_path is specified)
+    if output_path is not None:
+        out_path = Path(output_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    else:
+        out_dir = ROOT_DIR / "reports"
+        out_dir.mkdir(parents=True, exist_ok=True)
+        out_path = out_dir / "mlip_release_gates_results.json"
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(report_payload, f, ensure_ascii=False, indent=2)
     print(f"\n[Artifact Saved]: {out_path}")

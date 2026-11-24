@@ -29,12 +29,23 @@ class BehavioralTestSuite:
         if predictor is not None:
             self.predictor = predictor
         else:
+            intent_url = os.getenv("INTENT_SERVICE_URL")
+            local_pred = None
             try:
                 from services.intent_service.src.predictor import IntentPredictor
-                self.predictor = IntentPredictor()
+                cand = IntentPredictor()
+                if getattr(cand, "pipeline", None) is not None:
+                    local_pred = cand
             except Exception:
-                intent_url = os.getenv("INTENT_SERVICE_URL", "http://intent_service:8005")
+                local_pred = None
+
+            if local_pred is not None:
+                self.predictor = local_pred
+            elif intent_url:
                 self.predictor = HttpIntentPredictorAdapter(intent_url)
+            else:
+                from services.intent_service.src.predictor import IntentPredictor
+                self.predictor = IntentPredictor()
 
     def run_mft(self) -> Dict[str, Any]:
         """Minimum Functionality Tests (MFT): Clear, simple, critical queries."""

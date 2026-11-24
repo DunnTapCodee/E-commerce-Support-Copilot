@@ -11,6 +11,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
+from contracts.release_config import ReleaseConfigRegistry
 from contracts.schemas import (
     AuditLogCreate,
     HumanActionUpdate,
@@ -276,6 +277,65 @@ def get_incident_clusters(window_hours: int = 24, min_cluster_size: int = 3):
 def record_incident_broadcast(payload: IncidentBroadcastRequest):
     """Log staff bulk broadcast announcement for an incident cluster."""
     return repo_instance.record_incident_broadcast(payload)
+
+
+# -------------------------------------------------------------------
+# Dot 3 (Task 6): Versioned Release Config Snapshots & Rollback Ops
+# -------------------------------------------------------------------
+def _get_release_registry() -> ReleaseConfigRegistry:
+    reg_env = os.getenv("RELEASE_REGISTRY_PATH")
+    if reg_env:
+        return ReleaseConfigRegistry(Path(reg_env))
+    return ReleaseConfigRegistry(repo_instance.db_path.parent / "release_config_registry.json")
+
+
+@app.get("/ops/releases")
+def list_release_snapshots():
+    """List immutable runtime config snapshots and rollback audit history."""
+    return _get_release_registry().list_snapshots()
+
+
+@app.post("/ops/releases/snapshot")
+def create_release_snapshot(payload: Optional[Dict[str, Any]] = None):
+    """Create and optionally activate a new runtime config version snapshot."""
+    body = payload or {}
+    try:
+        return _get_release_registry().create_snapshot(
+            config=body.get("config"),
+            created_by=body.get("created_by", "Ops Engineer"),
+            notes=body.get("notes", ""),
+            release_gate_status=body.get("release_gate_status", "UNVERIFIED"),
+            version_id=body.get("version_id"),
+            activate=bool(body.get("activate", True)),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@app.post("/ops/releases/rollback")
+def rollback_release_snapshot(payload: Dict[str, Any]):
+    """Roll active config back to target_version_id (or previous_version_id) with mandatory reason."""
+    try:
+        return _get_release_registry().rollback_to_version(
+            target_version_id=payload.get("target_version_id"),
+            reason=payload.get("reason", ""),
+            performed_by=payload.get("performed_by", "Ops Engineer"),
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@app.get("/ops/releases/health-gate")
+def evaluate_release_rollback_advisory(limit: int = 100):
+    """Combine telemetry drift report with ReleaseConfigRegistry rollback recommendation."""
+    stats = repo_instance.get_stats()
+    recent_records = (stats.get("recent_records") or stats.get("recent_logs") or [])[:limit]
+    drift_report = detect_telemetry_drift(recent_records)
+    advisory = _get_release_registry().evaluate_drift_and_recommend_rollback(drift_report=drift_report)
+    return {
+        "drift_report": drift_report,
+        "rollback_advisory": advisory,
+    }
 
 
 @app.get("/orders/cache/stats")
