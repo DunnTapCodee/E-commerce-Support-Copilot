@@ -27,7 +27,7 @@ Risk rules apply independently of path: `R2` work within already-authorized scop
 
 - **Bug:** observe/reproduce where feasible → find root cause → add meaningful regression evidence → implement smallest coherent fix → verify.
 - **Feature:** establish behavior and negative cases → inspect established patterns → implement increments → verify each coherent slice.
-- Avoid test-specific hardcoding, unrelated refactors, unapproved interface changes, or modifications to existing user work.
+- Avoid test-specific hardcoding, narrow exact-phrase band-aids, fabricated/placeholder pass metrics, unrelated refactors, unapproved interface changes, or modifications to existing user work. Verify generalization with unseen paraphrase and negative cases before closing.
 - If unable to reproduce, report confidence and alternative evidence; do not invent a successful reproduction.
 
 ## Verification

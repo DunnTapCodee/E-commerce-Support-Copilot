@@ -9,7 +9,7 @@
 ## 1. Purpose & Decision Strategy
 
 - **`Confirmed Requirement` (`FR-INT-001`, `FR-INT-002`):** Classify customer queries using **`LLM primary -> ML fallback when LLM is unavailable -> safe human escalation`**.
-- **`Confirmed Requirement` (`FR-INT-001`, `FR-INT-003`):** Primary LLM uses CKEY.VN (`LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=mainnewnol/gpt-oss-120b`, `INTENT_BACKEND=llm`). Do not silently fall back to Gemini or another external provider when CKEY.VN fails.
+- **`Confirmed Requirement` (`FR-INT-001`, `FR-INT-003`):** Primary LLM uses CKEY.VN (`LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=vantoanbk57/deepseek-v4.1-flash`, `INTENT_BACKEND=llm`). Do not silently fall back to Gemini or another external provider when CKEY.VN fails.
 - **`Observed Implementation` Gap:** `artifacts/models/intent/` currently contains only `.gitkeep` (no deployed Module 1 router). Local ML fallback currently relies on legacy sklearn `1.6.1` artifacts (`ML-model/` or `artifacts/models/intent_model.pkl`) when present.
 
 ---
@@ -26,7 +26,7 @@
       "confidence": 0.93,
       "is_in_scope": true,
       "language": "vi",
-      "model_name": "mainnewnol/gpt-oss-120b",
+      "model_name": "vantoanbk57/deepseek-v4.1-flash",
       "latency_ms": 120.5,
       "all_probabilities": {"track_order": 0.93}
     }
@@ -97,7 +97,7 @@
 
 | ID | Verifiable Condition | Current Automated Evidence (`Observed`) |
 | --- | --- | --- |
-| `AC-INT-001` | Mocked LLM `out_of_scope` returns LLM response with `mainnewnol/gpt-oss-120b` and 0 ML calls. | `tests/test_architecture_decisions_alignment.py::test_llm_primary_prioritized_even_when_out_of_scope` |
+| `AC-INT-001` | Mocked LLM `out_of_scope` returns LLM response with `vantoanbk57/deepseek-v4.1-flash` and 0 ML calls. | `tests/test_architecture_decisions_alignment.py::test_llm_primary_prioritized_even_when_out_of_scope` |
 | `AC-INT-002` | Unavailable LLM + loaded ML invokes `_predict_ml()` with ML `model_name` and 0 Gemini calls. | `tests/test_architecture_decisions_alignment.py::test_llm_unavailable_falls_back_to_loaded_ml_artifact` |
 | `AC-INT-003` | Unavailable LLM + no ML returns `unavailable_fallback` (`0.0`, `is_in_scope=False`), triggering `ESCALATE_HUMAN` in Gateway and Conversation Service (even with active session intent). | `tests/test_architecture_decisions_alignment.py` (`test_both_llm_and_ml_unavailable_*`, `test_conversation_service_fails_closed_*`, `test_gateway_fallback_escalates_*`) |
 | `AC-INT-004` | `ml` mode with missing artifacts raises `RuntimeError` without calling LLM. | `tests/test_llm_failover_and_offline_isolation.py::test_ml_mode_missing_artifacts_never_calls_external_llm` |

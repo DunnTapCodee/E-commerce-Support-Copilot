@@ -65,7 +65,7 @@ Use current code/config to verify runtime behavior and `docs/product/requirement
 
 ### Confirmed decisions (implemented/documented in Baseline v1)
 1. **Primary UI (`ADR-001`):** React/Vite (`frontend/`) is the official primary UI; Streamlit (`services/ui_service/`) is retained as legacy/reference without deleting it or changing Compose UI deployment yet.
-2. **Intent Classification (`ADR-002`):** `LLM primary -> ML fallback (only when valid artifacts loaded) -> fail-closed human escalation` using CKEY.VN (`https://api.xah.io/v1`, `mainnewnol/gpt-oss-120b`), with no silent Gemini fallback. Canonical taxonomy is confirmed at **16** `TARGET_INTENTS` + `out_of_scope` (`OD-004`).
+2. **Intent Classification (`ADR-002`):** `LLM primary -> ML fallback (only when valid artifacts loaded) -> fail-closed human escalation` using CKEY.VN (`https://api.xah.io/v1`, `vantoanbk57/deepseek-v4.1-flash`), with no silent Gemini fallback. Canonical taxonomy is confirmed at **16** `TARGET_INTENTS` + `out_of_scope` (`OD-004`).
 3. **Time Handling (`ADR-003`):** `+12 hours` shift removed; real Vietnam time (`Asia/Ho_Chi_Minh`, `+07:00`) used for new records without batch-migrating history.
 4. **TLS Security (`ADR-004`):** `verify=True` enabled by default with optional CA bundle support (`LLM_CA_BUNDLE`, `REQUESTS_CA_BUNDLE`, `SSL_CERT_FILE`).
 

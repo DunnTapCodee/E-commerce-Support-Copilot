@@ -13,7 +13,7 @@
 ## 1. Confirmed Architectural Decisions (`Confirmed`)
 
 1. **Primary UI:** React/Vite (`frontend/`) is the official primary UI for ongoing development. Streamlit (`services/ui_service/`) is the legacy UI retained for reference and existing flows; do not delete Streamlit or alter `docker-compose.yml` UI deployment solely for this decision.
-2. **Intent Classification:** `LLM primary -> ML fallback when LLM is unavailable -> safe human escalation`, using CKEY.VN (`LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=mainnewnol/gpt-oss-120b`, `INTENT_BACKEND=llm`). ML is used as fallback only when a local ML artifact is validly loaded; if both LLM and ML are unavailable, the system fails closed and escalates to human support without silently switching to Gemini or another provider.
+2. **Intent Classification:** `LLM primary -> ML fallback when LLM is unavailable -> safe human escalation`, using CKEY.VN (`LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=vantoanbk57/deepseek-v4.1-flash`, `INTENT_BACKEND=llm`). ML is used as fallback only when a local ML artifact is validly loaded; if both LLM and ML are unavailable, the system fails closed and escalates to human support without silently switching to Gemini or another provider.
 3. **Time Handling:** Remove the artificial `+12 hours` shift and restore real Vietnam time (`Asia/Ho_Chi_Minh`, `UTC+07:00`) using timezone-aware ISO 8601 timestamps for new records and explicit UTC vs. `Asia/Ho_Chi_Minh` reconciliation for legacy naive rows. Historical persisted timestamps are **not** batch-migrated or overwritten.
 4. **TLS Security:** Enable TLS certificate verification (`verify=True`) by default across HTTP clients (`contracts/llm_failover.py`, `llm_classifier.py`, `generator.py`, `copilot_draft_engine.py`), with optional CA bundle support via standard environment variables (`LLM_CA_BUNDLE` / `REQUESTS_CA_BUNDLE` / `SSL_CERT_FILE`). Never use `verify=False` as a workaround.
 5. **Git Workflow (Proposed/Confirmed Branch Convention):**
@@ -95,7 +95,7 @@ flowchart LR
 | Contract Model | Producer -> Consumer | Key Fields / Notes (`Observed`) |
 | --- | --- | --- |
 | `QueryRequest` | UI -> Gateway -> Conversation Service | `query`, `session_id` (UUID default), `customer_id`. |
-| `IntentPredictionResponse` | Intent Service -> Conversation / Gateway | `intent`, `confidence` (`[0, 1]`), `is_in_scope`, `language`, `model_name` (records actual backend/model used, e.g. `mainnewnol/gpt-oss-120b`, `legacy_baseline`, `semantic_rule_fallback`, `unavailable_fallback`), `latency_ms`, `all_probabilities`. |
+| `IntentPredictionResponse` | Intent Service -> Conversation / Gateway | `intent`, `confidence` (`[0, 1]`), `is_in_scope`, `language`, `model_name` (records actual backend/model used, e.g. `vantoanbk57/deepseek-v4.1-flash`, `legacy_baseline`, `semantic_rule_fallback`, `unavailable_fallback`), `latency_ms`, `all_probabilities`. |
 | `RetrievedDocument` | RAG / Document Service -> Consumers | `doc_id`, `category`, `title`, `content`, `version`, `is_active`, `policy_type` (`permanent` \| `temporary` \| `superseded`), `effective_date`, `expiration_date`, `tags`, `score`. |
 | `POST /retrieve` response | `rag_service` -> `conversation_service` / `gateway` | Returns JSON array `List[RetrievedDocument]`. `MicroserviceClients.retrieve_policies` accepts both JSON array and legacy `{"documents": [...]}`. |
 | `RAGGenerateRequest` / `Response` | Gateway -> `rag_service /generate` | Request: `query`, `citations`. Response: `draft_text`, `citations`, `latency_ms`, `generation_mode`, `fallback_reason`. |
@@ -197,13 +197,13 @@ flowchart LR
 
 ### Confirmed Primary Provider (`Confirmed`)
 - **Provider:** CKEY.VN (`LLM_PROVIDER=openai_compatible`) via `https://api.xah.io/v1`
-- **Model:** `mainnewnol/gpt-oss-120b`
+- **Model:** `vantoanbk57/deepseek-v4.1-flash`
 - **Intent Backend:** `INTENT_BACKEND=llm` (`LLM primary -> ML fallback -> safe human escalation`)
 
 ### Configuration & TLS Audit (`Observed`, secrets redacted)
 
 1. **Unified Configuration Defaults (`Observed`):**
-   - `.env`, `.env.example`, `docker-compose.yml`, `intent_service`, `conversation_service`, `rag_service`, and `document_service` align on `LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=mainnewnol/gpt-oss-120b`, and `INTENT_BACKEND=llm`.
+   - `.env`, `.env.example`, `docker-compose.yml`, `intent_service`, `conversation_service`, `rag_service`, and `document_service` align on `LLM_PROVIDER=openai_compatible`, `OPENAI_BASE_URL=https://api.xah.io/v1`, `OPENAI_MODEL=vantoanbk57/deepseek-v4.1-flash`, and `INTENT_BACKEND=llm`.
    - `.env` provides non-empty `OPENAI_API_KEY`, `OPENAI_API_KEY_BACKUP`, `OPENAI_API_KEYS`, and `GEMINI_API_KEY` (exact values withheld).
    - When `LLM_PROVIDER=openai_compatible`, `LLMIntentClassifier`, `LLMGenerator`, and `CopilotDraftEngine` do **not** silently fall back to Gemini if CKEY.VN is unavailable.
    - `frontend/src/features/chat/ChatView.tsx` and `conversation_service/src/main.py` no longer hardcode `"openai-gpt-oss-20b"`.

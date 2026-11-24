@@ -9,11 +9,11 @@
 
 - **Mã Task:** `TASK-20261123-regression-replay-and-rollback-ops`
 - **Tên Task:** `Xây dựng công cụ tái lập lỗi từ log thực tế (Incident Replay) và cơ chế lưu snapshot/rollback phiên bản cấu hình khi bản mới suy giảm chất lượng`
-- **Thời gian tạo / cập nhật:** `2026-11-23T17:07:00+07:00`
-- **Trạng thái Task:** `NOT_STARTED`
-- **Trạng thái triển khai:** `PLANNED`
-- **Trạng thái kiểm thử:** `NOT_VERIFIED`
-- **Trạng thái phê duyệt:** `PENDING_APPROVAL (Bổ sung cơ chế snapshot cấu hình runtime và công cụ đọc SQLite log xuất fixture replay — R2)`
+- **Thời gian tạo / cập nhật:** `2026-11-23T18:14:00+07:00`
+- **Trạng thái Task:** `DONE`
+- **Trạng thái triển khai:** `IMPLEMENTED`
+- **Trạng thái kiểm thử:** `PASSING_OFFLINE`
+- **Trạng thái phê duyệt:** `APPROVED (Chủ dự án xác nhận triển khai Đợt 3 ngày 2026-11-23)`
 
 ---
 
@@ -75,19 +75,18 @@
 
 ## 7. Các bước triển khai (Milestones)
 
-- [ ] **M1 (`[PLANNED]`):** Chốt danh sách tham số đưa vào Release Config Snapshot với chủ dự án.
-- [ ] **M2 (`[PLANNED]`):** Xây dựng `scripts/replay_incident.py` tái sử dụng `redact_pii()` và đọc DB an toàn (read-only).
-- [ ] **M3 (`[PLANNED]`):** Xây dựng Registry lưu snapshot & rollback cấu hình tuân thủ timestamp `+07:00` (`ADR-003`) kèm lịch sử kiểm toán.
-- [ ] **M4 (`[PLANNED]`):** Thêm unit test trong `tests/test_replay_and_rollback.py` (test che PII khi xuất replay & test rollback khi bản mới suy giảm), rồi đưa vào `.github/workflows/ci-offline.yml`.
+- [x] **M1 (`[DONE]`):** Chốt danh sách tham số đưa vào Release Config Snapshot trong `contracts/release_config.py::capture_current_runtime_config()`.
+- [x] **M2 (`[DONE]`):** Xây dựng `scripts/replay_incident.py` tái sử dụng `redact_pii()` và đọc SQLite ở chế độ read-only URI (`?mode=ro`) cùng `replay_fixture_offline()`.
+- [x] **M3 (`[DONE]`):** Xây dựng `ReleaseConfigRegistry` lưu snapshot & rollback cấu hình tuân thủ timestamp `+07:00` (`ADR-003`), endpoint `/ops/releases/*` ở `telemetry_service` & `gateway`, và tích hợp `rollback_advisory` vào `evaluation/run_release_gates.py`.
+- [x] **M4 (`[DONE]`):** Thêm unit test `tests/test_replay_and_rollback.py`, cập nhật `.github/workflows/ci-offline.yml` và `docs/development/verification.md`.
 
 ---
 
 ## 8. Chiến lược kiểm thử & Tiêu chí nghiệm thu
 
-- **Lệnh kiểm thử an toàn dự kiến:**
-  - Nạp dữ liệu lỗi giả có chứa SĐT/email vào SQLite trong `TemporaryDirectory()` -> chạy `replay_incident.py` -> kiểm tra output đã ẩn SĐT/email, giữ nguyên `ORD-`, và chạy lại fixture offline thành công.
-  - Ghi snapshot `v1` -> nạp `v2` bị `RELEASE_BLOCKED` -> gọi rollback -> xác nhận hệ thống khôi phục về đúng cấu hình `v1` kèm log audit.
+- **Lệnh kiểm thử an toàn đã chạy:**
+  - `tests/test_replay_and_rollback.py` (`DISABLE_EXTERNAL_LLM=true`) cùng toàn bộ CI offline.
 - **Tiêu chí hoàn thành (Definition of Done):**
-  - [ ] Có thể trích xuất bất kỳ sự cố nào từ telemetry thành fixture replay offline an toàn PII chỉ bằng 1 lệnh.
-  - [ ] Hỗ trợ lưu snapshot và rollback cấu hình phiên bản song hành cùng rollback chính sách (`FR-POL-001`).
-  - [ ] Toàn bộ CI offline pass, không làm bẩn DB gốc hay report đang track Git.
+  - [x] Có thể trích xuất bất kỳ sự cố nào từ telemetry thành fixture replay offline an toàn PII chỉ bằng 1 lệnh (`scripts/replay_incident.py`).
+  - [x] Hỗ trợ lưu snapshot và rollback cấu hình phiên bản song hành cùng rollback chính sách (`FR-POL-001`).
+  - [x] Toàn bộ CI offline pass, không làm bẩn DB gốc hay report đang track Git.

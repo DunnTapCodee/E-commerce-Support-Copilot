@@ -36,10 +36,10 @@
 5. **Response Policy Dispatch (`ResponsePolicyDispatcher.dispatch`, priority order):**
    - **Case -1 (`Observed`):** Prompt injection regex match -> `allow_llm=False`, `ESCALATE_HUMAN`, `is_hard_fail=True`, `blocked_security_guard`.
    - **Case -0.5 (`Observed`):** Cross-customer order/IDOR attempt (`unauthorized_order_reason`) -> `allow_llm=False`, `ESCALATE_HUMAN`, `is_hard_fail=True`, `blocked_unauthorized_order_access`.
+   - **Case -0.2 (`Observed`):** Fabricated prior-agent compensation claim (`blocked_manipulation_guard`, `is_hard_fail=True`), warehouse parcel-seal intervention (`blocked_warehouse_guard`, `is_hard_fail=True`), or competitor/brand comparison bait (`blocked_brand_sensitivity`, neutral response citing `[POL-BRAND-001]` with Staff sensitivity alert), evaluated before Chitchat/`human_agent`.
    - **Case 0 (`Observed`):** Chitchat (`greeting`/`thanks`/`confirm`) -> `allow_llm=False`, `CHITCHAT_RESPONSE`, instant macro reply.
    - **Case 1 (`Observed`):** `intent == "human_agent"` or `is_live_chat` -> `allow_llm=False`, `ESCALATE_HUMAN`, `live_chat_handover`.
    - **Case 2 (`Observed`):** `intent in FINANCIAL_INTENTS` (`request_refund`, `payment_issue`) -> `allow_llm=False`, `DIRECT_REFUND_FORM`, `blocked_financial`.
-   - **Case 2a (`Observed`):** Fabricated prior-agent compensation claim (`blocked_manipulation_guard`, `is_hard_fail=True`), warehouse parcel-seal intervention (`blocked_warehouse_guard`, `is_hard_fail=True`), or competitor/brand comparison bait (`blocked_brand_sensitivity`, neutral response citing `[POL-BRAND-001]` with Staff sensitivity alert).
    - **Case 2b (`Observed`):** `out_of_scope` or off-topic keywords -> `allow_llm=False`, `ESCALATE_HUMAN`, `out_of_scope_abstain`.
    - **Case 3a (`Confirmed Requirement`):** `not is_in_scope` or `intent == "unknown_query"` -> `allow_llm=False`, `ESCALATE_HUMAN`, `blocked_intent_unavailable` (never bypassed by `DISABLE_CONFIDENCE_GUARD`).
    - **Case 3b (`Confirmed Requirement`, `OD-005`):** `not DISABLE_CONFIDENCE_GUARD` and `confidence < 0.60` -> `allow_llm=False`, `ESCALATE_HUMAN`, `low_confidence_abstain`. (`is_in_scope` is strictly scope-based via `contracts/safety.py::is_intent_in_scope`, decoupled from confidence, and `tracker.py` aligns on `0.60`.)
@@ -47,7 +47,7 @@
    - **Case 5:** `allow_llm=True`, `PROCEED_TO_LLM`.
 6. **Draft Generation & Runtime Safety Envelope:**
    - If `not guard.allow_llm`: use macro/fallback draft.
-   - If `guard.allow_llm`: call `CopilotDraftEngine.generate_draft()` (or `_stream()`). When `LLM_PROVIDER=openai_compatible`, calls CKEY.VN (`mainnewnol/gpt-oss-120b`); on failure, falls back to `_build_semantic_fallback_draft()` without calling Gemini.
+   - If `guard.allow_llm`: call `CopilotDraftEngine.generate_draft()` (or `_stream()`). When `LLM_PROVIDER=openai_compatible`, calls CKEY.VN (`vantoanbk57/deepseek-v4.1-flash`); on failure, falls back to `_build_semantic_fallback_draft()` without calling Gemini.
    - Run `evaluate_runtime_safety_envelope()` (`contracts/safety.py`: prompt injection + unauthorized monetary refund/voucher compensation promise + sealed parcel warehouse intervention + `evaluate_response_faithfulness` when `citations` present / numeric-grounding check against `order_data`, using `FAITHFULNESS_THRESHOLD=0.70`). On violation, update `guard`, replace draft with safe holding response (`blocked_safety_envelope`), and propagate faithfulness score.
 7. **Persistence, Quick Approval Proposals & Background Tasks (`Observed Implementation`):**
    - Extract optional read-only `OrderActionProposal` (`pending_action`) via `contracts/order_actions.py` when an owned order matches cancel/return/address/receiver modification cues (never mutating `orders` during chat; persisted in `order_action_requests` and executed atomically ONLY via `POST /api/v1/copilot/orders/actions/{action_id}/decide` on Staff `APPROVE`/`REJECT`).

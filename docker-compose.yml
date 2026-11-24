@@ -23,7 +23,7 @@ services:
       - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
       - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-mainnewnol/gpt-oss-120b}
+      - OPENAI_MODEL=${OPENAI_MODEL:-vantoanbk57/deepseek-v4.1-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     healthcheck:
@@ -65,7 +65,7 @@ services:
       - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
       - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-mainnewnol/gpt-oss-120b}
+      - OPENAI_MODEL=${OPENAI_MODEL:-vantoanbk57/deepseek-v4.1-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
     healthcheck:
@@ -125,7 +125,7 @@ services:
       - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
       - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-mainnewnol/gpt-oss-120b}
+      - OPENAI_MODEL=${OPENAI_MODEL:-vantoanbk57/deepseek-v4.1-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-flash-lite-latest}
     healthcheck:
@@ -162,7 +162,7 @@ services:
       - OPENAI_API_KEY_BACKUP=${OPENAI_API_KEY_BACKUP:-}
       - OPENAI_API_KEYS=${OPENAI_API_KEYS:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.xah.io/v1}
-      - OPENAI_MODEL=${OPENAI_MODEL:-mainnewnol/gpt-oss-120b}
+      - OPENAI_MODEL=${OPENAI_MODEL:-vantoanbk57/deepseek-v4.1-flash}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
     depends_on:
@@ -182,7 +182,7 @@ services:
       - copilot-net
 
   # -------------------------------------------------------------
-  # 6. API Gateway & Ingress Router (Port 8000)
+  # 6. API Gateway & Ingress Router (Container :8000 -> Host :18000)
   # -------------------------------------------------------------
   gateway:
     build:
@@ -190,8 +190,7 @@ services:
       dockerfile: services/gateway/Dockerfile
     container_name: gateway
     ports:
-      - "8000:8000"
-      - "18000:8000"
+      - "${GATEWAY_HOST_PORT:-18000}:8000"
     environment:
       - PORT=8000
       - INTENT_CONFIDENCE_THRESHOLD=${INTENT_CONFIDENCE_THRESHOLD:-0.60}

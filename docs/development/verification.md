@@ -39,7 +39,7 @@ Run with:
 $env:DISABLE_EXTERNAL_LLM="true"
 $env:DISABLE_CONTINUAL_LEARNING_CSV_EXPORT="true"
 $env:CONVERSATIONS_DB_PATH="$env:TEMP\ci_copilot_conversations.sqlite3"
-python -m pytest tests/test_contracts_and_integration.py tests/test_architecture_decisions_alignment.py tests/test_llm_failover_and_offline_isolation.py tests/test_gateway_rag_fallback.py tests/test_guardrails.py tests/test_rbac_step1.py tests/test_conversation_order_pipeline.py tests/test_conversation_service.py tests/test_module3_orders.py tests/test_policy_filter.py tests/test_policy_audit_rollback.py tests/test_data_and_pipeline_quality.py tests/test_e2e_customer_staff_sync.py tests/test_load_concurrency.py tests/test_production_drift_and_shadow.py tests/test_agent_skills.py tests/test_agent_harness_eval.py -v
+python -m pytest tests/test_contracts_and_integration.py tests/test_architecture_decisions_alignment.py tests/test_llm_failover_and_offline_isolation.py tests/test_gateway_rag_fallback.py tests/test_guardrails.py tests/test_rbac_step1.py tests/test_conversation_order_pipeline.py tests/test_conversation_service.py tests/test_module3_orders.py tests/test_policy_filter.py tests/test_policy_audit_rollback.py tests/test_data_and_pipeline_quality.py tests/test_e2e_customer_staff_sync.py tests/test_load_concurrency.py tests/test_production_drift_and_shadow.py tests/test_order_actions_and_proactive_delay.py tests/test_replay_and_rollback.py tests/test_agent_skills.py tests/test_agent_harness_eval.py -v
 ```
 
 | Test File | Test Type | Network / LLM | Disk / DB Side Effects | CI Safe? |
@@ -59,6 +59,8 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 | `tests/test_e2e_customer_staff_sync.py` | SQLite E2E Lifecycle & Draft Clear | None | Temp dir SQLite only | **Yes** |
 | `tests/test_load_concurrency.py` | Concurrency / SQLite WAL Load (30 workers) | None | Temp dir SQLite only | **Yes** |
 | `tests/test_production_drift_and_shadow.py` | Telemetry Drift & Shadow API Unit/Integration | None (`TestClient` patched to temp repo) | Temp dir SQLite only | **Yes** |
+| `tests/test_order_actions_and_proactive_delay.py` | Order Action HITL, Delay 30k Agent & Incident Clustering | None | Temp dir SQLite only | **Yes** |
+| `tests/test_replay_and_rollback.py` | Read-Only PII-Redacted Replay & Config Rollback Registry | `DISABLE_EXTERNAL_LLM=true` | Read-only SQLite URI & Temp dir only | **Yes** |
 | `tests/test_agent_skills.py` | Unit, Governance | None | Read-only `.agents/skills` & temp dir | **Yes** |
 | `tests/test_agent_harness_eval.py` | Unit, Eval Harness | None (synthetic fixtures only) | Read-only manifest/fixtures & temp dir | **Yes** |
 
@@ -82,7 +84,7 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 | --- | --- | --- | --- |
 | **Intent Classification (LLM & ML)** | `evaluation/behavioral_tests.py` (MFT/INV/DIR), `evaluation/model_benchmarks.py`, `tests/test_intent_llm.py` (130 cases), `data/eval/real_vi_handwritten.csv` (**header-only template**). | Macro-F1, Per-Intent Recall (especially `request_refund`, `payment_issue`, `human_agent`), Unaccented/Typo Slice Accuracy, OOS False-Accept Rate, P50/P95 Latency. | 1) `artifacts/models/intent/` is empty (only `.gitkeep`); 2) Legacy `ML-model/` pickled on sklearn `1.6.1` vs runtime `1.9.1`; 3) `real_vi_handwritten.csv` has no labeled rows yet; 4) Live CKEY.VN eval requires authorized online run (`OD-003`). |
 | **RAG Policy Retrieval** | `scripts/benchmark_retrieval.py`, `data/retrieval_eval.json` (Vietnamese labeled query set), `reports/module2_retrieval_benchmark.json`. | Recall@k (`k=1,3`), MRR@k, Expired/Superseded Trap Rejection Rate, P95 Retrieval Latency. | Dense/hybrid/reranked modes require optional `requirements-retrieval-experiments.txt` and HuggingFace model downloads. |
-| **Grounded Draft Generation** | `evaluation/oracle_evaluator.py` (hard constraints + rubric), `evaluation/guardrail_evaluator.py`, `contracts/safety.py` (`evaluate_response_faithfulness`, `evaluate_runtime_safety_envelope`). | Citation Precision/Recall (`[doc_id]`), Hallucination Block Rate, Unauthorized Financial Promise Rate (`0%` goal). | Live generation quality with `mainnewnol/gpt-oss-120b` unmeasured due to offline constraint. |
+| **Grounded Draft Generation** | `evaluation/oracle_evaluator.py` (hard constraints + rubric), `evaluation/guardrail_evaluator.py`, `contracts/safety.py` (`evaluate_response_faithfulness`, `evaluate_runtime_safety_envelope`). | Citation Precision/Recall (`[doc_id]`), Hallucination Block Rate, Unauthorized Financial Promise Rate (`0%` goal). | Live generation quality with `vantoanbk57/deepseek-v4.1-flash` unmeasured due to offline constraint. |
 
 ---
 
@@ -104,7 +106,7 @@ python -m pytest tests/test_contracts_and_integration.py tests/test_architecture
 ## 5. CI Baseline (`.github/workflows/ci-offline.yml`)
 
 A minimal, deterministic, offline-only GitHub Actions workflow has been created at `.github/workflows/ci-offline.yml` with 3 jobs:
-1. **`backend-offline-tests`**: Installs lightweight service deps (`gateway`, `document_service`, `rag_service`, `pytest`), enforces static guard (`zero verify=False` and `zero hours=12`), validates `.agents/skills/` via `python scripts/validate_skills.py`, validates the Agent Evaluation manifest and offline smoke runner (`python -m evaluation.agent_harness.run_eval validate-manifest` and `smoke-test --quiet`), and runs the 17 verified deterministic offline pytest suites with `DISABLE_EXTERNAL_LLM=true`, `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT=true`, and isolated `CONVERSATIONS_DB_PATH=/tmp/ci_copilot_conversations.sqlite3`.
+1. **`backend-offline-tests`**: Installs lightweight service deps (`gateway`, `document_service`, `rag_service`, `pytest`), enforces static guard (`zero verify=False` and `zero hours=12`), validates `.agents/skills/` via `python scripts/validate_skills.py`, validates the Agent Evaluation manifest and offline smoke runner (`python -m evaluation.agent_harness.run_eval validate-manifest` and `smoke-test --quiet`), and runs the 19 verified deterministic offline pytest suites with `DISABLE_EXTERNAL_LLM=true`, `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT=true`, and isolated `CONVERSATIONS_DB_PATH=/tmp/ci_copilot_conversations.sqlite3`.
 2. **`frontend-typecheck`**: Runs `npm ci`, `npx tsc --noEmit`, and `npm run test:unit` inside `frontend/`.
 3. **`docs-link-check`**: Verifies zero broken internal Markdown links across `docs/**/*.md`.
 

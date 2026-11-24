@@ -79,6 +79,10 @@ jobs:
             tests/test_e2e_customer_staff_sync.py \
             tests/test_load_concurrency.py \
             tests/test_production_drift_and_shadow.py \
+            tests/test_order_actions_and_proactive_delay.py \
+            tests/test_replay_and_rollback.py \
+            tests/test_multi_order_disambiguation.py \
+            tests/test_evaluation_dashboard_runner.py \
             tests/test_agent_skills.py \
             tests/test_agent_harness_eval.py \
             -v

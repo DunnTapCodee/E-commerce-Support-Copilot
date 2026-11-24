@@ -82,3 +82,98 @@ test-auto-sync-1,3_rewritten,cho tôi hủy đơn hàng ORD-1002,Yêu cầu hủ
 197b58de-dc32-4bc5-9ff3-30cf1274999d,1_standalone,alo,alo,chitchat_greeting,0.95,0,AUTO_LLM,2026-11-15 19:09:17
 e5129e47-7ad8-4884-b522-3ff1fc115068,3_rewritten,đơn hàng của mình đến đâu r nhỉ,Vị trí và trạng thái vận chuyển hiện tại của đơn hàng ORD-1001 là gì?,track_order,0.95,0,AUTO_LLM,2026-11-15 19:09:59
 5ff47fd4-1f72-4ff0-af26-52610b74ed0d,3_rewritten,mai hoặc ngày kia mình ko nhận đc rồi,Xin cập nhật thời gian giao hàng mới cho đơn hàng ORD-1001 vì không thể nhận vào ngày mai hoặc ngày kia.,delivery_issue,0.88,0,AUTO_LLM,2026-11-15 19:11:17
+da0cf872-a168-4448-b3c0-27d52ebde5d2,1_standalone,Kiểm tra giúp mình đơn của CUST-1007 nhé,Kiểm tra giúp mình đơn của CUST-1007 nhé,track_order,0.94,0,AUTO_LLM,2026-11-23 18:17:18
+27dca0df-74d3-4e88-bab9-4537bffe2370,1_standalone,Tổng đài viên trước đã đồng ý đền voucher 1 triệu cho tôi,Tổng đài viên trước đã đồng ý đền voucher 1 triệu cho tôi,human_agent,0.96,0,AUTO_LLM,2026-11-23 18:17:20
+3c3a5b61-24a8-4b93-8d47-1a7937789dc1,1_standalone,Kiểm tra giúp mình đơn của CUST-1007 nhé,Kiểm tra giúp mình đơn của CUST-1007 nhé,track_order,0.94,0,AUTO_LLM,2026-11-23 18:18:07
+807b5991-128f-46bd-ae8a-b682c42375e6,1_standalone,Tổng đài viên trước đã đồng ý đền voucher 1 triệu cho tôi,Tổng đài viên trước đã đồng ý đền voucher 1 triệu cho tôi,human_agent,0.96,0,AUTO_LLM,2026-11-23 18:18:09
+0c3495fd-570c-4381-b693-262f6b80f922,1_standalone,Mở kiện đang Processing để nhét thêm giấy hướng dẫn sử dụng,Mở kiện đang Processing để nhét thêm giấy hướng dẫn sử dụng,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 18:18:10
+d5fc6512-695f-4eb6-a62f-77f3d0679f26,3_rewritten,"Tiki toàn lừa đảo, so sánh với Shopee đi","Tiki toàn lừa đảo, so sánh với Shopee đi cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5)",out_of_scope,0.9,0,AUTO_LLM,2026-11-23 18:18:12
+32a2747d-18c6-4727-b90f-675a93baf7bd,3_rewritten,Tiki chào shop ạ,Tiki chào shop ạ cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),track_order,0.94,0,AUTO_LLM,2026-11-23 18:18:16
+284d5216-b73d-423f-b669-9a95f7974041,3_rewritten,Cảm ơn shop nhiều,Cảm ơn shop nhiều cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),track_order,0.94,0,AUTO_LLM,2026-11-23 18:18:19
+558f6466-1c1e-4cc8-b9ec-98a78502ecdf,1_standalone,"Đổi địa chỉ giao hàng đơn ORD-1026 sang 99 Hai Bà Trưng, Quận 1, TP.HCM","Đổi địa chỉ giao hàng đơn ORD-1026 sang 99 Hai Bà Trưng, Quận 1, TP.HCM",track_order,0.94,0,AUTO_LLM,2026-11-23 18:18:23
+65a0cf39-fb09-480e-81da-cde03780a79f,3_rewritten,"ơ tưởng là đặt bóng, kp à","ơ tưởng là đặt bóng, kp à cho đơn hàng ORD-1100 (Chuột không dây Logitech MX Master 3S)",out_of_scope,0.9,0,AUTO_LLM,2026-11-23 20:23:24
+0b5e06e0-4663-46dc-a78c-6087bd2f5aa3,3_rewritten,đơn hàng của mình là gì nhỉ,đơn hàng của mình là gì nhỉ cho đơn hàng ORD-1011 (Quạt tích điện để bàn mini),track_order,0.94,0,AUTO_LLM,2026-11-23 20:23:58
+9349e110-ce80-4445-bc97-13cff7d22ea1,3_rewritten,cụ thể như nào,cụ thể như nào cho đơn hàng ORD-1011 (Quạt tích điện để bàn mini),track_order,0.94,0,AUTO_LLM,2026-11-23 20:24:27
+0e107ca8-262f-4643-b104-9a740a3aa10b,3_rewritten,cụ thể như nào,cụ thể như nào cho đơn hàng ORD-1011 (Quạt tích điện để bàn mini),track_order,0.94,0,AUTO_LLM,2026-11-23 20:25:24
+e8e1f9fb-96a6-43f5-88f7-fb1c74b5973e,3_rewritten,"bao nhiêu tiền, là cái gì","bao nhiêu tiền, là cái gì cho đơn hàng ORD-1011 (Quạt tích điện để bàn mini)",track_order,0.94,0,AUTO_LLM,2026-11-23 20:26:00
+3ed24546-3f26-423a-8d5c-8da8b521b016,3_rewritten,đơn hàng của mình là gì nhỉ,đơn hàng của mình là gì nhỉ cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),track_order,0.94,0,AUTO_LLM,2026-11-23 20:28:04
+8153df94-8f6f-4e44-9d1f-ad78fbf67832,3_rewritten,tưởng mình có mấy đơn mà,tưởng mình có mấy đơn mà cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),out_of_scope,0.9,0,AUTO_LLM,2026-11-23 20:28:27
+1b2b8885-69ad-4570-9546-ee734d8abbed,3_rewritten,?,? cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),track_order,0.94,0,AUTO_LLM,2026-11-23 20:29:53
+62ca258c-9ff9-4bb7-9b70-8eacc62b9347,3_rewritten,Kiểm tra đơn hàng của tôi giúp tôi với,Kiểm tra đơn hàng của tôi giúp tôi với cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),track_order,0.94,0,AUTO_LLM,2026-11-23 20:33:38
+c31f862c-2157-4188-b465-6d5f69ccfae2,3_rewritten,Tôi có những đơn hàng nào đang bị giao trễ hoặc chưa giao?,Tôi có những đơn hàng nào đang bị giao trễ hoặc chưa giao? cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),delivery_issue,0.94,0,AUTO_LLM,2026-11-23 20:33:42
+16f98786-728f-4fc9-88be-c0f20d12d60f,3_rewritten,Kiểm tra giúp tôi đơn mua Giày thể thao chạy bộ Biti's Hunter,Kiểm tra giúp tôi đơn mua Giày thể thao chạy bộ Biti's Hunter cho đơn hàng ORD-1005 (Giày thể thao chạy bộ thoáng khí Biti's Hunter),track_order,0.94,0,AUTO_LLM,2026-11-23 20:33:47
+ee0926c7-6a40-476a-91a0-2976c3476cd1,3_rewritten,Tôi muốn hủy đơn hàng,Tôi muốn hủy đơn hàng cho đơn hàng ORD-1095 (Tai nghe bluetooth chống ồn Sony WF-1000XM5),cancel_order,0.95,0,AUTO_LLM,2026-11-23 20:33:51
+5aa3fab1-cee7-4d0e-8f76-e238d13d0d96,1_standalone,Kiểm tra tiến độ đơn ORD-1001,Kiểm tra tiến độ đơn ORD-1001,track_order,0.94,0,AUTO_LLM,2026-11-23 20:33:56
+5b54d11b-a924-41db-a3b7-3e6d5ffe32be,1_standalone,CUST-1001 đang có đơn hàng ở trạng thái nào?,CUST-1001 đang có đơn hàng ở trạng thái nào?,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 20:34:18
+16dea86b-f774-4b73-9183-42ad59e6a2ef,1_standalone,CUST-1007 có đơn hàng nào?,CUST-1007 có đơn hàng nào?,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 20:34:20
+832ae2fd-a40d-475c-9212-374a89318fa6,1_standalone,Đơn ORD-1007 của tôi trễ 3 ngày làm lỡ việc ký hợp đồng thiệt hại 50 triệu. Tổng đài viên cũ đã đồng ý đền cho tôi voucher 1 triệu trừ thẳng vào đơn kế tiếp,Đơn ORD-1007 của tôi trễ 3 ngày làm lỡ việc ký hợp đồng thiệt hại 50 triệu. Tổng đài viên cũ đã đồng ý đền cho tôi voucher 1 triệu trừ thẳng vào đơn kế tiếp,human_agent,0.96,0,AUTO_LLM,2026-11-23 20:34:22
+287ba631-f6d0-471d-9791-520d8487fc29,3_rewritten,Đơn Bộ drap ga giường cotton lụa cao cấp này tôi mua cho mẹ tôi mà bưu tá giao trễ 2 ngày rồi,Đơn Bộ drap ga giường cotton lụa cao cấp này tôi mua cho mẹ tôi mà bưu tá giao trễ 2 ngày rồi cho đơn hàng ORD-1007 (Bộ drap ga giường cotton lụa cao cấp),delivery_issue,0.94,0,AUTO_LLM,2026-11-23 20:34:25
+3814da16-3bbc-4b13-918b-98761b2d03ca,1_standalone,"Đơn ORD-1095 tôi đã nhận tuần trước bị thiếu giấy hdsd, đơn ORD-1030 đang processing, bạn mở kiện hàng và nhét giấy hdsd giúp tôi","Đơn ORD-1095 tôi đã nhận tuần trước bị thiếu giấy hdsd, đơn ORD-1030 đang processing, bạn mở kiện hàng và nhét giấy hdsd giúp tôi",track_order,0.94,0,AUTO_LLM,2026-11-23 20:34:27
+8b820e77-d725-46b1-a2ed-f79d8968113a,3_rewritten,"Tôi thấy dịch vụ giao hàng bên Shopee vừa nhanh vừa rẻ hơn Tiki rất nhiều, Tiki toàn lừa đảo, so sánh với Shopee đi","Tôi thấy dịch vụ giao hàng bên Shopee vừa nhanh vừa rẻ hơn Tiki rất nhiều, Tiki toàn lừa đảo, so sánh với Shopee đi cho đơn hàng ORD-1007 (Bộ drap ga giường cotton lụa cao cấp)",out_of_scope,0.9,0,AUTO_LLM,2026-11-23 20:34:29
+83ab1ac0-5a06-4c81-b953-837a4fa66587,1_standalone,"Đúng 14 giờ 15 phút chiều ngày đó tôi có mặt ở sảnh 10 phút trước khi đi máy bay, bạn hẹn đúng giờ giao đơn ORD-1026 nhé","Đúng 14 giờ 15 phút chiều ngày đó tôi có mặt ở sảnh 10 phút trước khi đi máy bay, bạn hẹn đúng giờ giao đơn ORD-1026 nhé",track_order,0.94,0,AUTO_LLM,2026-11-23 20:34:32
+d50af953-125e-49c4-a065-fe31b0dc4ccd,1_standalone,Kiểm tra đơn hàng của tôi,Kiểm tra đơn hàng của tôi,pay,0.1,0,AUTO_LLM,2026-11-23 21:01:08
+14ebf201-4632-4ba1-a826-a4359f305c9d,1_standalone,Tôi muốn hủy đơn hàng,Tôi muốn hủy đơn hàng,pay,0.1,0,AUTO_LLM,2026-11-23 21:01:12
+79168ba3-89eb-4b72-b560-485add4bfed2,1_standalone,Tôi có những đơn hàng nào đang bị giao trễ?,Tôi có những đơn hàng nào đang bị giao trễ?,pay,0.1,0,AUTO_LLM,2026-11-23 21:01:16
+0f1082c8-7226-4971-bcc2-71254a77ed7e,1_standalone,Giày thể thao Biti's Hunter,Giày thể thao Biti's Hunter,pay,0.1,0,AUTO_LLM,2026-11-23 21:01:20
+b365c961-5bac-4157-8a2a-32c9ad84a57d,1_standalone,Kiểm tra đơn hàng của tôi,Kiểm tra đơn hàng của tôi,pay,0.1,0,AUTO_LLM,2026-11-23 21:02:20
+aa4b1a2a-9211-40fe-8a7b-a891db2cfb54,1_standalone,Kiểm tra đơn hàng của tôi,Kiểm tra đơn hàng của tôi,pay,0.1,0,AUTO_LLM,2026-11-23 21:02:37
+e79e4b6d-f36a-4c40-92af-45f6bbeaae9d,1_standalone,Tôi muốn hủy đơn hàng,Tôi muốn hủy đơn hàng,pay,0.1,0,AUTO_LLM,2026-11-23 21:02:41
+62261fab-b646-4567-b892-8f126af3d03f,1_standalone,Tôi có những đơn hàng nào đang bị giao trễ?,Tôi có những đơn hàng nào đang bị giao trễ?,pay,0.1,0,AUTO_LLM,2026-11-23 21:02:45
+a65622d3-f2ac-4496-be2c-50bbf15be0ea,1_standalone,Giày thể thao Biti's Hunter,Giày thể thao Biti's Hunter,pay,0.1,0,AUTO_LLM,2026-11-23 21:02:49
+3590bbf5-c98f-4a47-8713-0e79b5f38714,1_standalone,Kiểm tra đơn hàng của tôi,Kiểm tra đơn hàng của tôi,pay,0.1,0,AUTO_LLM,2026-11-23 21:06:54
+208d5c6d-6979-47a6-a93f-3d7e5f51993b,1_standalone,Tôi muốn hủy đơn hàng,Tôi muốn hủy đơn hàng,pay,0.1,0,AUTO_LLM,2026-11-23 21:06:58
+3ecdcc7b-9f4a-4c36-a486-ca006ae14ca0,1_standalone,Tôi có những đơn hàng nào đang bị giao trễ?,Tôi có những đơn hàng nào đang bị giao trễ?,pay,0.1,0,AUTO_LLM,2026-11-23 21:07:01
+243e8c5e-d0b7-4646-b4f5-b1cdff0cf79d,1_standalone,Giày thể thao Biti's Hunter,Giày thể thao Biti's Hunter,pay,0.1,0,AUTO_LLM,2026-11-23 21:07:05
+7294f6ac-4546-4931-a558-48b1a178923a,1_standalone,mình có mấy đơn hàng đã giao nhỉ,mình có mấy đơn hàng đã giao nhỉ,pay,0.1,0,AUTO_LLM,2026-11-23 21:43:17
+7187c243-d139-45c2-b14e-854a8cd7a72a,1_standalone,tổng mình đã thanh toán bao nhiêu tiền rồi,tổng mình đã thanh toán bao nhiêu tiền rồi,pay,0.1,0,AUTO_LLM,2026-11-23 21:44:23
+d5518922-3c01-414c-bc16-9109361fc167,1_standalone,ko tính đc à,ko tính đc à,pay,0.1,0,AUTO_LLM,2026-11-23 21:46:02
+6200b81c-2a35-44b5-bebe-dba77325dd35,1_standalone,các đơn hàng nào thanh toán bằng zalo pay,các đơn hàng nào thanh toán bằng zalo pay,pay,0.9911,0,AUTO_LLM,2026-11-23 21:46:48
+f249181c-3389-4113-8a9d-3a4dc416f75e,1_standalone,các đơn hàng nào thanh toán bằng zalo pay,các đơn hàng nào thanh toán bằng zalo pay,pay,0.9911,0,AUTO_LLM,2026-11-23 21:47:09
+63e574f1-161d-4b0f-b288-897ea305f518,3_rewritten,Oke đơn hàng chuột ko dây bao nhiêu tiền,Oke đơn hàng chuột ko dây bao nhiêu tiền cho đơn hàng ORD-1070 (Chuột không dây Logitech MX Master 3S),pay,0.1,0,AUTO_LLM,2026-11-23 21:51:20
+2c7fa13d-7a1c-466a-826f-aebb6ac6b62f,3_rewritten,Oke đơn hàng chuột ko dây bao nhiêu tiền,Oke đơn hàng chuột ko dây bao nhiêu tiền cho đơn hàng ORD-1070 (Chuột không dây Logitech MX Master 3S),pay,0.1,0,AUTO_LLM,2026-11-23 21:52:11
+2f9544c1-314c-4812-9657-4096e3b68e45,1_standalone,mình có mấy đơn hàng đã giao nhỉ,mình có mấy đơn hàng đã giao nhỉ,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 21:57:16
+1907d6ca-0845-4543-ab6a-eb95846e906b,1_standalone,tổng mình đã thanh toán bao nhiêu tiền rồi,tổng mình đã thanh toán bao nhiêu tiền rồi,track_order,0.94,0,AUTO_LLM,2026-11-23 21:57:21
+9336a24b-8ced-4e13-821a-7d303776ad4a,1_standalone,ko tính đc à,ko tính đc à,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 21:57:24
+6106c29f-e072-4d18-bece-c201eaab858c,1_standalone,các đơn hàng nào thanh toán bằng zalo pay,các đơn hàng nào thanh toán bằng zalo pay,pay,0.9911,0,AUTO_LLM,2026-11-23 21:57:30
+3a9d2186-b4dd-43a2-b51a-f66948b92d13,1_standalone,mình có mấy đơn hàng đã giao nhỉ,mình có mấy đơn hàng đã giao nhỉ,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 21:58:31
+857a51fd-7524-4b60-b32f-0860b3b0fcbc,1_standalone,tổng mình đã thanh toán bao nhiêu tiền rồi,tổng mình đã thanh toán bao nhiêu tiền rồi,track_order,0.94,0,AUTO_LLM,2026-11-23 21:58:34
+9fbbedac-2b3a-4a74-b7ee-662f91d12316,1_standalone,ko tính đc à,ko tính đc à,out_of_scope,0.9,0,AUTO_LLM,2026-11-23 21:58:37
+dfc45f0c-46a9-4b68-9091-23021152639e,1_standalone,các đơn hàng nào thanh toán bằng zalo pay,các đơn hàng nào thanh toán bằng zalo pay,pay,0.9911,0,AUTO_LLM,2026-11-23 21:58:40
+58273d8f-a4e0-4b63-a5c3-8a44036ab677,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-23 21:58:45
+4b19f60a-75f6-4899-bbfc-19a155ae083f,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,Khách hàng có bao nhiêu đơn hàng đã được giao trong tài khoản?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:09:36
+a7c63d8c-2e8b-45e7-9e79-e5bd90367a18,3_rewritten,tổng mình đã thanh toán bao nhiêu tiền rồi,Tổng số tiền khách hàng đã thanh toán cho đơn hàng ORD-1001 là bao nhiêu?,track_order,0.88,0,AUTO_LLM,2026-11-23 22:09:47
+3a067767-3f2e-41ad-bf98-b38f328a7029,3_rewritten,ko tính đc à,Vì sao không thể tính được tổng số tiền thanh toán của đơn hàng ORD-1001?,track_order,0.32,0,AUTO_LLM,2026-11-23 22:09:59
+3326adac-f743-4aa9-90a7-aeac5eab7aac,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,Danh sách các đơn hàng được thanh toán bằng phương thức ZaloPay là những đơn hàng nào?,track_order,0.78,0,AUTO_LLM,2026-11-23 22:10:14
+54244e6d-b903-4054-90fd-0667967f705c,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,Khách hàng có bao nhiêu đơn hàng đã được giao?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:10:52
+cadd0a85-bf15-47f1-8ee9-8ff9923e826c,3_rewritten,tổng mình đã thanh toán bao nhiêu tiền rồi,Tổng số tiền khách hàng đã thanh toán cho đơn hàng ORD-1001 là bao nhiêu?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:11:03
+33dbf733-49fd-40da-9e11-129d8f254fd7,3_rewritten,ko tính đc à,Không thể tính toán được cho đơn hàng ORD-1001 phải không?,track_order,0.35,0,AUTO_LLM,2026-11-23 22:11:13
+c63f1fe8-bfb9-469d-ad14-8f3338dc184d,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,Danh sách các đơn hàng của khách hàng được thanh toán bằng phương thức ZaloPay là những đơn hàng nào?,track_order,0.88,0,AUTO_LLM,2026-11-23 22:11:24
+a836a1f3-5d02-428f-b1a6-4cdb145f02df,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,"Khách hàng có bao nhiêu đơn hàng đã giao, bao gồm đơn hàng ORD-1001?",track_order,0.92,0,AUTO_LLM,2026-11-23 22:12:48
+68d4886d-db21-421c-bcec-f9d79dee046c,3_rewritten,tổng mình đã thanh toán bao nhiêu tiền rồi,Tổng số tiền khách hàng đã thanh toán cho đơn hàng ORD-1001 là bao nhiêu?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:12:59
+32059592-ff94-4199-8af9-28288fd4c330,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-23 22:13:01
+c76e50d8-72a4-4794-b9ef-d7ed385221d6,3_rewritten,ko tính đc à,Không thể tính toán được cho đơn hàng ORD-1001 phải không?,track_order,0.38,0,AUTO_LLM,2026-11-23 22:13:09
+70daf422-6a52-403c-8e20-714b2ebf5b73,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,Đơn hàng ORD-1001 có được thanh toán bằng phương thức ZaloPay không?,track_order,0.78,0,AUTO_LLM,2026-11-23 22:13:20
+e88230e7-ea44-4c3d-8c91-92cea278731d,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,Số lượng đơn hàng đã được giao của khách hàng là bao nhiêu?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:14:48
+8c725e58-b62f-4d82-8a7f-d0c93385342e,3_rewritten,tổng mình đã thanh toán bao nhiêu tiền rồi,Tổng số tiền khách hàng đã thanh toán cho đơn hàng ORD-1001 là bao nhiêu?,track_order,0.92,0,AUTO_LLM,2026-11-23 22:14:57
+47a754e0-093b-48b0-a4fc-31cb9d9c472d,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-23 22:14:57
+643e897f-e590-44fb-83c1-4f2199251c39,3_rewritten,ko tính đc à,Vì sao không thể tính được tổng số tiền thanh toán của đơn hàng ORD-1001?,out_of_scope,0.35,0,AUTO_LLM,2026-11-23 22:15:06
+4e64f228-3f88-4aca-a1f2-5dac7e116698,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,"Danh sách các đơn hàng được thanh toán bằng ZaloPay của khách hàng, bao gồm đơn hàng ORD-1001, là những đơn hàng nào?",track_order,0.78,0,AUTO_LLM,2026-11-23 22:15:14
+f6816558-89bb-41c0-99eb-57f946c70891,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-23 23:01:02
+467c00f5-ac04-4670-b8ed-4dbe9f89a313,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,Số lượng đơn hàng đã được giao của khách hàng có đơn hàng ORD-1001 là bao nhiêu?,track_order,0.88,0,AUTO_LLM,2026-11-23 23:01:09
+8437c525-0146-40f8-addb-25d04d17ca21,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,"Có bao nhiêu đơn hàng của khách hàng đã được giao, bao gồm đơn hàng ORD-1001?",track_order,0.88,0,AUTO_LLM,2026-11-23 23:01:23
+c44d79e9-fcf8-45cc-bb90-d88b4601643b,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,"Các đơn hàng nào của khách hàng, bao gồm đơn hàng ORD-1001, được thanh toán bằng ZaloPay?",track_order,0.62,0,AUTO_LLM,2026-11-23 23:01:38
+7899956d-94fc-4759-a1a2-acfde54f63cf,3_rewritten,giao chưa nhỉ,Đơn hàng ORD-1070 của Bùi Thị An đã được giao hay chưa?,track_order,0.82,0,AUTO_LLM,2026-11-23 23:06:25
+255b17f3-7c66-41d6-aa9c-9613c7d5ad69,3_rewritten,Oke đơn hàng chuột ko dây bao nhiêu tiền Oke đơn hàng chuột ko dây bao nhiêu tiền giao chưa nhỉ,Đơn hàng ORD-1070 (chuột không dây) có tổng số tiền thanh toán là bao nhiêu và đã được giao chưa?,track_order,0.91,0,AUTO_LLM,2026-11-23 23:08:26
+86583fc7-23b4-4c27-a73e-ba21768d64ff,3_rewritten,mình có mấy đơn hàng đã giao nhỉ,Số lượng đơn hàng đã được giao của khách hàng là bao nhiêu?,track_order,0.88,0,AUTO_LLM,2026-11-23 23:31:16
+26a9bf6b-ecb1-4fce-9c2b-4462fdeecdf0,3_rewritten,tổng mình đã thanh toán bao nhiêu tiền rồi,Tổng số tiền khách hàng đã thanh toán cho đơn hàng ORD-1001 là bao nhiêu?,track_order,0.9,0,AUTO_LLM,2026-11-23 23:31:25
+74dc757b-d9ef-4c91-ab7a-36a4fea4d046,3_rewritten,ko tính đc à,Vui lòng kiểm tra và hỗ trợ tính toán tổng số tiền thanh toán của đơn hàng ORD-1001.,out_of_scope,0.42,0,AUTO_LLM,2026-11-23 23:31:38
+495bb60d-1b8f-499e-b256-f821a0d46cc6,3_rewritten,các đơn hàng nào thanh toán bằng zalo pay,Danh sách các đơn hàng của khách hàng được thanh toán bằng ZaloPay là những đơn hàng nào?,track_order,0.72,0,AUTO_LLM,2026-11-23 23:31:47
+3dca4899-bea3-44c7-a470-698d2e5cfa20,3_rewritten,hiện tại có voucher nào ko nhỉ,"Các voucher, mã giảm giá và chương trình ưu đãi hiện có trên Tiki",get_discounts,0.95,0,AUTO_LLM,2026-11-24 16:34:29
+e3a265d7-3257-408a-b263-d0e1ee4001e2,3_rewritten,gói TikiPRO lj v,Gói TikiPRO là gì và có áp dụng cho đơn hàng ORD-1070 không?,track_order,0.9735,0,AUTO_LLM,2026-11-24 16:35:44
+fa22551f-1e93-42b8-96f0-f74b8b6e318f,3_rewritten,gói TikiPRO lj v,Thông tin gói TikiPRO liên quan đến đơn hàng ORD-1070 là gì?,track_order,0.9735,0,AUTO_LLM,2026-11-24 16:35:53
+07654072-b141-4334-b667-67e790230a28,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-24 16:43:40
+f9f08e2b-a946-4b4d-9d25-9acf74813a05,1_standalone,Kiểm tra giúp mình đơn của CUST-1007,Kiểm tra giúp mình đơn của CUST-1007,track_order,0.95,0,AUTO_LLM,2026-11-24 16:48:05
+532b694f-9a7c-4050-921b-86aff42fe588,3_rewritten,gói TikiPRO lj v,Gói TikiPRO là gì và có áp dụng cho đơn hàng ORD-1001 không?,out_of_scope,0.9,0,AUTO_LLM,2026-11-24 16:49:53
+195c3ab7-8aa8-42e6-9682-4662b818c3af,3_rewritten,gói TikiPRO lj v,Gói TikiPRO là gì và gói này có những quyền lợi gì?,out_of_scope,0.9,0,AUTO_LLM,2026-11-24 16:51:04
+3ef98ab2-6ec1-4c96-8c80-99d557426e59,3_rewritten,gói TikiPRO lj v,Gói TikiPRO là gì và gói này có quyền lợi gì đối với đơn hàng ORD-1070 của khách hàng Bùi Thị An?,track_order,0.9735,0,AUTO_LLM,2026-11-24 16:54:33
+c881ddde-3507-4fa5-8066-4de0f2952b27,3_rewritten,gói TikiPRO lj v,Gói TikiPRO của đơn hàng ORD-1070 là gì vậy?,track_order,0.9735,0,AUTO_LLM,2026-11-24 16:54:46
