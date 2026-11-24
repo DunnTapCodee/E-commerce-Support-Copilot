@@ -114,14 +114,28 @@ def _escalate(
 
 
 PURE_COURTESY_PATTERNS = [
-    r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào)\s*(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
-    r"^(?:cảm ơn|cam on)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)?[\s.,!?-]*$",
+    r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào)\s*(?:anh/chị|anh|chị|quý khách|bạn|mình)?(?:\s+[\w\s]+)?[\s.,!?-]*$",
+    r"^(?:cảm ơn|cam on)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)?(?:\s+[\w\s]+)?[\s.,!?-]*$",
     r"^(?:em\s+)?(?:luôn\s+)?sẵn sàng hỗ trợ\s*(?:anh/chị|anh|chị|quý khách|thêm)?.*$",
     r"^(?:nếu\s+)?(?:anh/chị|anh|chị|quý khách|mình)\s+cần hỗ trợ thêm.*$",
+    r"^(?:anh/chị|anh|chị|quý khách|mình)\s+có\s+(?:cần|muốn)\s+(?:em\s+)?(?:hỗ trợ|kiểm tra|hướng dẫn|tư vấn).*$",
     r"^chúc\s+(?:anh/chị|anh|chị|quý khách|bạn|mình).*$",
     r"^(?:rất\s+)?vui được hỗ trợ.*$",
     r"^(?:dạ\s+)?(?:em\s+)?(?:đã\s+)?ghi nhận.*$",
 ]
+
+
+def clean_draft_header(text: str) -> str:
+    """Strip accidental model meta-headers (e.g. '**BẢN THẢO CÂU TRẢ LỜI...**') from draft text."""
+    if not text:
+        return ""
+    cleaned = re.sub(
+        r"^(?:\*+|#+)?\s*(?:bản thảo|gợi ý phản hồi|câu trả lời gợi ý|bản thảo câu trả lời|tin nhắn gửi khách|lời phản hồi gợi ý)[^\n:]*[:*#]*\s*\n*",
+        "",
+        text.strip(),
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
 
 PROMPT_INJECTION_PATTERNS = [
     re.compile(r"(ignore|disregard|forget)\s+(?:all\s+)?(?:previous\s+)?(instructions|prompts|rules)", re.IGNORECASE),
@@ -208,7 +222,10 @@ def extract_numeric_entities(text: str) -> List[str]:
 def split_into_claims(text: str) -> List[str]:
     """Break text into atomic factual statements, stripping pure courteous phrasing."""
     clean = re.sub(r"\[POL-[A-Z0-9_-]+\]", "", text)
-    sentences = [s.strip() for s in re.split(r"[.\n!?]+", clean) if len(s.strip()) > 8]
+    clean = clean_draft_header(clean)
+    # Split sentences avoiding Vietnamese thousands separators in currency/numbers (e.g. 149.000đ, 30.000đ)
+    split_pattern = r"(?:(?<!\d)\.(?:\s+|$)|[\n\r!?]+)"
+    sentences = [s.strip() for s in re.split(split_pattern, clean) if len(s.strip()) > 8]
     claims: List[str] = []
     for s in sentences:
         has_nums = len(extract_numeric_entities(s)) > 0
@@ -216,7 +233,7 @@ def split_into_claims(text: str) -> List[str]:
         if is_pure and not has_nums:
             continue
         stripped = re.sub(
-            r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào|cảm ơn)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)[^,.:\n!?]*[,:]\s*",
+            r"^(?:dạ\s+)?(?:em\s+)?(?:chào|kính chào|tiki chào|xin chào|cảm ơn)\s+(?:anh/chị|anh|chị|quý khách|bạn|mình)(?:\s+[^,.:\n!?]+)?(?:[,.:\s]+|$)",
             "",
             s,
             flags=re.IGNORECASE,
@@ -226,6 +243,62 @@ def split_into_claims(text: str) -> List[str]:
         if not is_target_pure or has_nums:
             claims.append(target)
     return claims
+
+
+_STATUS_VN_LABELS = {
+    "DELIVERED": "đã giao thành công hoàn thành",
+    "PROCESSING": "đang xử lý chờ đóng gói",
+    "SHIPPING": "đang giao hàng vận chuyển",
+    "IN_TRANSIT": "đang vận chuyển trên đường giao",
+    "DELIVERY_DELAYED": "giao hàng trễ chậm trễ",
+    "CANCELLED": "đã hủy",
+    "RETURNED": "đã trả hàng hoàn hàng",
+    "RETURN_REQUESTED": "yêu cầu trả hàng",
+    "RETURN_APPROVED": "đã duyệt trả hàng",
+    "PAYMENT_FAILED": "thanh toán thất bại lỗi thanh toán",
+}
+
+
+def _flatten_order_for_premise(order: Dict[str, Any]) -> str:
+    scalar_tokens: List[str] = []
+    for k, v in order.items():
+        if k in ("shipping_timeline", "items", "candidates", "computed_summary"):
+            continue
+        scalar_tokens.append(f"{k} {v}")
+        if k in ("order_status", "status") and isinstance(v, str):
+            vn_label = _STATUS_VN_LABELS.get(v.strip().upper())
+            if vn_label:
+                scalar_tokens.append(vn_label)
+        if isinstance(v, str) and re.fullmatch(r"\d{4}-\d{2}-\d{2}(?:[T\s].*)?", v.strip()):
+            yyyy, mm, dd = v.strip()[:10].split("-")
+            scalar_tokens.append(f"{dd}/{mm}/{yyyy}")
+            scalar_tokens.append(f"{dd}/{mm}")
+        if isinstance(v, (int, float)) and not isinstance(v, bool) and abs(v) >= 1000:
+            int_val = int(v)
+            scalar_tokens.append(f"{int_val:,}")
+            scalar_tokens.append(f"{int_val:,}".replace(",", "."))
+    order_str = " ".join(scalar_tokens)
+    if "items" in order and isinstance(order["items"], list):
+        order_str += " " + " ".join(
+            it.get("name", "") if isinstance(it, dict) else str(it) for it in order["items"]
+        )
+    if "shipping_timeline" in order and isinstance(order["shipping_timeline"], list):
+        order_str += " " + " ".join(
+            t.get("status", "") if isinstance(t, dict) else str(t) for t in order["shipping_timeline"]
+        )
+    if "candidates" in order and isinstance(order["candidates"], list):
+        cands = [cand for cand in order["candidates"] if isinstance(cand, dict)]
+        cand_sum = sum(int(c.get("total_amount") or 0) for c in cands)
+        order_str += (
+            f" danh sách đơn hàng tài khoản hiện có tổng cộng giá trị sản phẩm trạng thái dự kiến thanh toán "
+            f"{len(cands)} {cand_sum} {cand_sum:,} " + f"{cand_sum:,}".replace(",", ".")
+        )
+        order_str += " " + " ".join(_flatten_order_for_premise(cand) for cand in cands)
+    if "computed_summary" in order and isinstance(order["computed_summary"], dict):
+        order_str += " tổng hợp số lượng đơn hợp lệ đã hủy lỗi thanh toán " + _flatten_order_for_premise(
+            order["computed_summary"]
+        )
+    return order_str
 
 
 def build_grounding_premise(
@@ -240,25 +313,7 @@ def build_grounding_premise(
     if customer_query:
         premise_parts.append(customer_query)
     if order_data:
-        scalar_tokens: List[str] = []
-        for k, v in order_data.items():
-            if k in ("shipping_timeline", "items"):
-                continue
-            scalar_tokens.append(f"{k} {v}")
-            if isinstance(v, (int, float)) and not isinstance(v, bool) and abs(v) >= 1000:
-                int_val = int(v)
-                scalar_tokens.append(f"{int_val:,}")
-                scalar_tokens.append(f"{int_val:,}".replace(",", "."))
-        order_str = " ".join(scalar_tokens)
-        if "items" in order_data and isinstance(order_data["items"], list):
-            order_str += " " + " ".join(
-                it.get("name", "") if isinstance(it, dict) else str(it) for it in order_data["items"]
-            )
-        if "shipping_timeline" in order_data and isinstance(order_data["shipping_timeline"], list):
-            order_str += " " + " ".join(
-                t.get("status", "") if isinstance(t, dict) else str(t) for t in order_data["shipping_timeline"]
-            )
-        premise_parts.append(order_str)
+        premise_parts.append(_flatten_order_for_premise(order_data))
     return " ".join(premise_parts).lower()
 
 
@@ -396,6 +451,7 @@ def evaluate_runtime_safety_envelope(
     2. Unauthorized monetary refund / compensation promise hard gate.
     3. Response faithfulness & numeric grounding against citations and/or order_data.
     """
+    draft_text = clean_draft_header(draft_text)
     violations: List[str] = []
     faithfulness_score: Optional[float] = None
     hallucination_detected = False

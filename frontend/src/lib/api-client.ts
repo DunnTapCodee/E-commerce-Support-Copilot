@@ -383,6 +383,18 @@ export const apiClient = {
     return res.json();
   },
 
+  async probeEvaluation(query: string, customerId = 'demo-customer'): Promise<any> {
+    const res = await fetch(`${API_BASE}/evaluation/probe`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, customer_id: customerId }),
+    });
+    if (!res.ok) {
+      throw new Error(`Probe Evaluation Error (${res.status}): ${await res.text()}`);
+    }
+    return res.json();
+  },
+
   // Role-Based Access & Entities (Staff & Customer)
   async listStaff(): Promise<Array<{ staff_id: string; name: string; email: string; role: string; department: string }>> {
     try {

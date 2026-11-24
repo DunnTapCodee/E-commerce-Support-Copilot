@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import inspect
 import re
-from typing import Any, Dict
+from typing import Any, Dict, List, Optional
 
 
 ORDER_RE = re.compile(r"\bORD-[A-Za-z0-9-]+\b", re.IGNORECASE)
@@ -14,6 +14,26 @@ DIGIT_ORDER_RE = re.compile(r"^\s*#?(\d{4,6})\s*$")
 PHONE_RE = re.compile(r"\b(0[35789]\d{8})\b")
 AMOUNT_RE = re.compile(r"\b(\d{1,3}(?:[.,]\d{3})*|\d+)\s*(?:k|đ|vnđ|vnd|dong|đồng)\b", re.IGNORECASE)
 CARRIER_RE = re.compile(r"\b(tikinow|ghn|ghtk|viettel\s*post|ninja\s*van|j&t|shopee\s*express)\b", re.IGNORECASE)
+
+
+def extract_all_order_ids(text: str) -> List[str]:
+    """Extract all unique order IDs mentioned in text, preserving order of appearance."""
+    if not text:
+        return []
+    found: List[str] = []
+    for m in ORDER_RE.finditer(text):
+        oid = m.group(0).upper()
+        if oid not in found:
+            found.append(oid)
+    for m in LOOSE_ORDER_RE.finditer(text):
+        oid = f"ORD-{m.group(1)}"
+        if oid not in found:
+            found.append(oid)
+    if not found:
+        digit_match = DIGIT_ORDER_RE.search(text.strip())
+        if digit_match:
+            found.append(f"ORD-{digit_match.group(1)}")
+    return found
 
 
 def extract_facts(text: str, customer_id: Optional[str] = None) -> Dict[str, Any]:

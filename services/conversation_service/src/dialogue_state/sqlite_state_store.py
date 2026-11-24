@@ -367,13 +367,28 @@ class PersistentStateStore:
             or f"draft_{uuid.uuid4().hex[:10]}"
         )
         eff_question = customer_question or (resp_payload.get("customer_question") if resp_payload else None)
-        if resp_payload is not None:
-            resp_payload.setdefault("interaction_id", eff_interaction_id)
-            if eff_question:
-                resp_payload.setdefault("customer_question", eff_question)
-        resp_json = json.dumps(resp_payload, ensure_ascii=False) if resp_payload else None
 
         with get_db_connection(self.db_path) as conn:
+            # Dedup: If a PENDING draft already exists for this session with the exact same customer question,
+            # reuse its interaction_id so it updates in-place rather than creating duplicate unapproved drafts
+            if eff_question and eff_question.strip():
+                existing_row = conn.execute(
+                    """
+                    SELECT interaction_id FROM copilot_draft_queue
+                    WHERE session_id = ? AND status = 'PENDING' AND customer_question IS NOT NULL AND TRIM(customer_question) = TRIM(?)
+                    ORDER BY id DESC LIMIT 1;
+                    """,
+                    (session_id, eff_question.strip()),
+                ).fetchone()
+                if existing_row and existing_row["interaction_id"]:
+                    eff_interaction_id = existing_row["interaction_id"]
+
+            if resp_payload is not None:
+                resp_payload.setdefault("interaction_id", eff_interaction_id)
+                if eff_question:
+                    resp_payload.setdefault("customer_question", eff_question)
+            resp_json = json.dumps(resp_payload, ensure_ascii=False) if resp_payload else None
+
             conn.execute(
                 """
                 INSERT INTO copilot_draft_queue (

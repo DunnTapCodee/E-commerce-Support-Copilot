@@ -263,76 +263,16 @@ async def get_session_state(session_id: str):
     )
 
 
-async def _resolve_scoped_order_and_guard(
-    customer_query: str,
-    state: ConversationSessionState,
-    customer_id: str,
-) -> Tuple[Optional[Dict[str, Any]], Optional[str]]:
-    """Resolve order strictly scoped to customer_id and detect cross-customer IDOR attempts."""
-    from contracts.safety import detect_foreign_customer_query, is_order_owned_by_customer
-    from services.conversation_service.src.input_pipeline.fact_extractor import extract_facts
+async def _load_customer_orders_scoped(customer_id: str) -> List[Dict[str, Any]]:
+    orders = await telemetry_client.get_customer_orders(customer_id)
+    if not orders:
+        orders = order_tools.get_customer_orders(customer_id)
+    return orders
 
-    pre_facts = extract_facts(customer_query, customer_id=customer_id)
-    foreign_cid = pre_facts.get("foreign_customer_id") or detect_foreign_customer_query(
-        customer_query, customer_id
-    )
-    if foreign_cid:
-        return None, (
-            f"Truy vấn đề cập mã khách hàng '{foreign_cid}' không thuộc tài khoản đang đăng nhập ({customer_id})."
-        )
 
-    explicit_oid = pre_facts.get("order_id")
-    order_data: Optional[Dict[str, Any]] = None
-
-    if explicit_oid:
-        try:
-            order_data = await telemetry_client.lookup_order(explicit_oid, customer_id=customer_id)
-        except Exception as exc:
-            print(f"[ConversationService] Scoped order lookup error: {exc}")
-        if not order_data:
-            order_data = order_tools.get_order_by_id(explicit_oid, customer_id=customer_id)
-
-        if order_data and is_order_owned_by_customer(order_data, customer_id):
-            state.active_order_id = order_data["order_id"]
-            state.facts["order_id"] = order_data["order_id"]
-            state.facts["order_cached"] = order_data
-            return order_data, None
-
-        # Check unscoped only internally to detect cross-customer IDOR without exposing PII
-        unscoped_hit: Optional[Dict[str, Any]] = None
-        try:
-            unscoped_hit = await telemetry_client.lookup_order(explicit_oid)
-        except Exception:
-            pass
-        if not unscoped_hit:
-            unscoped_hit = order_tools.get_order_by_id(explicit_oid)
-        if unscoped_hit and not is_order_owned_by_customer(unscoped_hit, customer_id):
-            return None, (
-                f"Đơn hàng {explicit_oid} thuộc khách hàng khác; từ chối truy xuất và tiết lộ PII."
-            )
-        return None, None
-
-    # No explicit order_id in current turn: reuse active_order_id or customer_id ONLY if owned
-    lookup_key = state.active_order_id or customer_id
-    if lookup_key:
-        try:
-            order_data = await telemetry_client.lookup_order(lookup_key, customer_id=customer_id)
-        except Exception as exc:
-            print(f"[ConversationService] Order lookup error: {exc}")
-    if not order_data and state.active_order_id:
-        order_data = order_tools.get_order_by_id(state.active_order_id, customer_id=customer_id)
-    if not order_data and state.facts.get("order_cached"):
-        cached = state.facts["order_cached"]
-        if is_order_owned_by_customer(cached, customer_id):
-            order_data = cached
-
-    if order_data and is_order_owned_by_customer(order_data, customer_id) and order_data.get("order_id"):
-        state.active_order_id = order_data["order_id"]
-        state.facts["order_id"] = order_data["order_id"]
-        state.facts["order_cached"] = order_data
-        return order_data, None
-
-    return None, None
+async def _resolve_scoped_order_and_guard(customer_query: str, state: ConversationState, customer_id: str) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[Dict[str, Any]]]:
+    from services.conversation_service.src.dialogue_state.order_context_resolver import resolve_scoped_order_and_guard
+    return await resolve_scoped_order_and_guard(customer_query=customer_query, state=state, customer_id=customer_id, telemetry_client=telemetry_client, order_tools=order_tools, load_customer_orders_fn=_load_customer_orders_scoped)
 
 
 def _build_pending_order_action(
@@ -364,6 +304,7 @@ async def execute_dialogue_preprocessing(
     state: ConversationSessionState,
     order_data: Optional[Dict[str, Any]],
     unauthorized_order_reason: Optional[str] = None,
+    has_multi_order_context: bool = False,
 ) -> Dict[str, Any]:
     """Concurrent execution of Input Classification, Intent Prediction, and Query Rewriting via asyncio.gather."""
     from services.conversation_service.src.dialogue_state.query_rewriter import QueryRewriter
@@ -399,9 +340,13 @@ async def execute_dialogue_preprocessing(
 
     merged_facts = dict(state.facts)
     safe_new_facts = dict(new_facts)
-    if unauthorized_order_reason:
+    if unauthorized_order_reason or has_multi_order_context:
         safe_new_facts.pop("order_id", None)
         safe_new_facts.pop("customer_name", None)
+    if has_multi_order_context:
+        merged_facts.pop("order_id", None)
+        merged_facts.pop("order_cached", None)
+        state.active_order_id = None
     merged_facts.update(safe_new_facts)
     state.facts = merged_facts
     if not unauthorized_order_reason and "order_id" in merged_facts and order_data:
@@ -491,6 +436,7 @@ async def execute_dialogue_preprocessing(
         has_expired_policy=has_expired_policy,
         is_live_chat=state.is_live_chat,
         unauthorized_order_reason=unauthorized_order_reason,
+        has_multi_order_context=has_multi_order_context,
     )
 
     # Step 8: Immediate Customer Acknowledgement
@@ -542,6 +488,7 @@ async def execute_dialogue_preprocessing(
         "rewrite_method": rewrite_method,
         "effective_query_for_rag": effective_query_for_rag,
         "citations": citations,
+        "has_expired_policy": has_expired_policy,
         "guard": guard,
         "draft_fallback": draft_fallback,
         "suggested_macro": suggested_macro,
@@ -567,13 +514,17 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
     state = state_store.get_or_create(session_id, customer_id)
 
     # Step 1: Early Scoped Order Lookup & Cross-Customer IDOR Guard
-    order_data, unauthorized_order_reason = await _resolve_scoped_order_and_guard(
+    order_data, unauthorized_order_reason, multi_order_context = await _resolve_scoped_order_and_guard(
         customer_query, state, customer_id
     )
 
     # Concurrent Preprocessing Pipeline via asyncio.gather
     prep = await execute_dialogue_preprocessing(
-        customer_query, state, order_data, unauthorized_order_reason=unauthorized_order_reason
+        customer_query,
+        state,
+        order_data,
+        unauthorized_order_reason=unauthorized_order_reason,
+        has_multi_order_context=bool(multi_order_context),
     )
 
     effective_intent = prep["effective_intent"]
@@ -581,6 +532,7 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
     final_intent_resp = prep["final_intent_resp"]
     effective_query_for_rag = prep["effective_query_for_rag"]
     citations = prep["citations"]
+    has_expired_policy = prep["has_expired_policy"]
     guard = prep["guard"]
     suggested_macro = prep["suggested_macro"]
     draft_fallback = prep["draft_fallback"]
@@ -604,17 +556,29 @@ async def process_chat_turn(request: QueryRequest, background_tasks: BackgroundT
             recent_turns_text=recent_turns_ctx,
             citations=citations,
             is_live_chat=state.is_live_chat,
+            multi_order_context=multi_order_context,
         )
 
         if not agent_draft.strip():
             agent_draft = suggested_macro or draft_fallback
 
+        from contracts.safety import clean_draft_header
+        agent_draft = clean_draft_header(agent_draft)
+
         # Step 9b: Runtime Safety Envelope Verification (Injection + Financial + Faithfulness)
         from services.conversation_service.src.policies.safety_guard import evaluate_runtime_safety_envelope
+        grounding_order_data = order_data or (
+            {
+                "candidates": multi_order_context.get("candidates", []),
+                "computed_summary": multi_order_context.get("computed_summary") or {},
+            }
+            if multi_order_context
+            else None
+        )
         runtime_guard = evaluate_runtime_safety_envelope(
             customer_query=customer_query,
             draft_text=agent_draft,
-            order_data=order_data,
+            order_data=grounding_order_data,
             citations=citations,
             faithfulness_threshold=FAITHFULNESS_THRESHOLD,
         )
@@ -761,13 +725,17 @@ async def process_chat_turn_stream(request: QueryRequest):
     state = state_store.get_or_create(session_id, customer_id)
 
     # Step 1: Early Scoped Order Lookup & Cross-Customer IDOR Guard
-    order_data, unauthorized_order_reason = await _resolve_scoped_order_and_guard(
+    order_data, unauthorized_order_reason, multi_order_context = await _resolve_scoped_order_and_guard(
         customer_query, state, customer_id
     )
 
     # Concurrent Preprocessing Pipeline
     prep = await execute_dialogue_preprocessing(
-        customer_query, state, order_data, unauthorized_order_reason=unauthorized_order_reason
+        customer_query,
+        state,
+        order_data,
+        unauthorized_order_reason=unauthorized_order_reason,
+        has_multi_order_context=bool(multi_order_context),
     )
     stream_pending_action = _build_pending_order_action(
         customer_query=customer_query,
@@ -826,6 +794,9 @@ async def process_chat_turn_stream(request: QueryRequest):
             current_context_summary = state.context_summary or ContextSummaryManager.build_summary(state, order_data)
             recent_turns_ctx = turn_buffer.format_as_context(state.turns)
 
+            from contracts.safety import clean_draft_header
+            header_buffer = ""
+            header_checked = False
             try:
                 async for token in CopilotDraftEngine.generate_draft_stream(
                     user_query=prep["effective_query_for_rag"],
@@ -836,10 +807,27 @@ async def process_chat_turn_stream(request: QueryRequest):
                     recent_turns_text=recent_turns_ctx,
                     citations=prep["citations"],
                     is_live_chat=state.is_live_chat,
+                    multi_order_context=multi_order_context,
                 ):
+                    if not header_checked:
+                        header_buffer += token
+                        if "\n" in header_buffer or len(header_buffer) > 80:
+                            cleaned_lead = clean_draft_header(header_buffer)
+                            header_checked = True
+                            if cleaned_lead:
+                                full_draft_chunks.append(cleaned_lead)
+                                token_payload = {"type": "token", "delta": cleaned_lead}
+                                yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+                        continue
                     full_draft_chunks.append(token)
                     token_payload = {"type": "token", "delta": token}
                     yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
+                if not header_checked and header_buffer:
+                    cleaned_lead = clean_draft_header(header_buffer)
+                    if cleaned_lead:
+                        full_draft_chunks.append(cleaned_lead)
+                        token_payload = {"type": "token", "delta": cleaned_lead}
+                        yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
             except Exception as stream_err:
                 print(f"[ConversationService] Streaming token error: {stream_err}")
                 if not full_draft_chunks:
@@ -848,16 +836,19 @@ async def process_chat_turn_stream(request: QueryRequest):
                     token_payload = {"type": "token", "delta": fallback_text}
                     yield f"event: token\ndata: {json.dumps(token_payload, ensure_ascii=False)}\n\n"
 
-        final_draft = "".join(full_draft_chunks).strip()
+        final_draft = clean_draft_header("".join(full_draft_chunks)).strip()
         if not final_draft:
             final_draft = prep["suggested_macro"] or prep["draft_fallback"]
 
         # Step 9b: Runtime Safety Envelope Verification on full draft (Injection + Financial + Faithfulness)
         from services.conversation_service.src.policies.safety_guard import evaluate_runtime_safety_envelope
+        stream_grounding_order_data = order_data or (
+            {"candidates": multi_order_context.get("candidates", [])} if multi_order_context else None
+        )
         runtime_guard = evaluate_runtime_safety_envelope(
             customer_query=customer_query,
             draft_text=final_draft,
-            order_data=order_data,
+            order_data=stream_grounding_order_data,
             citations=prep["citations"],
             faithfulness_threshold=FAITHFULNESS_THRESHOLD,
         )

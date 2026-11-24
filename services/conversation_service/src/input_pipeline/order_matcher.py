@@ -229,6 +229,43 @@ class RuleOrderMatcher:
             details={"entities": entities},
         )
 
+    def match_all(self, query: str, customer_id: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Return all owned orders matching explicit IDs, tracking codes, or phone in query."""
+        from contracts.safety import is_order_owned_by_customer
+        from services.conversation_service.src.input_pipeline.fact_extractor import extract_all_order_ids
+
+        results: List[Dict[str, Any]] = []
+        seen: set[str] = set()
+
+        for trk in RE_TRACKING.findall(query or ""):
+            cand = self.orders_by_tracking.get(trk.upper())
+            if cand and (not customer_id or is_order_owned_by_customer(cand, customer_id)):
+                oid = str(cand.get("order_id", ""))
+                if oid and oid not in seen:
+                    seen.add(oid)
+                    results.append(cand)
+
+        for oid in extract_all_order_ids(query or ""):
+            cand = self.orders_by_id.get(oid.upper())
+            if cand and (not customer_id or is_order_owned_by_customer(cand, customer_id)):
+                key = str(cand.get("order_id", ""))
+                if key and key not in seen:
+                    seen.add(key)
+                    results.append(cand)
+
+        if not results:
+            entities = extract_entities_advanced(query or "")
+            if entities.get("phone"):
+                ph = re.sub(r"\D", "", str(entities["phone"]))
+                for cand in self.orders_by_phone.get(ph, []):
+                    if not customer_id or is_order_owned_by_customer(cand, customer_id):
+                        key = str(cand.get("order_id", ""))
+                        if key and key not in seen:
+                            seen.add(key)
+                            results.append(cand)
+
+        return results[:limit]
+
 
 class EmbeddingOrderMatcher:
     """Method 2: Semantic keyword / TF-IDF matching across order item descriptions."""
@@ -333,6 +370,51 @@ class EmbeddingOrderMatcher:
             details={"top_score": best_score},
         )
 
+    def match_all(
+        self,
+        query: str,
+        threshold: float = 0.22,
+        customer_id: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        """Return all owned orders above similarity threshold, sorted descending."""
+        from contracts.safety import is_order_owned_by_customer
+
+        scored: List[tuple[float, Dict[str, Any]]] = []
+        if self.vectorizer is not None and self.matrix is not None and len(self.orders) > 0:
+            try:
+                from sklearn.metrics.pairwise import cosine_similarity
+
+                q_vec = self.vectorizer.transform([query])
+                sims = cosine_similarity(q_vec, self.matrix).flatten()
+                tokens = [t for t in re.split(r"\W+", (query or "").lower()) if len(t) > 2]
+                for idx in sims.argsort()[::-1]:
+                    score = float(sims[idx])
+                    if score < threshold:
+                        break
+                    cand = self.orders[idx]
+                    if customer_id and not is_order_owned_by_customer(cand, customer_id):
+                        continue
+                    items_txt = " ".join(it.get("name", "").lower() for it in cand.get("items", []))
+                    if score < 0.45 and not any(t in items_txt for t in tokens):
+                        continue
+                    scored.append((score, cand))
+            except Exception:
+                scored = []
+
+        if not scored:
+            tokens = [t for t in re.split(r"\W+", (query or "").lower()) if len(t) > 2]
+            for cand in self.orders:
+                if customer_id and not is_order_owned_by_customer(cand, customer_id):
+                    continue
+                items = " ".join(it.get("name", "").lower() for it in cand.get("items", []))
+                overlap = sum(1 for t in tokens if t in items)
+                if overlap >= 2:
+                    scored.append((min(0.85, 0.4 + overlap * 0.15), cand))
+            scored.sort(key=lambda pair: pair[0], reverse=True)
+
+        return [cand for _, cand in scored[:limit]]
+
 
 class HybridOrderMatcher:
     """Method 3: Combines exact keyword/rule matching with dense semantic similarity."""
@@ -383,6 +465,13 @@ class HybridOrderMatcher:
                 "rule_order_id": rule_res.order.get("order_id") if rule_res.order else None,
             },
         )
+
+    def match_all(self, query: str, customer_id: Optional[str] = None, limit: int = 10) -> List[Dict[str, Any]]:
+        """Return all owned orders matching exact rules or semantic similarity."""
+        exact = self.rule_matcher.match_all(query, customer_id=customer_id, limit=limit)
+        if exact:
+            return exact
+        return self.embedding_matcher.match_all(query, customer_id=customer_id, limit=limit)
 
 
 class PromptOrderMatcher:

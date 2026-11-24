@@ -1,7 +1,7 @@
 """Async client for Telemetry & Mock Order Service."""
 from __future__ import annotations
 
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 import httpx
 from contracts.schemas import AuditLogCreate, OrderActionProposal
 from services.conversation_service.src.config import TELEMETRY_SERVICE_URL
@@ -20,6 +20,22 @@ class TelemetryServiceClient:
             if resp.status_code == 200:
                 return resp.json()
             return None
+
+    async def get_customer_orders(self, customer_id: str) -> List[Dict[str, Any]]:
+        if not customer_id:
+            return []
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"{self.base_url}/orders/customer/{customer_id}")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if isinstance(data, list):
+                        return data
+                    if isinstance(data, dict):
+                        return data.get("orders", [])
+        except Exception as exc:
+            print(f"[TelemetryClient] get_customer_orders failed: {exc}")
+        return []
 
     async def propose_order_action(self, proposal: OrderActionProposal) -> bool:
         try:

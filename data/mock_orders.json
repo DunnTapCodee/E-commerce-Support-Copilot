@@ -154,7 +154,7 @@
   {
     "order_id": "ORD-1005",
     "customer_id": "demo-customer",
-    "customer_name": "Võ Thị Quân",
+    "customer_name": "Bùi Thị An",
     "phone": "0983.296.821",
     "order_status": "Delivery_Delayed",
     "payment_method": "Ví MoMo",
@@ -344,7 +344,7 @@
   {
     "order_id": "ORD-1010",
     "customer_id": "demo-customer",
-    "customer_name": "Đỗ Thành Yến",
+    "customer_name": "Bùi Thị An",
     "phone": "0956.324.241",
     "order_status": "Delivery_Delayed",
     "payment_method": "Kredivo Mua Trước Trả Sau",
@@ -534,7 +534,7 @@
   {
     "order_id": "ORD-1015",
     "customer_id": "demo-customer",
-    "customer_name": "Nguyễn Đức Cường",
+    "customer_name": "Bùi Thị An",
     "phone": "0978.884.228",
     "order_status": "Delivery_Delayed",
     "payment_method": "Ví ZaloPay",
@@ -952,7 +952,7 @@
   {
     "order_id": "ORD-1026",
     "customer_id": "demo-customer",
-    "customer_name": "Trần Mai Khánh",
+    "customer_name": "Bùi Thị An",
     "phone": "0925.683.352",
     "order_status": "Processing",
     "payment_method": "COD",
@@ -1044,7 +1044,7 @@
   {
     "order_id": "ORD-1030",
     "customer_id": "demo-customer",
-    "customer_name": "Dương Thu Cường",
+    "customer_name": "Bùi Thị An",
     "phone": "0941.478.391",
     "order_status": "Processing",
     "payment_method": "Ví ZaloPay",
@@ -1274,7 +1274,7 @@
   {
     "order_id": "ORD-1040",
     "customer_id": "demo-customer",
-    "customer_name": "Lê Quốc Dũng",
+    "customer_name": "Bùi Thị An",
     "phone": "0914.979.581",
     "order_status": "In_Transit",
     "payment_method": "Thẻ ATM Napas",
@@ -1527,7 +1527,7 @@
   {
     "order_id": "ORD-1051",
     "customer_id": "demo-customer",
-    "customer_name": "Hoàng Thành Nam",
+    "customer_name": "Bùi Thị An",
     "phone": "0996.417.330",
     "order_status": "Returned",
     "payment_method": "Ví ZaloPay",
@@ -1743,7 +1743,7 @@
   {
     "order_id": "ORD-1060",
     "customer_id": "demo-customer",
-    "customer_name": "Hồ Thành Vinh",
+    "customer_name": "Bùi Thị An",
     "phone": "0945.550.179",
     "order_status": "Cancelled",
     "payment_method": "Ví ZaloPay",
@@ -1983,7 +1983,7 @@
   {
     "order_id": "ORD-1070",
     "customer_id": "demo-customer",
-    "customer_name": "Phan Thu Hải",
+    "customer_name": "Bùi Thị An",
     "phone": "0953.879.488",
     "order_status": "Cancelled",
     "payment_method": "Thẻ ATM Napas",
@@ -2127,7 +2127,7 @@
   {
     "order_id": "ORD-1076",
     "customer_id": "demo-customer",
-    "customer_name": "Lê Minh Dũng",
+    "customer_name": "Bùi Thị An",
     "phone": "0949.689.793",
     "order_status": "Payment_Failed",
     "payment_method": "Ví ZaloPay",
@@ -2325,7 +2325,7 @@
   {
     "order_id": "ORD-1085",
     "customer_id": "demo-customer",
-    "customer_name": "Võ Đức Vinh",
+    "customer_name": "Bùi Thị An",
     "phone": "0967.911.117",
     "order_status": "Payment_Failed",
     "payment_method": "Thẻ tín dụng Visa (*8892)",
@@ -2457,7 +2457,7 @@
   {
     "order_id": "ORD-1091",
     "customer_id": "demo-customer",
-    "customer_name": "Hoàng Văn Yến",
+    "customer_name": "Bùi Thị An",
     "phone": "0945.146.155",
     "order_status": "Delivered",
     "payment_method": "Thẻ tín dụng Visa (*8892)",
@@ -2557,7 +2557,7 @@
   {
     "order_id": "ORD-1095",
     "customer_id": "demo-customer",
-    "customer_name": "Đặng Mai Bình",
+    "customer_name": "Bùi Thị An",
     "phone": "0929.930.676",
     "order_status": "Delivered",
     "payment_method": "Thẻ tín dụng Visa (*8892)",

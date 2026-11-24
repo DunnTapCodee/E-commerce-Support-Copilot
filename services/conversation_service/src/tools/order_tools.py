@@ -50,6 +50,14 @@ class OrderTools:
                 return o
         return None
 
+    def get_customer_orders(self, customer_id: str) -> List[Dict[str, Any]]:
+        """Return all orders owned by customer_id."""
+        if not customer_id:
+            return []
+        from contracts.safety import is_order_owned_by_customer
+
+        return [o for o in self.get_all_orders() if is_order_owned_by_customer(o, customer_id)]
+
     def search_by_product_name(
         self, product_query: str, customer_id: Optional[str] = None
     ) -> List[Dict[str, Any]]:

@@ -106,6 +106,7 @@ export interface ConversationSession {
   messages: ChatMessage[];
   copilotResponse: GatewayResponse | null;
   editedDraft: string;
+  isDraftDirty?: boolean;
   activeDraftInteractionId?: string | null;
   pendingDrafts?: PendingDraftItem[];
   messageCount?: number;
@@ -143,6 +144,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   const [inputQuery, setInputQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const inFlightSessionsRef = useRef<Set<string>>(new Set());
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Input mode in Staff Chat Bar: 'staff_reply' (Staff replies directly) vs 'simulate_customer' (Test customer ask + Copilot)
@@ -398,7 +400,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 updatedAt: ds.updatedAt || prevSess?.updatedAt || new Date().toISOString(),
                 messages: prevSess?.messages || [],
                 copilotResponse: prevSess?.copilotResponse || null,
-                editedDraft: ds.copilotDraft ?? prevSess?.editedDraft ?? '',
+                editedDraft: prevSess?.isDraftDirty
+                  ? prevSess.editedDraft
+                  : (prevSess?.editedDraft || ds.copilotDraft || ''),
+                isDraftDirty: prevSess?.isDraftDirty ?? false,
+                activeDraftInteractionId: prevSess?.activeDraftInteractionId ?? null,
+                pendingDrafts: prevSess?.pendingDrafts,
                 messageCount: ds.messageCount ?? prevSess?.messages.length ?? 0,
               };
             });
@@ -479,7 +486,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
               updatedAt: ds.updatedAt || prevSess?.updatedAt || new Date().toISOString(),
               messages: prevSess?.messages || [],
               copilotResponse: prevSess?.copilotResponse || null,
-              editedDraft: prevSess?.editedDraft || ds.copilotDraft || '',
+              editedDraft: prevSess?.isDraftDirty ? prevSess.editedDraft : (prevSess?.editedDraft || ds.copilotDraft || ''),
+              isDraftDirty: prevSess?.isDraftDirty ?? false,
+              activeDraftInteractionId: prevSess?.activeDraftInteractionId ?? null,
+              pendingDrafts: prevSess?.pendingDrafts,
               messageCount: ds.messageCount ?? prevSess?.messages.length ?? 0,
             };
           });
@@ -499,10 +509,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 const isSameLocked = Boolean(
                   locked && s.activeDraftInteractionId === activeItem.interactionId
                 );
-                const nextDraft =
-                  isSameLocked && (draftMode === 'edit' || Boolean(s.editedDraft?.trim()))
-                    ? s.editedDraft
-                    : activeItem.copilotDraft;
+                const preserveLocalEdit =
+                  isSameLocked && (Boolean(s.isDraftDirty) || draftMode === 'edit' || Boolean(s.editedDraft?.trim()));
+                const nextDraft = preserveLocalEdit ? s.editedDraft : activeItem.copilotDraft;
                 const nextResp =
                   isSameLocked && s.copilotResponse
                     ? s.copilotResponse
@@ -514,16 +523,17 @@ export const ChatView: React.FC<ChatViewProps> = ({
                   pendingDrafts: pendingQueue,
                   activeDraftInteractionId: activeItem.interactionId,
                   editedDraft: nextDraft,
+                  isDraftDirty: preserveLocalEdit ? Boolean(s.isDraftDirty) : false,
                   copilotResponse: nextResp,
                   messageCount: Array.isArray(details.messages) ? details.messages.length : s.messageCount,
                 };
               }
-              const nextDraft =
-                draftMode === 'edit' && s.editedDraft
-                  ? s.editedDraft
-                  : details.copilotDraft !== undefined
-                    ? details.copilotDraft
-                    : s.editedDraft;
+              const preserveLegacyEdit = Boolean(s.isDraftDirty) || (draftMode === 'edit' && Boolean(s.editedDraft));
+              const nextDraft = preserveLegacyEdit
+                ? s.editedDraft
+                : details.copilotDraft !== undefined
+                  ? details.copilotDraft
+                  : s.editedDraft;
               return {
                 ...s,
                 title: details.title || s.title,
@@ -531,6 +541,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 pendingDrafts: [],
                 activeDraftInteractionId: null,
                 editedDraft: nextDraft,
+                isDraftDirty: preserveLegacyEdit ? Boolean(s.isDraftDirty) : false,
                 copilotResponse:
                   details.copilotResponse !== undefined ? details.copilotResponse : s.copilotResponse,
                 messageCount: Array.isArray(details.messages) ? details.messages.length : s.messageCount,
@@ -559,7 +570,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
       syncSessionFromSqlite(false);
     }, 2500);
     return () => clearInterval(timer);
-  }, [activeSessionId, selectedCustomerId, isLoading, draftMode]);
+  }, [activeSessionId, selectedCustomerId, isLoading]);
 
   // Active customer helper
   const currentCustomer =
@@ -680,6 +691,11 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Helper: Trigger Copilot draft generation for a query or collected customer queries (with real-time SSE token streaming)
   const triggerCopilotInference = async (queryText: string, currentSessionId: string, ackMsgId: string) => {
+    if (inFlightSessionsRef.current.has(currentSessionId)) {
+      console.log(`[Copilot] Inference already in flight for session ${currentSessionId}, skipping.`);
+      return;
+    }
+    inFlightSessionsRef.current.add(currentSessionId);
     setIsLoading(true);
     let streamedDraft = '';
 
@@ -746,9 +762,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       copilotResponse: doneResp,
                     };
                     const existingQueue = s.pendingDrafts || [];
-                    const updatedQueue = existingQueue.some((d) => d.interactionId === newItem.interactionId)
-                      ? existingQueue.map((d) => (d.interactionId === newItem.interactionId ? newItem : d))
-                      : [...existingQueue, newItem];
+                    const matchIndex = existingQueue.findIndex(
+                      (d) =>
+                        d.interactionId === newItem.interactionId ||
+                        (d.customerQuestion && newItem.customerQuestion && d.customerQuestion.trim() === newItem.customerQuestion.trim())
+                    );
+                    const updatedQueue =
+                      matchIndex >= 0
+                        ? existingQueue.map((d, idx) => (idx === matchIndex ? newItem : d))
+                        : [...existingQueue, newItem];
                     return {
                       ...s,
                       activeDraftInteractionId: s.activeDraftInteractionId || newItem.interactionId,
@@ -780,10 +802,19 @@ export const ChatView: React.FC<ChatViewProps> = ({
                       copilotResponse: enriched,
                     };
                     const existingQueue = s.pendingDrafts || [];
+                    const matchIndex = existingQueue.findIndex(
+                      (d) =>
+                        d.interactionId === newItem.interactionId ||
+                        (d.customerQuestion && d.customerQuestion.trim() === queryText.trim())
+                    );
+                    const updatedQueue =
+                      matchIndex >= 0
+                        ? existingQueue.map((d, idx) => (idx === matchIndex ? newItem : d))
+                        : [...existingQueue, newItem];
                     return {
                       ...s,
                       activeDraftInteractionId: s.activeDraftInteractionId || newItem.interactionId,
-                      pendingDrafts: [...existingQueue, newItem],
+                      pendingDrafts: updatedQueue,
                       copilotResponse: enriched,
                       editedDraft: resp.draft_text || '',
                     };
@@ -798,6 +829,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     } catch (err: any) {
       alert(`⚠️ Không thể kết nối API Gateway: ${err.message}.\nVui lòng đảm bảo các microservices đã được chạy.`);
     } finally {
+      inFlightSessionsRef.current.delete(currentSessionId);
       setIsLoading(false);
     }
   };
@@ -909,6 +941,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     const userText = inputQuery.trim();
     const currentSessionId = activeSession.sessionId;
+    if (inFlightSessionsRef.current.has(currentSessionId)) return;
     const nowTime = formatSystemTime();
 
     // MODE 1: Staff replies directly to the customer
@@ -1050,11 +1083,16 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   // Manual Trigger: User has typed multiple messages and now clicks "Yêu cầu trả lời"
   const handleManualRequestResponse = async () => {
-    if (isLoading || !activeSession) return;
+    if (!activeSession) return;
     const currentSessionId = activeSession.sessionId;
-    const nowTime = formatSystemTime();
 
-    // Gather recent unresponded customer messages
+    // 1. Guard: If an inference is ALREADY in flight for this session, DO NOT trigger another one!
+    if (isLoading || inFlightSessionsRef.current.has(currentSessionId)) {
+      console.log(`[Copilot] AI is currently generating a draft for session ${currentSessionId}, waiting.`);
+      return;
+    }
+
+    // 2. Gather recent unresponded customer messages
     const recentCustomerMsgs: string[] = [];
     for (let i = activeSession.messages.length - 1; i >= 0; i--) {
       const m = activeSession.messages[i];
@@ -1065,49 +1103,80 @@ export const ChatView: React.FC<ChatViewProps> = ({
       }
     }
 
+    if (recentCustomerMsgs.length === 0) return;
     const combinedQuery = recentCustomerMsgs.join(' \n ') || 'Yêu cầu hỗ trợ từ khách hàng';
+    const latestCustomerMsg = recentCustomerMsgs[recentCustomerMsgs.length - 1];
 
-    // Call dynamic fast acknowledgement from backend
-    let initialAck = 'Dạ em đã nhận được đầy đủ thông tin của anh/chị. Em đang tổng hợp hồ sơ và chuẩn bị phản hồi chi tiết ngay nhé ạ!';
-    try {
-      const fastAckResp = await apiClient.getFastAck(combinedQuery, currentSessionId, currentCustomer.id);
-      if (fastAckResp && fastAckResp.customer_acknowledgement) {
-        initialAck = fastAckResp.customer_acknowledgement;
-      }
-    } catch (e) {
-      // Fallback to local contextual ack
-      if (combinedQuery.toLowerCase().includes('trả') || combinedQuery.toLowerCase().includes('hoàn')) {
-        initialAck = 'Dạ em đã ghi nhận yêu cầu trả hàng và hoàn tiền của mình. Em đang tra cứu quy định và đơn hàng để hướng dẫn ngay ạ!';
-      }
+    // 3. Guard against duplicate draft if a pending draft already exists for this query
+    const alreadyHasPending = activeSession.pendingDrafts?.some(
+      (d) =>
+        (d.customerQuestion && d.customerQuestion.trim() === combinedQuery.trim()) ||
+        (latestCustomerMsg && d.customerQuestion && d.customerQuestion.trim() === latestCustomerMsg.trim())
+    );
+    if (alreadyHasPending) {
+      console.log('[Copilot] Pending draft already exists for this query, focusing without re-triggering.');
+      return;
     }
 
-    const ackMsgId = `ack_${Date.now()}`;
-    const ackMsg: ChatMessage = {
-      id: ackMsgId,
-      role: 'agent',
-      content: initialAck,
-      timestamp: nowTime,
-      isAcknowledgement: true,
-    };
+    // 4. Guard against duplicate fast acknowledgement:
+    // Only send fast ack if an acknowledgement has NOT yet been sent after the customer's question
+    let lastCustIdx = -1;
+    for (let i = activeSession.messages.length - 1; i >= 0; i--) {
+      if (activeSession.messages[i].role === 'customer') {
+        lastCustIdx = i;
+        break;
+      }
+    }
+    const hasExistingAck =
+      lastCustIdx !== -1 &&
+      activeSession.messages.slice(lastCustIdx + 1).some(
+        (m) => m.isAcknowledgement || m.role === 'acknowledgement'
+      );
 
-    setSessionsByCustomer((prev) => {
-      const list = prev[selectedCustomerId] || [];
-      return {
-        ...prev,
-        [selectedCustomerId]: list.map((s) => {
-          if (s.sessionId === currentSessionId) {
-            return {
-              ...s,
-              messages: [...s.messages, ackMsg],
-              updatedAt: new Date().toISOString(),
-            };
-          }
-          return s;
-        }),
+    let ackMsgId = '';
+    if (!hasExistingAck) {
+      const nowTime = formatSystemTime();
+      let initialAck = 'Dạ em đã nhận được đầy đủ thông tin của anh/chị. Em đang tổng hợp hồ sơ và chuẩn bị phản hồi chi tiết ngay nhé ạ!';
+      try {
+        const fastAckResp = await apiClient.getFastAck(combinedQuery, currentSessionId, currentCustomer.id);
+        if (fastAckResp && fastAckResp.customer_acknowledgement) {
+          initialAck = fastAckResp.customer_acknowledgement;
+        }
+      } catch (e) {
+        if (combinedQuery.toLowerCase().includes('trả') || combinedQuery.toLowerCase().includes('hoàn')) {
+          initialAck = 'Dạ em đã ghi nhận yêu cầu trả hàng và hoàn tiền của mình. Em đang tra cứu quy định và đơn hàng để hướng dẫn ngay ạ!';
+        }
+      }
+
+      ackMsgId = `ack_${Date.now()}`;
+      const ackMsg: ChatMessage = {
+        id: ackMsgId,
+        role: 'agent',
+        content: initialAck,
+        timestamp: nowTime,
+        isAcknowledgement: true,
       };
-    });
 
-    apiClient.saveMessage(currentSessionId, 'acknowledgement', initialAck, true);
+      setSessionsByCustomer((prev) => {
+        const list = prev[selectedCustomerId] || [];
+        return {
+          ...prev,
+          [selectedCustomerId]: list.map((s) => {
+            if (s.sessionId === currentSessionId) {
+              return {
+                ...s,
+                messages: [...s.messages, ackMsg],
+                updatedAt: new Date().toISOString(),
+              };
+            }
+            return s;
+          }),
+        };
+      });
+
+      apiClient.saveMessage(currentSessionId, 'acknowledgement', initialAck, true);
+    }
+
     await triggerCopilotInference(combinedQuery, currentSessionId, ackMsgId);
   };
 
@@ -1154,6 +1223,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
               activeDraftInteractionId: nextHead?.interactionId || null,
               copilotResponse: nextHead?.copilotResponse || null,
               editedDraft: nextHead?.copilotDraft || '',
+              isDraftDirty: false,
               updatedAt: new Date().toISOString(),
             };
           }
@@ -1187,7 +1257,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
     }
   };
 
-  // Staff updates draft text
+  // Staff updates draft text (mark dirty so 2.5s polling never overwrites active typing)
   const handleUpdateDraft = (val: string) => {
     if (!activeSession) return;
     setSessionsByCustomer((prev) => {
@@ -1195,7 +1265,9 @@ export const ChatView: React.FC<ChatViewProps> = ({
       return {
         ...prev,
         [selectedCustomerId]: list.map((s) =>
-          s.sessionId === activeSession.sessionId ? { ...s, editedDraft: val } : s
+          s.sessionId === activeSession.sessionId
+            ? { ...s, editedDraft: val, isDraftDirty: true }
+            : s
         ),
       };
     });
@@ -1225,6 +1297,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
             activeDraftInteractionId: nextHead?.interactionId || null,
             copilotResponse: nextHead?.copilotResponse || null,
             editedDraft: nextHead?.copilotDraft || '',
+            isDraftDirty: false,
           };
         }),
       };
@@ -1247,6 +1320,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                 activeDraftInteractionId: item.interactionId,
                 copilotResponse: item.copilotResponse,
                 editedDraft: item.copilotDraft,
+                isDraftDirty: false,
               }
             : s
         ),
@@ -1322,7 +1396,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const messages = activeSession?.messages || [];
   const copilotResponse = activeSession?.copilotResponse;
   const editedDraft = activeSession?.editedDraft || '';
-  const hasPendingCopilot = Boolean(copilotResponse || editedDraft.trim());
+  const hasPendingCopilot = Boolean(
+    copilotResponse ||
+    editedDraft.trim() ||
+    (activeSession?.pendingDrafts && activeSession.pendingDrafts.length > 0)
+  );
+  const isSessionGenerating =
+    isLoading || Boolean(activeSession && inFlightSessionsRef.current.has(activeSession.sessionId));
 
   // Check if there are customer messages waiting for response (including when Customer sent a message on /customer and got an ack)
   const lastMessage = messages[messages.length - 1];
@@ -1823,14 +1903,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
 
         {/* E-commerce Multi-message Banner & Trigger Button */}
-        {hasUnrespondedCustomerMsg && !isLoading && !hasPendingCopilot && (
+        {hasUnrespondedCustomerMsg && !isSessionGenerating && !hasPendingCopilot && (
           <div className="px-4 py-2 bg-blue-50/90 border-t border-blue-100 flex items-center justify-between">
             <span className="text-[11px] text-blue-700">
               Khách đang chờ phản hồi. Bấm để yêu cầu AI Copilot phân tích & soạn bản nháp trả lời:
             </span>
             <button
               onClick={handleManualRequestResponse}
-              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer animate-pulse"
+              disabled={isSessionGenerating}
+              className="flex items-center gap-1.5 px-3 py-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold transition-all shadow-xs cursor-pointer animate-pulse"
             >
               <Zap className="w-3.5 h-3.5" />
               <span>⚡ Yêu cầu Copilot soạn nháp</span>
@@ -1916,12 +1997,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
               <button
                 type="button"
                 onClick={handleManualRequestResponse}
-                disabled={isLoading || !activeSession || activeSession.messages.length === 0}
+                disabled={isSessionGenerating || !activeSession || activeSession.messages.length === 0}
                 className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-semibold transition-colors disabled:opacity-50 flex items-center gap-1 cursor-pointer shadow-sm"
                 title="Yêu cầu Copilot tổng hợp các tin nhắn trên và soạn bản nháp"
               >
                 <Zap className="w-4 h-4" />
-                <span>Yêu cầu trả lời</span>
+                <span>{isSessionGenerating ? 'Đang soạn...' : 'Yêu cầu trả lời'}</span>
               </button>
             )}
           </form>
@@ -2384,11 +2465,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
             <p className="text-xs mt-1 text-slate-500 max-w-xs">
               Khi khách hàng gửi câu hỏi (từ trang <b>/customer</b> hoặc tại đây), AI Copilot sẽ tự động phân tích ý định, kiểm tra chốt chặn an toàn và soạn sẵn bản nháp tại đây để nhân viên duyệt gửi.
             </p>
-            {hasUnrespondedCustomerMsg && (
+            {hasUnrespondedCustomerMsg && !hasPendingCopilot && !isSessionGenerating && (
               <button
                 type="button"
                 onClick={handleManualRequestResponse}
-                className="mt-3 flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
+                disabled={isSessionGenerating}
+                className="mt-3 flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
               >
                 <Zap className="w-3.5 h-3.5" />
                 <span>⚡ Kích hoạt Copilot cho tin nhắn gần nhất</span>

@@ -148,6 +148,38 @@ class TestE2ECustomerStaffSynchronization(unittest.TestCase):
         self.assertEqual(details_end["pendingDrafts"], [])
         self.assertEqual(details_end["copilotDraft"], "")
 
+    def test_set_copilot_draft_deduplicates_same_question_concurrency(self):
+        """When AI generates concurrently or staff double-triggers for the same customer question,
+        the draft queue must deduplicate and update in-place instead of creating two unapproved drafts."""
+        sess = "sess_concurrent_dedup"
+        self.store.get_or_create(sess, "CUST-1001")
+        question = "gói TikiPRO là gì vậy"
+
+        # First trigger generates draft
+        self.store.set_copilot_draft(
+            sess,
+            copilot_draft="Bản nháp lần 1 về TikiPRO",
+            interaction_id="int_call_1",
+            customer_question=question,
+        )
+        d1 = self.store.get_full_session_details(sess)
+        self.assertEqual(len(d1["pendingDrafts"]), 1)
+        self.assertEqual(d1["pendingDrafts"][0]["copilotDraft"], "Bản nháp lần 1 về TikiPRO")
+
+        # Second trigger for the same question with a different interaction_id
+        self.store.set_copilot_draft(
+            sess,
+            copilot_draft="Bản nháp lần 2 chi tiết hơn về TikiPRO",
+            interaction_id="int_call_2",
+            customer_question=question,
+        )
+        d2 = self.store.get_full_session_details(sess)
+        # MUST remain 1 item, updated in place!
+        self.assertEqual(len(d2["pendingDrafts"]), 1)
+        self.assertEqual(d2["pendingDrafts"][0]["copilotDraft"], "Bản nháp lần 2 chi tiết hơn về TikiPRO")
+        # interaction_id remains stable
+        self.assertEqual(d2["pendingDrafts"][0]["interactionId"], "int_call_1")
+
 
 if __name__ == "__main__":
     unittest.main()

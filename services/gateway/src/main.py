@@ -284,7 +284,8 @@ async def process_copilot_query(
             else:
                 try:
                     gen_resp = await clients.generate_draft(customer_query, citations)
-                    draft_text = gen_resp.draft_text
+                    from contracts.safety import clean_draft_header
+                    draft_text = clean_draft_header(gen_resp.draft_text)
                     generation_mode = gen_resp.generation_mode
 
                     runtime_guard = evaluate_runtime_safety_envelope(
@@ -594,7 +595,8 @@ def get_evaluation_summary():
     except Exception as exc:
         print(f"[Gateway] get_evaluation_summary error: {exc}")
         return {
-            "overall_pass_rate": 97.6,
+            "overall_status": "ERROR",
+            "overall_pass_rate": None,
             "modules": [],
             "error": str(exc),
         }
@@ -609,10 +611,27 @@ def run_evaluation_suite():
     except Exception as exc:
         print(f"[Gateway] run_evaluation_suite error: {exc}")
         return {
-            "overall_pass_rate": 0.0,
+            "overall_status": "ERROR",
+            "overall_pass_rate": None,
             "error": str(exc),
             "modules": [],
         }
+
+
+@app.post("/api/v1/copilot/evaluation/probe")
+def probe_evaluation_query(payload: Dict[str, Any]):
+    """Run deterministic guardrails, IDOR, multi-order, and intent probes on a single query."""
+    try:
+        from evaluation.evaluation_runner import EvaluationRunner
+
+        query = str(payload.get("query") or "").strip()
+        customer_id = str(payload.get("customer_id") or "demo-customer").strip()
+        if not query:
+            return {"error": "Query không được để trống."}
+        return EvaluationRunner.probe_query(query=query, customer_id=customer_id)
+    except Exception as exc:
+        print(f"[Gateway] probe_evaluation_query error: {exc}")
+        return {"error": str(exc)}
 
 
 @app.post("/api/v1/copilot/orders/actions/propose")
@@ -706,6 +725,48 @@ async def broadcast_incident_proxy(payload: Dict[str, Any]):
     """Proxy bulk incident broadcast audit log."""
     async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
         resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/incidents/broadcast", json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.get("/api/v1/copilot/ops/releases")
+async def list_releases_proxy():
+    """Proxy runtime config snapshots & rollback history."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.get(f"{TELEMETRY_SERVICE_URL}/ops/releases")
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/ops/releases/snapshot")
+async def create_release_snapshot_proxy(payload: Optional[Dict[str, Any]] = None):
+    """Proxy release snapshot creation."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/ops/releases/snapshot", json=payload or {})
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.post("/api/v1/copilot/ops/releases/rollback")
+async def rollback_release_proxy(payload: Dict[str, Any]):
+    """Proxy versioned runtime config rollback."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.post(f"{TELEMETRY_SERVICE_URL}/ops/releases/rollback", json=payload)
+        if resp.status_code >= 400:
+            raise HTTPException(status_code=resp.status_code, detail=resp.text)
+        return resp.json()
+
+
+@app.get("/api/v1/copilot/ops/releases/health-gate")
+async def release_health_gate_proxy(limit: int = 100):
+    """Proxy drift + release rollback recommendation check."""
+    async with httpx.AsyncClient(timeout=httpx.Timeout(5.0, connect=1.0)) as http_client:
+        resp = await http_client.get(
+            f"{TELEMETRY_SERVICE_URL}/ops/releases/health-gate", params={"limit": limit}
+        )
         if resp.status_code >= 400:
             raise HTTPException(status_code=resp.status_code, detail=resp.text)
         return resp.json()
