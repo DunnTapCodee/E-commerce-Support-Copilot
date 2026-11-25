@@ -8,27 +8,31 @@ from __future__ import annotations
 import re
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+from services.conversation_service.src.dialogue_state.offline_order_fallback import OfflineOrderFallback
 from services.conversation_service.src.dialogue_state.state import ConversationState
+
+NON_ORDER_INTENTS = frozenset({
+    "out_of_scope",
+    "unknown_query",
+    "human_agent",
+    "chitchat_greeting",
+    "chitchat_thanks",
+    "chitchat_confirm",
+    "chitchat",
+    "greeting",
+    "create_account",
+    "recover_password",
+    "warranty",
+    "return_policy",
+    "refund_policy",
+    "shipping_costs",
+    "get_discounts",
+})
 
 
 def detect_order_status_filter(customer_query: str) -> Optional[Tuple[set[str], str]]:
-    """Detect whether the customer is filtering their orders by canonical order_status."""
-    q = (customer_query or "").lower()
-    if any(k in q for k in ("giao trễ", "bị trễ", "chậm giao", "quá hạn", "delay", "trễ hẹn")):
-        return {"DELIVERY_DELAYED"}, "đang bị giao trễ"
-    if any(k in q for k in ("đang xử lý", "chờ xử lý", "chưa đóng gói", "processing")):
-        return {"PROCESSING"}, "đang xử lý"
-    if any(k in q for k in ("đang giao", "đang vận chuyển", "trên đường giao", "shipping", "in_transit")):
-        return {"SHIPPING", "IN_TRANSIT"}, "đang vận chuyển"
-    if any(k in q for k in ("đã giao", "hoàn thành", "delivered")):
-        return {"DELIVERED"}, "đã giao thành công"
-    if any(k in q for k in ("đã hủy", "bị hủy", "cancelled")):
-        return {"CANCELLED"}, "đã hủy"
-    if any(k in q for k in ("trả hàng", "hoàn hàng", "returned")):
-        return {"RETURNED", "RETURN_REQUESTED", "RETURN_APPROVED"}, "đổi/trả hàng"
-    if any(k in q for k in ("lỗi thanh toán", "thanh toán thất bại", "payment_failed")):
-        return {"PAYMENT_FAILED"}, "lỗi thanh toán"
-    return None
+    """Thin wrapper delegating fallback status filter detection to OfflineOrderFallback."""
+    return OfflineOrderFallback.detect_order_status_filter(customer_query)
 
 
 def compute_portfolio_stats(orders: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -88,83 +92,13 @@ def filter_orders_by_dynamic_attributes(
 
 
 def is_multi_order_list_query(customer_query: str) -> bool:
-    """Detect generic/list order inquiries that should disambiguate when customer has >1 order."""
-    q = " ".join((customer_query or "").lower().split())
-    return any(
-        k in q
-        for k in (
-            "đơn nào",
-            "những đơn",
-            "các đơn",
-            "danh sách đơn",
-            "tất cả đơn",
-            "kiểm tra đơn",
-            "tra cứu đơn",
-            "xem đơn",
-            "đơn hàng của tôi",
-            "đơn của tôi",
-            "đơn hàng của mình",
-            "đơn của mình",
-            "lịch sử đơn",
-            "lịch sử mua",
-            "mấy đơn",
-            "bao nhiêu đơn",
-        )
-    )
+    """Thin wrapper delegating list-order cue detection to OfflineOrderFallback."""
+    return OfflineOrderFallback.is_multi_order_list_query(customer_query)
 
 
 def is_personal_order_portfolio_inquiry(customer_query: str) -> bool:
-    """Return True only when an unscoped utterance asks about the customer's own orders or spending.
-
-    Prevents general policy questions, account/password help, or off-topic trivia from
-    receiving a multi-order portfolio context merely because the customer owns >1 order.
-    """
-    q = " ".join((customer_query or "").lower().split())
-    if not q:
-        return False
-
-    if is_multi_order_list_query(q):
-        return True
-
-    # General policy / regulation / membership / account questions without personal order ownership cues
-    is_general_policy_or_account = any(
-        term in q
-        for term in (
-            "chính sách",
-            "quy định",
-            "quy chế",
-            "điều khoản",
-            "thể lệ",
-            "biểu phí",
-            "gói tikipro",
-            "tikipro là",
-            "tikinow là",
-            "quên mật khẩu",
-            "đổi mật khẩu",
-            "khôi phục mật khẩu",
-            "tạo tài khoản",
-            "đăng ký tài khoản",
-        )
-    ) and not any(p in q for p in ("đơn của mình", "đơn của tôi", "đơn hàng của mình", "đơn hàng của tôi", "mình đặt", "tôi đặt", "em đặt"))
-    if is_general_policy_or_account:
-        return False
-
-    # 1. Portfolio spending / order-count aggregation inquiries
-    if re.search(
-        r"\b(tổng\s+(tiền|thanh toán|chi tiêu|đơn)|đã\s+(thanh toán|chi|mua)\s+.*bao nhiêu|bao nhiêu tiền\s+rồi|hết bao nhiêu tiền)\b",
-        q,
-    ):
-        return True
-
-    # 2. Personal order / parcel tracking or delivery status without an explicit ORD-* ID
-    has_order_noun = bool(re.search(r"\b(đơn hàng|đơn mua|kiện hàng|bưu kiện|gói hàng)\b", q))
-    has_personal_or_status_cue = bool(
-        re.search(
-            r"\b(ở đâu|đến đâu|tới đâu|sao rồi|như nào rồi|bao giờ giao|khi nào giao|bao giờ nhận|khi nào nhận|tình trạng|tiến độ|xuất kho|của tôi|của mình|mình đặt|tôi đặt|em đặt|vừa đặt)\b",
-            q,
-        )
-    )
-    return has_order_noun and has_personal_or_status_cue
+    """Thin wrapper delegating portfolio inquiry detection to OfflineOrderFallback."""
+    return OfflineOrderFallback.is_personal_order_portfolio_inquiry(customer_query)
 
 
 async def resolve_scoped_order_and_guard(
@@ -174,6 +108,7 @@ async def resolve_scoped_order_and_guard(
     telemetry_client: Any,
     order_tools: Any,
     load_customer_orders_fn: Callable[[str], Awaitable[List[Dict[str, Any]]]],
+    intent: Optional[str] = None,
 ) -> Tuple[Optional[Dict[str, Any]], Optional[str], Optional[Dict[str, Any]]]:
     """Resolve order strictly scoped to customer_id, handling IDOR guards and multi-order portfolio context."""
     from contracts.order_actions import detect_order_action_intent, evaluate_order_action_eligibility
@@ -245,6 +180,11 @@ async def resolve_scoped_order_and_guard(
                 f"Đơn hàng {explicit_oid} thuộc khách hàng khác; từ chối truy xuất và tiết lộ PII.",
                 None,
             )
+        return None, None, None
+
+    # 2b. When upstream intent is known and explicitly non-order (and no ORD-* in utterance),
+    # skip keyword heuristics and return cleanly without pinning an arbitrary order.
+    if intent and intent in NON_ORDER_INTENTS:
         return None, None, None
 
     # 3. No explicit ORD-* in current utterance: check customer's multi-order portfolio

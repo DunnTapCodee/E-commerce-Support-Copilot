@@ -225,6 +225,47 @@ class TestModule3OrdersAndTools(unittest.TestCase):
         self.assertEqual(facts.get("foreign_customer_id"), "CUST-1007")
         self.assertNotIn("order_id", facts)
 
+    def test_prompt_order_matcher_honest_offline_fallback_and_live_prompt_mode(self):
+        """Regression test: PromptOrderMatcher never fakes method='pure_prompt' offline and extracts via LLM online."""
+        import asyncio
+        import os
+        from unittest.mock import AsyncMock, patch
+        from services.conversation_service.src.input_pipeline.order_matcher import PromptOrderMatcher
+
+        matcher = PromptOrderMatcher()
+
+        async def _run():
+            with patch.dict(os.environ, {"DISABLE_EXTERNAL_LLM": "true"}, clear=False):
+                offline_res = await matcher.match("Kiểm tra đơn ORD-1003")
+            self.assertIsNotNone(offline_res.order)
+            self.assertEqual(offline_res.order["order_id"], "ORD-1003")
+            self.assertEqual(offline_res.method, "rule_fallback")
+
+            mock_llm_payload = {
+                "choices": [
+                    {
+                        "message": {
+                            "content": '{"order_id": "ORD-1003", "tracking_code": null, "phone": null, "product_hint": null}'
+                        }
+                    }
+                ]
+            }
+            with (
+                patch("services.conversation_service.src.input_pipeline.order_matcher.is_external_llm_disabled", return_value=False),
+                patch("services.conversation_service.src.input_pipeline.order_matcher.get_available_api_keys", return_value=["mock-key"]),
+                patch(
+                    "services.conversation_service.src.input_pipeline.order_matcher.call_chat_completion_with_failover",
+                    new=AsyncMock(return_value=mock_llm_payload),
+                ) as mock_llm,
+            ):
+                online_res = await matcher.match("Xem giúp mình đơn đặt tuần trước")
+            mock_llm.assert_awaited_once()
+            self.assertIsNotNone(online_res.order)
+            self.assertEqual(online_res.order["order_id"], "ORD-1003")
+            self.assertEqual(online_res.method, "pure_prompt")
+
+        asyncio.run(_run())
+
 
 if __name__ == "__main__":
     unittest.main()

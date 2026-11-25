@@ -879,25 +879,26 @@ class TelemetryRepository:
         }
 
     @staticmethod
-    def _classify_incident_topic(query: str) -> str:
-        """Group free-text queries into normalized operational incident topics."""
-        q = (query or "").lower()
-        if any(k in q for k in ("bão", "mưa", "ngập", "lũ", "thời tiết")):
-            return "Sự cố thời tiết / thiên tai giao hàng"
-        if any(k in q for k in ("trễ", "chậm", "lâu quá", "quá hạn", "chưa thấy giao")):
-            return "Chậm trễ vận chuyển hàng loạt"
-        if any(k in q for k in ("vỡ", "móp", "rách", "hư hỏng", "thiếu hàng", "sai sản phẩm")):
-            return "Hư hỏng / Sai thiếu kiện hàng"
-        if any(k in q for k in ("thanh toán", "momo", "zalopay", "vnpay", "trừ tiền", "lỗi thẻ")):
-            return "Lỗi cổng thanh toán / đối soát"
-        if any(k in q for k in ("voucher", "mã giảm", "freeship")):
-            return "Lỗi áp dụng mã giảm giá / voucher"
-        return "Yêu cầu hỗ trợ chung"
+    def _tokenize_incident_query(query: str) -> List[str]:
+        """Extract informative lexical tokens (stripping order IDs and generic Vietnamese filler words)."""
+        stopwords = {
+            "của", "tôi", "mình", "shop", "anh", "chị", "em", "bạn", "nhé", "nha",
+            "ơi", "thế", "nào", "này", "đó", "kia", "cho", "hỏi", "về", "bị",
+            "đã", "đang", "rồi", "nữa", "vậy", "nhiều", "quá", "hay", "làm",
+            "sao", "khi", "bao", "giờ", "mấy", "ngày", "ở", "tại", "vì", "do",
+            "phải", "không", "chưa", "với", "và", "là", "có", "được", "mới",
+            "nhưng", "mà", "thì", "lúc", "nếu", "hiện", "đơn", "hàng",
+        }
+        cleaned = re.sub(r"\bORD-[A-Z0-9-]+\b", " ", query or "", flags=re.IGNORECASE).lower()
+        tokens = re.findall(r"[a-zA-ZÀ-ỹ0-9]{2,}", cleaned)
+        return [tok for tok in tokens if tok not in stopwords]
 
     def get_incident_clusters(
         self, window_hours: int = 24, min_cluster_size: int = 3
     ) -> Dict[str, Any]:
-        """Cluster recent telemetry interactions to surface widespread operational incidents."""
+        """Dynamically cluster recent telemetry interactions by predicted_intent + lexical token overlap."""
+        from collections import Counter
+
         cutoff_utc = datetime.now(timezone.utc) - timedelta(hours=max(1, window_hours))
         with get_db_connection(self.db_path) as conn:
             rows = conn.execute(
@@ -912,45 +913,88 @@ class TelemetryRepository:
                 "SELECT * FROM incident_broadcasts ORDER BY created_at DESC LIMIT 20;"
             ).fetchall()
 
-        buckets: Dict[tuple, Dict[str, Any]] = {}
+        records_by_intent: Dict[str, List[Dict[str, Any]]] = {}
+        doc_freq: Counter = Counter()
         for r in rows:
             ts_utc = _parse_timestamp_utc(r["timestamp"], naive_tz=timezone.utc)
             if ts_utc != datetime.min.replace(tzinfo=timezone.utc) and ts_utc < cutoff_utc:
                 continue
             intent = r["predicted_intent"] or "unknown_query"
-            topic = self._classify_incident_topic(r["customer_query"] or "")
-            key = (intent, topic)
-            entry = buckets.get(key)
-            if not entry:
-                cid = f"INC-{abs(hash(key)) % 100000:05d}"
-                buckets[key] = {
-                    "cluster_id": cid,
-                    "predicted_intent": intent,
-                    "issue_topic": topic,
-                    "count": 1,
-                    "sample_queries": [r["customer_query"]],
-                    "latest_timestamp": r["timestamp"],
-                }
-            else:
-                entry["count"] += 1
-                if len(entry["sample_queries"]) < 3 and r["customer_query"] not in entry["sample_queries"]:
-                    entry["sample_queries"].append(r["customer_query"])
-
-        clusters = []
-        for entry in sorted(buckets.values(), key=lambda x: x["count"], reverse=True):
-            count = entry["count"]
-            is_wide = count >= min_cluster_size
-            clusters.append(
+            query_txt = r["customer_query"] or ""
+            tokens = self._tokenize_incident_query(query_txt)
+            token_set = set(tokens)
+            for tok in token_set:
+                doc_freq[tok] += 1
+            records_by_intent.setdefault(intent, []).append(
                 {
-                    **entry,
-                    "is_widespread": is_wide,
-                    "suggested_broadcast": (
-                        f"Dạ Tiki xin thông báo hiện đang ghi nhận tình trạng '{entry['issue_topic']}'. "
-                        "Đội ngũ vận hành đang khẩn trương xử lý ưu tiên và sẽ cập nhật tiến độ mới nhất đến quý khách ngay ạ!"
-                    ),
+                    "query": query_txt,
+                    "timestamp": r["timestamp"],
+                    "tokens": tokens,
+                    "token_set": token_set,
                 }
             )
 
+        clusters = []
+        for intent, items in records_by_intent.items():
+            # Union-Find / order-independent connected-component clustering on informative shared tokens
+            n = len(items)
+            parent = list(range(n))
+
+            def _find(x: int) -> int:
+                while parent[x] != x:
+                    parent[x] = parent[parent[x]]
+                    x = parent[x]
+                return x
+
+            for i in range(n):
+                for j in range(i + 1, n):
+                    shared = items[i]["token_set"] & items[j]["token_set"]
+                    if shared and max((1.0 / max(1, doc_freq[t]) for t in shared), default=0.0) > 0.0:
+                        ri, rj = _find(i), _find(j)
+                        if ri != rj:
+                            parent[rj] = ri
+
+            grouped: Dict[int, Dict[str, Any]] = {}
+            for i, item in enumerate(items):
+                root = _find(i)
+                grp = grouped.get(root)
+                if grp is None:
+                    grouped[root] = {
+                        "count": 1,
+                        "token_counts": Counter(item["tokens"]),
+                        "sample_queries": [item["query"]],
+                        "latest_timestamp": item["timestamp"],
+                    }
+                else:
+                    grp["count"] += 1
+                    grp["token_counts"].update(item["tokens"])
+                    if len(grp["sample_queries"]) < 3 and item["query"] not in grp["sample_queries"]:
+                        grp["sample_queries"].append(item["query"])
+
+            for idx, grp in enumerate(grouped.values()):
+                top_terms = [tok for tok, _ in grp["token_counts"].most_common(3)]
+                terms_str = ", ".join(top_terms) if top_terms else "chung"
+                issue_topic = f"Sự cố {intent}: {terms_str}"
+                cid = f"INC-{abs(hash((intent, idx, terms_str))) % 100000:05d}"
+                count = grp["count"]
+                is_wide = count >= min_cluster_size
+                clusters.append(
+                    {
+                        "cluster_id": cid,
+                        "predicted_intent": intent,
+                        "issue_topic": issue_topic,
+                        "count": count,
+                        "sample_queries": grp["sample_queries"],
+                        "latest_timestamp": grp["latest_timestamp"],
+                        "is_widespread": is_wide,
+                        "suggested_broadcast": (
+                            f"Dạ Tiki xin thông báo hiện đang ghi nhận tình trạng '{issue_topic}'. "
+                            "Đội ngũ vận hành đang khẩn trương xử lý ưu tiên và sẽ cập nhật tiến độ mới nhất đến quý khách ngay ạ!"
+                        ),
+                    }
+                )
+
+        clusters.sort(key=lambda x: x["count"], reverse=True)
         return {
             "window_hours": window_hours,
             "min_cluster_size": min_cluster_size,

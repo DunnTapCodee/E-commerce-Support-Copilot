@@ -1,14 +1,13 @@
-"""Customer Acknowledgement Engine (Phần 1: Trả lời dạo tức thì cho User).
-Cung cấp câu đệm tức thì (< 20ms), lịch sự, tự nhiên, đa dạng (20+ mẫu câu)
-và tự động chống lặp lại giữa các lượt hội thoại.
+"""Customer Acknowledgement Engine (Phần 1: Trả lời đệm tức thì cho Khách hàng).
+
+Cung cấp câu đệm tức thì (< 20ms), lịch sự chuẩn xưng hô CSKH ("em - anh/chị"),
+định tuyến đồng nhất theo 16 TARGET_INTENTS chuẩn (không lặp lại bộ regex phân loại ý định).
 """
 from __future__ import annotations
 
 import re
 from typing import Any, Dict, List, Optional
 
-
-# Kho mẫu câu phản hồi đệm phong phú (~20 samples) phân theo ngữ cảnh
 GENERAL_BUFFERS: List[str] = [
     "Dạ anh/chị chờ em một xíu, nhân viên đang chuẩn bị thông tin cho mình ngay đây ạ!",
     "Dạ em đã nhận được yêu cầu của anh/chị. Em đang kiểm tra thông tin để hỗ trợ mình ngay nhé ạ!",
@@ -36,6 +35,11 @@ ORDER_BUFFERS: List[str] = [
     "Dạ em đang đối soát vị trí và tiến độ đơn hàng{order_clause} để cập nhật cho anh/chị ngay ạ!",
 ]
 
+SHIPPING_COST_BUFFERS: List[str] = [
+    "Dạ em đã ghi nhận thắc mắc về cước phí vận chuyển{order_clause}. Em đang tra cứu biểu phí và ưu đãi Freeship gửi anh/chị ngay nhé ạ!",
+    "Dạ anh/chị đợi em một lát, em đang kiểm tra chi tiết phí giao hàng cho mình ngay đây ạ.",
+]
+
 DISCOUNT_BUFFERS: List[str] = [
     "Dạ Tiki đã ghi nhận thắc mắc về ưu đãi và voucher{order_clause}. Em đang tra cứu các chương trình khuyến mãi hiện có gửi anh/chị ngay nhé ạ!",
     "Dạ anh/chị chờ em một lát, em đang tổng hợp các voucher và mã giảm giá tốt nhất gửi mình ngay nhé ạ!",
@@ -48,9 +52,14 @@ RETURN_REFUND_BUFFERS: List[str] = [
     "Dạ em đã ghi nhận vấn đề của mình. Em đang kiểm tra hồ sơ để xử lý nhanh nhất cho anh/chị ạ.",
 ]
 
-PRICE_BUFFERS: List[str] = [
+PAYMENT_PRICE_BUFFERS: List[str] = [
     "Dạ em đã ghi nhận thắc mắc về giá trị đơn hàng và thanh toán. Em đang kiểm tra bảng kê chi tiết gửi anh/chị ngay đây ạ!",
-    "Dạ anh/chị chờ em một xíu, em đang kiểm tra số tiền và thanh toán đơn hàng gửi mình ngay nhé ạ.",
+    "Dạ anh/chị chờ em một xíu, em đang kiểm tra số tiền và thông tin thanh toán đơn hàng gửi mình ngay nhé ạ.",
+]
+
+WARRANTY_ACCOUNT_BUFFERS: List[str] = [
+    "Dạ em đã tiếp nhận câu hỏi của anh/chị. Em đang tra cứu quy định và hướng dẫn chi tiết gửi mình ngay đây ạ!",
+    "Dạ anh/chị chờ em một chút nhé, em đang kiểm tra hướng dẫn chính xác nhất để hỗ trợ mình ngay ạ.",
 ]
 
 OUT_OF_SCOPE_BUFFERS: List[str] = [
@@ -58,18 +67,64 @@ OUT_OF_SCOPE_BUFFERS: List[str] = [
     "Dạ anh/chị chờ em một xíu, em đang xử lý câu hỏi của mình ngay đây ạ.",
 ]
 
+_GREETING_RE = re.compile(r"\b(h+i+|h+e+l+l*o+|a+l+o+|c+h+à+o+|c+h+a+o+)\b", re.IGNORECASE)
+_THANKS_RE = re.compile(r"\b(cảm\s+ơn|cam\s+on|thanks|thank\s+you)\b", re.IGNORECASE)
+_CONFIRM_RE = re.compile(r"\b(ok|oke|oki|okie|vâng|vang|đúng|dung|dạ)\b", re.IGNORECASE)
+_ORDER_PRICE_RE = re.compile(
+    r"\b(bao\s+nhiêu\s+tiền|tổng\s+tiền|giá\s+đơn\s+hàng|tiền\s+đơn\s+hàng|hết\s+bao\s+nhiêu)\b",
+    re.IGNORECASE,
+)
+
 
 class CustomerAcknowledgementEngine:
-    """Tự động chọn câu đệm tự nhiên, lịch sự, đa dạng (~20 mẫu) và chống lặp ngữ cảnh."""
+    """Fast CSKH buffer generator driven by canonical intent + extracted dialogue state."""
+
+    @classmethod
+    def infer_quick_intent(
+        cls,
+        user_query: str,
+        active_intent: Optional[str] = None,
+        input_type: Optional[str] = None,
+        facts: Optional[Dict[str, Any]] = None,
+    ) -> str:
+        """Infer quick intent from dialogue state or shared offline classifier without duplicate regex tables."""
+        q_low = " ".join((user_query or "").lower().split())
+        facts = facts or {}
+
+        if input_type == "chitchat":
+            if _THANKS_RE.search(q_low):
+                return "chitchat_thanks"
+            if _CONFIRM_RE.search(q_low) and not _GREETING_RE.search(q_low):
+                return "chitchat_confirm"
+            return "chitchat_greeting"
+
+        if input_type == "fact_supplement" and active_intent:
+            return active_intent
+
+        if "order_id" in facts and not active_intent:
+            return "track_order"
+
+        # Reuse shared OfflineIntentFallback when available in the repo; avoid duplicating 16 intent regexes
+        try:
+            from services.intent_service.src.offline_fallback import OfflineIntentFallback
+
+            return OfflineIntentFallback.classify(user_query).intent
+        except ImportError:
+            pass
+
+        if active_intent:
+            return active_intent
+        if "order_id" in facts or "ord-" in q_low:
+            return "track_order"
+        return "unknown_query"
 
     @classmethod
     def _pick_variant(cls, candidates: List[str], last_ack: Optional[str] = None) -> str:
-        """Chọn câu đệm trong danh sách, ưu tiên câu khác với last_ack để chống lặp."""
+        """Select a buffer message while avoiding immediate repetition against last_ack."""
         if not candidates:
             return GENERAL_BUFFERS[0]
         if not last_ack:
             return candidates[0]
-        # Tìm câu khác với last_ack
         for c in candidates:
             if c[:30] not in last_ack:
                 return c
@@ -84,51 +139,56 @@ class CustomerAcknowledgementEngine:
         user_query: str = "",
         last_ack: Optional[str] = None,
     ) -> str:
-        """Sinh câu trả lời dạo trước nhạy ngữ cảnh, chống lặp và tự nhiên."""
+        """Generate a context-aware, polite CSKH acknowledgement strictly using 'em - anh/chị'."""
         facts = facts or {}
-        q_lower = user_query.lower().strip()
+        q_lower = " ".join((user_query or "").lower().split())
 
-        # Format slot clauses
         order_id = facts.get("order_id")
         order_clause = f" {order_id}" if order_id else ""
         product_name = facts.get("product_name")
 
-        if product_name and intent in ("return_product", "complaint", "return_policy"):
-            return f"Dạ em rất tiếc về sự cố với {product_name} của mình. Em đang tra cứu quy định và hỗ trợ mình ngay đây ạ."
+        effective_intent = intent or cls.infer_quick_intent(user_query, input_type=input_type, facts=facts)
 
-        # 1. Chitchat greeting (Hỗ trợ cả kéo dài chữ như hiiiii, hellooo mà không bắt nhầm 'hiện tại', 'hiển thị')
-        is_greeting = bool(re.search(r"\b(h+i+|h+e+l+l*o+|a+l+o+|c+h+à+o+|c+h+a+o+)\b", q_lower))
-        is_thanks = bool(re.search(r"\b(cảm ơn|cam on|thanks|thank you)\b", q_lower))
-        is_confirm = bool(re.search(r"\b(ok|oke|oki|vâng|vang|đúng|dung|dạ)\b", q_lower))
+        if product_name and effective_intent in ("return_product", "return_policy"):
+            return f"Dạ em rất tiếc về sự cố với {product_name} của mình. Em đang tra cứu quy định và hỗ trợ anh/chị ngay đây ạ."
 
-        # Check explicit keywords
-        has_promo = bool(re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|tiki xu)\b", q_lower))
-        has_return_refund = bool(re.search(r"\b(trả hàng|đổi hàng|đổi trả|hoàn tiền|refund|hủy đơn|huỷ đơn)\b", q_lower))
-        has_order_tracking = bool(re.search(r"\b(vận đơn|bưu tá|đã giao chưa|giao chưa|khi nào tới|bao giờ tới|đơn hàng của mình|đơn của mình|ord-)\b", q_lower))
-        has_order_price = bool(re.search(r"\b(đơn.*bao nhiêu tiền|tổng tiền.*đơn|giá đơn hàng|tiền đơn hàng|đơn hàng.*hết bao nhiêu)\b", q_lower))
-        has_out_of_scope = bool(re.search(r"\b(thời tiết|giá xăng|xăng|ronaldo|messi|bóng đá|toán học|phương trình)\b", q_lower))
+        is_thanks = bool(_THANKS_RE.search(q_lower)) or effective_intent == "chitchat_thanks"
+        is_greeting_only = (
+            effective_intent == "chitchat_greeting"
+            or (input_type == "chitchat" and bool(_GREETING_RE.search(q_lower)))
+            or (bool(_GREETING_RE.search(q_lower)) and len(q_lower.split()) <= 3)
+        )
+        is_confirm_only = (
+            effective_intent == "chitchat_confirm"
+            or (bool(_CONFIRM_RE.search(q_lower)) and len(q_lower.split()) <= 3 and not order_id)
+        )
 
-        # Decision routing
-        if is_thanks or intent == "chitchat_thanks":
+        if is_thanks and len(q_lower.split()) <= 6:
             chosen = cls._pick_variant(THANKS_CONFIRM_BUFFERS, last_ack)
-        elif is_greeting and not has_promo and not has_return_refund and not has_order_tracking and len(q_lower.split()) <= 4:
+        elif is_greeting_only:
             chosen = cls._pick_variant(GREETING_BUFFERS, last_ack)
-        elif is_confirm and len(q_lower.split()) <= 3:
+        elif is_confirm_only:
             chosen = cls._pick_variant(THANKS_CONFIRM_BUFFERS, last_ack)
-        elif has_promo or intent in ("get_discounts", "promotion_policy"):
+        elif effective_intent == "get_discounts":
             chosen = cls._pick_variant(DISCOUNT_BUFFERS, last_ack)
-        elif has_return_refund or intent in ("return_policy", "return_product", "request_refund", "refund_policy", "cancel_order"):
+        elif effective_intent == "shipping_costs":
+            chosen = cls._pick_variant(SHIPPING_COST_BUFFERS, last_ack)
+        elif effective_intent in ("return_policy", "return_product", "request_refund", "refund_policy", "refund_status", "cancel_order"):
             chosen = cls._pick_variant(RETURN_REFUND_BUFFERS, last_ack)
-        elif has_order_price or (intent == "track_order" and "bao nhiêu tiền" in q_lower):
-            chosen = cls._pick_variant(PRICE_BUFFERS, last_ack)
-        elif has_order_tracking or (intent in ("track_order", "delivery_time")):
-            if not order_id and any(k in q_lower for k in ["khi nào", "bao giờ", "giao chưa", "đến đâu", "tới nơi"]):
-                return "Dạ em chào anh/chị! Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé để em kiểm tra ngay cho mình ạ."
+        elif effective_intent == "payment_issue" or (effective_intent == "track_order" and _ORDER_PRICE_RE.search(q_lower)):
+            chosen = cls._pick_variant(PAYMENT_PRICE_BUFFERS, last_ack)
+        elif effective_intent in ("track_order", "delivery_time", "delivery_issue"):
+            if not order_id and any(k in q_lower for k in ("khi nào", "bao giờ", "giao chưa", "đến đâu", "tới nơi", "ở đâu")):
+                return (
+                    "Dạ em chào anh/chị! Anh/chị vui lòng cho em xin mã đơn hàng hoặc thông tin đơn hàng "
+                    "để em kiểm tra ngay cho mình nhé ạ."
+                )
             chosen = cls._pick_variant(ORDER_BUFFERS, last_ack)
-        elif has_out_of_scope or intent == "out_of_scope":
+        elif effective_intent in ("warranty", "create_account", "recover_password"):
+            chosen = cls._pick_variant(WARRANTY_ACCOUNT_BUFFERS, last_ack)
+        elif effective_intent == "out_of_scope":
             chosen = cls._pick_variant(OUT_OF_SCOPE_BUFFERS, last_ack)
         else:
-            # General safe natural buffer: Rất thân thiện, không phỏng đoán bừa bãi
             chosen = cls._pick_variant(GENERAL_BUFFERS, last_ack)
 
         try:

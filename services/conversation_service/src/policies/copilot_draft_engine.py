@@ -8,21 +8,15 @@ import json
 import os
 import re
 from typing import Any, AsyncGenerator, Dict, List, Optional
-import httpx
 
 from contracts.llm_failover import (
     DEFAULT_OPENAI_BASE_URL,
     call_chat_completion_with_failover,
     get_available_api_keys,
     get_default_openai_model,
-    get_tls_verify_for_httpx,
     stream_chat_completion_with_failover,
 )
 from services.conversation_service.src.policies.offline_fallback import OfflineDraftFallback
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -83,43 +77,6 @@ class CopilotDraftEngine:
                 yield token
         except Exception as exc:
             print(f"[CopilotDraftEngine] Stream error: {exc}")
-
-    @classmethod
-    async def _call_gemini(cls, prompt: str, api_key: str) -> Optional[str]:
-        """Generate response via Google Gemini API with multi-model resilience."""
-        try:
-            payload = {
-                "contents": [{"parts": [{"text": prompt}]}],
-                "generationConfig": {
-                    "temperature": 0.2,
-                    "maxOutputTokens": 2048,
-                },
-            }
-            candidate_models = [
-                os.getenv("GEMINI_MODEL", "gemini-flash-lite-latest"),
-                "gemini-3.8-flash",
-                "gemini-2.5-flash",
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-            ]
-            async with httpx.AsyncClient(timeout=10.0, verify=get_tls_verify_for_httpx()) as client:
-                for model in dict.fromkeys(candidate_models):
-                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
-                    try:
-                        resp = await client.post(url, json=payload)
-                        if resp.status_code == 200:
-                            candidates = resp.json().get("candidates", [])
-                            if candidates:
-                                raw_draft = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "").strip()
-                                if raw_draft:
-                                    return raw_draft
-                        elif resp.status_code in (400, 404, 429, 500, 503):
-                            continue
-                    except Exception:
-                        continue
-        except Exception as exc:
-            print(f"[CopilotDraftEngine] Gemini generation call failed: {exc}")
-        return None
 
     @staticmethod
     def _format_multi_order_candidates(multi_order_context: Optional[Dict[str, Any]], max_items: int = 15) -> str:
@@ -296,23 +253,15 @@ Nhiệm vụ: Soạn sẵn một BẢN THẢO CÂU TRẢ LỜI HOÀN CHỈNH, L�
         )
 
         provider = os.getenv("LLM_PROVIDER", LLM_PROVIDER).lower()
-        gemini_key = os.getenv("GEMINI_API_KEY", GEMINI_API_KEY)
 
-        # 1. Primary: OpenAI-compatible (CKEY.VN via api.xah.io/v1 with multi-key failover)
+        # 1. Primary: OpenAI-compatible (CKEY.VN with multi-key failover)
         if provider in ("openai_compatible", "openai", "auto") and get_available_api_keys():
             draft = await cls._call_openai_compatible(prompt)
             if draft:
                 from contracts.safety import clean_draft_header
                 return clean_draft_header(draft)
 
-        # 2. Secondary: Gemini API only when provider explicitly allows Gemini
-        if provider in ("gemini", "auto") and gemini_key:
-            draft = await cls._call_gemini(prompt, gemini_key)
-            if draft:
-                from contracts.safety import clean_draft_header
-                return clean_draft_header(draft)
-
-        # 3. Grounded Semantic Fallback Draft when LLMs are unavailable
+        # 2. Grounded Semantic Fallback Draft when LLMs are unavailable
         return cls._build_semantic_fallback_draft(
             user_query, intent, facts, order_data, citations, multi_order_context=multi_order_context
         )

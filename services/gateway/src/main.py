@@ -481,7 +481,7 @@ async def fast_acknowledgement_proxy(request: QueryRequest):
         "status": "acknowledged",
         "session_id": request.session_id,
         "customer_acknowledgement": "Dạ anh/chị chờ em một xíu, nhân viên đang chuẩn bị thông tin cho mình ngay đây ạ!",
-        "intent": "general_inquiry",
+        "intent": "unknown_query",
     }
 
 

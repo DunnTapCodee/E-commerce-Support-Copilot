@@ -56,6 +56,62 @@ class TestInputClassifier(unittest.TestCase):
         category = self.classifier.classify_fast_tier("thôi không hủy nữa", {})
         self.assertEqual(category, "negation_reversal")
 
+    def test_long_fact_supplement_not_misclassified_as_new_question(self):
+        """Task 2 Regression: Multi-word declarative entity replies (>4 words) must be fact_supplement, not new_question."""
+        cases = [
+            "Mã đơn của mình là ORD-1003 nhé",
+            "Số điện thoại nhận hàng là 0912345678 ạ",
+        ]
+        for text in cases:
+            facts = extract_facts(text)
+            category = self.classifier.classify_fast_tier(text, facts, active_intent="track_order")
+            self.assertEqual(category, "fact_supplement", f"Expected fact_supplement for: {text}")
+
+        # Short declarative attribute reply during active intent resolves to fact_supplement in offline fallback
+        self.assertEqual(
+            self.classifier.classify_fast_tier("Màu đen size L nhé shop", {}, active_intent="return_product"),
+            "fact_supplement",
+        )
+
+        # Greeting + question must still be new_question
+        q_text = "Chào shop, kiểm tra giúp mình đơn ORD-1002 đến đâu rồi?"
+        self.assertEqual(
+            self.classifier.classify_fast_tier(q_text, extract_facts(q_text), active_intent="track_order"),
+            "new_question",
+        )
+
+    def test_tier2_llm_reachable_for_genuinely_ambiguous_utterance(self):
+        """Task 2 Regression: Online mode prioritizes LLM primary without regex pre-interception."""
+        from unittest.mock import AsyncMock, patch
+
+        utterance = "Chào shop, kiểm tra giúp mình đơn này với?"
+        mock_llm_resp = {
+            "choices": [
+                {"message": {"content": '{"input_type": "new_question", "order_id": null, "confidence": 0.94}'}}
+            ]
+        }
+        with (
+            patch(
+                "services.conversation_service.src.input_pipeline.input_classifier.is_external_llm_disabled",
+                return_value=False,
+            ),
+            patch(
+                "services.conversation_service.src.input_pipeline.input_classifier.get_available_api_keys",
+                return_value=["mock-key"],
+            ),
+            patch(
+                "services.conversation_service.src.input_pipeline.input_classifier.call_chat_completion_with_failover",
+                new=AsyncMock(return_value=mock_llm_resp),
+            ) as mock_call,
+        ):
+            cat, _, conf = asyncio.run(
+                self.classifier.classify_utterance(utterance, active_intent="track_order")
+            )
+            self.assertEqual(cat, "new_question")
+            self.assertAlmostEqual(conf, 0.94)
+            mock_call.assert_awaited_once()
+            self.assertLessEqual(mock_call.call_args.args[0]["max_tokens"], 200)
+
 
 class TestDialogueTracker(unittest.TestCase):
     def setUp(self):
@@ -209,7 +265,7 @@ class TestResponseDispatcher(unittest.TestCase):
         self.assertIn("đối soát", guidance.lower())
 
     def test_low_confidence_dispatch(self):
-        intent = IntentPredictionResponse(intent="general_inquiry", confidence=0.45, is_in_scope=False, all_probabilities={})
+        intent = IntentPredictionResponse(intent="unknown_query", confidence=0.45, is_in_scope=False, all_probabilities={})
         guard, draft, suggested, guidance, mode = ResponsePolicyDispatcher.dispatch(
             user_query="cái này làm sao",
             input_type="query_with_intent",
@@ -337,6 +393,142 @@ class TestAcknowledgementAndDraftEngines(unittest.TestCase):
         self.assertEqual(mode_brand, "blocked_brand_sensitivity")
         self.assertIn("POL-BRAND-001", d_brand)
         self.assertIn("NHẠY CẢM THƯƠNG HIỆU", guide_brand)
+
+    def test_query_rewriter_never_injects_order_id_into_account_or_general_queries_and_skips_redundant_llm(self):
+        """Task 2 Regression: Offline fallback never injects ORD-* into account/policy/OOS queries; online delegates to LLM."""
+        from unittest.mock import AsyncMock, patch
+        from services.conversation_service.src.dialogue_state.query_rewriter import QueryRewriter
+
+        state = ConversationState(session_id="s-rw", customer_id="CUST-1")
+        state.active_order_id = "ORD-1002"
+        order_data = {"order_id": "ORD-1002", "items": [{"name": "Giày Biti's", "quantity": 1}]}
+
+        non_order_queries = (
+            ("Tạo tài khoản mới trên ứng dụng thế nào?", QueryRewriter.SCOPE_POLICY_GENERAL),
+            ("Tôi quên mật khẩu đăng nhập tài khoản phải làm sao?", QueryRewriter.SCOPE_POLICY_GENERAL),
+            ("Chính sách bảo hành sản phẩm điện tử như thế nào?", QueryRewriter.SCOPE_POLICY_GENERAL),
+            ("Hướng dẫn công thức nấu phở bò tại nhà", QueryRewriter.SCOPE_OUT_OF_SERVICE),
+        )
+        for query, expected_scope in non_order_queries:
+            self.assertEqual(QueryRewriter.detect_query_scope(query), expected_scope, query)
+            rewritten, _ = asyncio.run(
+                QueryRewriter.rewrite_query(query, state, order_data=order_data, openai_key="")
+            )
+            self.assertNotIn("ORD-1002", rewritten, f"Leaked ORD-1002 into: {rewritten}")
+
+        # Online mode delegates to LLM rather than intercepting with regex
+        with (
+            patch("services.conversation_service.src.dialogue_state.query_rewriter.is_external_llm_disabled", return_value=False),
+            patch("services.conversation_service.src.dialogue_state.query_rewriter.get_available_api_keys", return_value=["mock-key"]),
+            patch(
+                "services.conversation_service.src.dialogue_state.query_rewriter.call_chat_completion_with_failover",
+                new=AsyncMock(return_value={"choices": [{"message": {"content": "Chính sách bảo hành sản phẩm điện tử trên Tiki"}}]}),
+            ) as mock_rw_llm,
+        ):
+            rw_online, mode_online = asyncio.run(
+                QueryRewriter.rewrite_query("Chính sách bảo hành sản phẩm điện tử như thế nào?", state, order_data=order_data)
+            )
+            mock_rw_llm.assert_awaited_once()
+            self.assertEqual(mode_online, "llm_query_rewriter")
+            self.assertNotIn("ORD-1002", rw_online)
+
+        # Hybrid anaphoric query ("đơn này có được đổi trả không") MUST ground with ORD-1002 offline
+        self.assertEqual(
+            QueryRewriter.detect_query_scope("Đơn này có được đổi trả không?"),
+            QueryRewriter.SCOPE_ORDER_POLICY_HYBRID,
+        )
+        hybrid_rw, _ = asyncio.run(
+            QueryRewriter.rewrite_query("Đơn này có được đổi trả không?", state, order_data=order_data, openai_key="")
+        )
+        self.assertIn("ORD-1002", hybrid_rw)
+
+    def test_tracker_skips_redundant_llm_when_primary_llm_intent_is_confident(self):
+        """Task 2 Regression: IntentTracker must not make a second sequential LLM call when LLMIntentClassifier already succeeded."""
+        from unittest.mock import AsyncMock, patch
+
+        state = ConversationState(session_id="s-trk", customer_id="CUST-1")
+        state.active_intent = "track_order"
+        llm_resp = IntentPredictionResponse(
+            intent="track_order",
+            confidence=0.88,
+            is_in_scope=True,
+            model_name="vantoanbk57/deepseek-v4.1-flash",
+            all_probabilities={"track_order": 0.88},
+        )
+        with patch(
+            "services.conversation_service.src.dialogue_state.tracker.call_chat_completion_with_failover",
+            new=AsyncMock(),
+        ) as mock_trk_llm:
+            eff_intent, eff_conf, switched = asyncio.run(
+                IntentTracker.resolve_intent_transition(
+                    user_text="Khi nào kiện hàng của mình giao tới nơi vậy?",
+                    input_type="new_question",
+                    extracted_facts={},
+                    ml_intent_resp=llm_resp,
+                    state=state,
+                    use_llm=True,
+                )
+            )
+            self.assertEqual(eff_intent, "track_order")
+            self.assertAlmostEqual(eff_conf, 0.88)
+            self.assertFalse(switched)
+            mock_trk_llm.assert_not_awaited()
+
+    def test_offline_draft_fallback_uses_real_citations_without_fake_pol_info_or_ban_shop(self):
+        """Task 2 Regression: OfflineDraftFallback synthesizes from citations and never emits [POL-INFO] or 'Bạn - shop'."""
+        from services.conversation_service.src.policies.offline_fallback import OfflineDraftFallback
+
+        warranty_doc = RetrievedDocument(
+            doc_id="POL-WARRANTY-001",
+            title="Chính sách bảo hành sản phẩm điện tử",
+            content="Sản phẩm điện tử chính hãng được bảo hành từ 12 đến 24 tháng theo quy định nhà sản xuất.",
+            version="2.0",
+            is_active=True,
+        )
+        grounded = OfflineDraftFallback.build_draft(
+            user_query="Bảo hành điện tử bao lâu?",
+            intent="warranty",
+            facts={},
+            order_data=None,
+            citations=[warranty_doc],
+        )
+        self.assertIn("[POL-WARRANTY-001]", grounded)
+        self.assertIn("12 đến 24 tháng", grounded)
+        self.assertNotIn("[POL-INFO]", grounded)
+        self.assertNotIn("Bạn", grounded)
+
+        no_cite = OfflineDraftFallback.build_draft(
+            user_query="Quên mật khẩu đăng nhập",
+            intent="recover_password",
+            facts={},
+            order_data=None,
+            citations=[],
+        )
+        self.assertNotIn("[POL-INFO]", no_cite)
+        self.assertNotIn("30 ngày", no_cite)
+        self.assertIn("anh/chị", no_cite.lower())
+
+    def test_nlu_primary_modules_contain_no_offline_keyword_tables(self):
+        """Task 2b Regression: Primary NLU modules (input_classifier, query_rewriter, tracker)
+        must remain free of hardcoded offline keyword tables/regexes.
+        """
+        import inspect
+        import services.conversation_service.src.dialogue_state.query_rewriter as rw_mod
+        import services.conversation_service.src.dialogue_state.tracker as tr_mod
+        import services.conversation_service.src.input_pipeline.input_classifier as ic_mod
+
+        banned_markers = (
+            "_OFFLINE_",
+            "TOPIC_SWITCH_KEYWORDS",
+            "short_phrases",
+            "_INTERROGATIVE_RE",
+            "_NEGATION_RE",
+            "_CHITCHAT_EXACT",
+        )
+        for mod in (ic_mod, rw_mod, tr_mod):
+            src = inspect.getsource(mod)
+            for marker in banned_markers:
+                self.assertNotIn(marker, src, f"Offline fallback constant '{marker}' leaked back into {mod.__name__}")
 
 
 if __name__ == "__main__":

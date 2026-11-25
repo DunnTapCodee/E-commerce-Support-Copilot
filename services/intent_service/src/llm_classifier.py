@@ -1,6 +1,7 @@
-"""LLM-based Intent Classifier using Google Gemini 2.5 Flash with structured output.
-Supports context-augmented queries from Conversation Service ([PREV_INTENT:...], [ORDER:...]).
-Includes intelligent semantic fallback for offline / test environments.
+"""LLM-based Intent Classifier using OpenAI-compatible CKEY.VN endpoint (`FR-INT-003`).
+
+Supports context-augmented queries from Conversation Service ([PREV_INTENT:...], [ORDER:...])
+and delegates offline deterministic fallback to `OfflineIntentFallback`.
 """
 from __future__ import annotations
 
@@ -8,18 +9,18 @@ import json
 import os
 import re
 import time
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Optional
 
-import requests
-from contracts.llm_failover import DEFAULT_OPENAI_BASE_URL, get_default_openai_model
+from contracts.llm_failover import (
+    DEFAULT_OPENAI_BASE_URL,
+    call_chat_completion_sync_with_failover,
+    get_available_api_keys,
+    get_default_openai_model,
+    is_external_llm_disabled,
+)
 from contracts.schemas import IntentPredictionResponse
-from services.intent_service.src.pipeline.dataset import TARGET_INTENTS, OOS_LABEL
-from services.intent_service.src.normalizer import normalize_vietnamese_query
 from services.intent_service.src.offline_fallback import OfflineIntentFallback
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_API_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent"
+from services.intent_service.src.pipeline.dataset import OOS_LABEL, TARGET_INTENTS
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
@@ -43,10 +44,10 @@ INTENT_DESCRIPTIONS: Dict[str, str] = {
     "get_discounts": "Hỏi về chương trình khuyến mãi, ưu đãi, voucher, mã giảm giá, coupon hoặc quà tặng, tích xu (ví dụ: 'có ưu đãi gì không', 'có mã giảm giá không')",
     "create_account": "Hỏi cách đăng ký, mở tài khoản thành viên hoặc tạo tài khoản mới trên sàn (ví dụ: 'tạo tài khoản mới thế nào', 'đăng ký thành viên mới')",
     "recover_password": "Hỏi cách khôi phục, lấy lại hoặc đổi mật khẩu đăng nhập khi quên mật khẩu (ví dụ: 'quên mật khẩu đăng nhập', 'tôi muốn đổi mật khẩu tài khoản')",
-    "out_of_scope": "Các câu hỏi hoàn toàn KHÔNG liên quan đến thương mại điện tử, mua sắm hoặc CSKH (ví dụ: hỏi thời tiết, giải toán, thể thao, người nổi tiếng, chính trị, triết học)",
+    "out_of_scope": "Các câu hỏi hoàn toàn KHÔNG liên quan đến thương mại điện tử, mua sắm hoặc CSKH (ví dụ: hỏi thời tiết, giải toán, thể thao, nấu ăn, chính trị, triết học)",
 }
 
-INTENT_SYSTEM_PROMPT = f"""Bạn là chuyên gia NLU phân loại ý định khách hàng (Intent Classification) cho sàn thương mại điện tử E-commerce Tiki/Shopee.
+INTENT_SYSTEM_PROMPT = f"""Bạn là chuyên gia NLU phân loại ý định khách hàng (Intent Classification) cho sàn thương mại điện tử Tiki.
 
 Hệ thống có 16 Ý ĐỊNH CHÍNH (TARGET_INTENTS) và `out_of_scope` sau:
 {chr(10).join(f"- {name}: {desc}" for name, desc in INTENT_DESCRIPTIONS.items())}
@@ -59,29 +60,11 @@ QUY TẮC PHÂN LOẠI & PHẠM VI (SCOPE BOUNDARY):
    - Hỏi tạo mới / đăng ký tài khoản -> gán `create_account`; quên / đổi / khôi phục mật khẩu -> gán `recover_password`.
    - Hỏi kiểm tra lại thông tin đơn, xuất hóa đơn VAT, giá đơn hàng -> gán `track_order`.
    - Yêu cầu gặp nhân viên, chuyển máy hỗ trợ -> BẮT BUỘC gán `human_agent`.
-3. TUYỆT ĐỐI CHỈ DÙNG `out_of_scope` khi câu hỏi hoàn toàn không thuộc về mua sắm hay TMĐT (như thời tiết, toán học, ronaldo, bóng đá, thơ ca).
+3. TUYỆT ĐỐI CHỈ DÙNG `out_of_scope` khi câu hỏi hoàn toàn không thuộc về mua sắm hay TMĐT (như thời tiết, giải toán, bóng đá, nấu ăn, thơ ca).
 4. XỬ LÝ NGỮ CẢNH HỘI THOẠI:
    - Nếu câu hỏi bắt đầu bằng các thẻ ngữ cảnh hội thoại như `[PREV_INTENT: ...]`, `[ORDER: ...]`, `[AWAITING: ...]`, bạn PHẢI cân nhắc ngữ cảnh này.
    - Ví dụ: `[PREV_INTENT:track_order] [AWAITING:order_id] ORD-1003` -> Đây là câu bổ sung thông tin cho `track_order`.
    - Nếu khách đảo ý định: `[PREV_INTENT:cancel_order] thôi không hủy nữa, xem bao giờ giao` -> Intent chuyển sang `delivery_time`.
-
-VÍ DỤ TIÊU BIỂU (FEW-SHOT EXAMPLES):
-- "Chuyển máy cho nhân viên hỗ trợ" -> intent: "human_agent"
-- "Gặp trực tiếp tư vấn viên" -> intent: "human_agent"
-- "Đơn hàng của mình bao giờ tới nơi" -> intent: "delivery_time"
-- "Khi nào giao vậy shop" -> intent: "delivery_time"
-- "Đơn hàng của mình hết bao nhiêu tiền" -> intent: "track_order"
-- "Kiểm tra lại đơn ORD-1002 giúp tôi" -> intent: "track_order"
-- "Hiện tại Tiki có ưu đãi hay voucher gì không" -> intent: "get_discounts"
-- "Tiki xu dùng để làm gì" -> intent: "get_discounts"
-- "Chính sách đổi trả trong vòng bao nhiêu ngày" -> intent: "return_policy"
-- "Hàng này có được bảo hành chính hãng không" -> intent: "warranty"
-- "Tạo tài khoản mới thế nào" -> intent: "create_account"
-- "Quên mật khẩu đăng nhập" -> intent: "recover_password"
-- "Áo này bị rách chỉ tôi muốn đổi cái khác" -> intent: "return_product"
-- "Cho tôi hủy đơn hàng vừa đặt" -> intent: "cancel_order"
-- "Tôi muốn lấy lại tiền đã thanh toán" -> intent: "request_refund"
-- "Hôm nay trời có mưa không" -> intent: "out_of_scope"
 
 ĐỊNH DẠNG ĐẦU RA:
 Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không kèm markdown ngoài):
@@ -99,66 +82,53 @@ Trả về DUY NHẤT một khối JSON hợp lệ theo cấu trúc sau (không 
 
 
 class LLMIntentClassifier:
-    """Classifies customer intents using Gemini 2.5 Flash with structured output and robust fallback."""
+    """Classifies customer intents via OpenAI-compatible CKEY.VN endpoint with offline fallback."""
 
     def __init__(self, api_key: Optional[str] = None, timeout: int = 20):
-        self.api_key = api_key or GEMINI_API_KEY
+        self.api_key = api_key or OPENAI_API_KEY
         self.timeout = timeout
 
     def predict(self, query: str) -> IntentPredictionResponse:
-        """Synchronously predict intent using OpenAI-compatible GPT-OSS model with robust fallback."""
+        """Synchronously predict intent using OpenAI-compatible CKEY.VN endpoint with offline fallback."""
         start_time = time.perf_counter()
         clean_query = query.strip()
 
-        openai_key = os.getenv("OPENAI_API_KEY", OPENAI_API_KEY)
-
-        # 1. Primary: OpenAI-compatible (openai-gpt-oss-20b) with multi-key failover
         try:
             result = self._call_openai_compatible(clean_query)
             if result:
-                latency = (time.perf_counter() - start_time) * 1000
-                result.latency_ms = round(latency, 2)
+                result.latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
                 return result
-        except Exception as e:
-            print(f"[LLMIntentClassifier] OpenAI-compatible call failed: {e}")
+        except Exception as exc:
+            print(f"[LLMIntentClassifier] OpenAI-compatible call failed: {exc}")
 
-        # High-precision semantic heuristic fallback
         fallback_resp = self._semantic_fallback(clean_query)
         fallback_resp.latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
         return fallback_resp
 
-    def _call_openai_compatible(self, query: str, api_key: Optional[str] = None) -> Optional[IntentPredictionResponse]:
+    def _call_openai_compatible(self, query: str) -> Optional[IntentPredictionResponse]:
         """Call OpenAI-compatible chat completion for intent classification with multi-key failover."""
-        from contracts.llm_failover import (
-            call_chat_completion_sync_with_failover,
-            get_available_api_keys,
-            is_external_llm_disabled,
-        )
-
         if is_external_llm_disabled() or not get_available_api_keys():
             return None
 
         base_url = os.getenv("OPENAI_BASE_URL", OPENAI_BASE_URL).rstrip("/")
         model = os.getenv("OPENAI_MODEL", OPENAI_MODEL)
 
-        messages = [
-            {"role": "system", "content": INTENT_SYSTEM_PROMPT},
-            {"role": "user", "content": f"Phân loại câu hỏi sau:\n\"{query}\""}
-        ]
         payload = {
             "model": model,
-            "messages": messages,
+            "messages": [
+                {"role": "system", "content": INTENT_SYSTEM_PROMPT},
+                {"role": "user", "content": f'Phân loại câu hỏi sau:\n"{query}"'},
+            ],
             "temperature": 0.1,
-            "max_tokens": 2048,
+            "max_tokens": 350,
         }
 
         data = call_chat_completion_sync_with_failover(payload, base_url=base_url, timeout=self.timeout)
         if data:
             choices = data.get("choices", [])
             if choices:
-                raw_text = choices[0].get("message", {}).get("content", "")
-                if not raw_text.strip():
-                    raw_text = choices[0].get("message", {}).get("reasoning_content", "")
+                msg = choices[0].get("message", {})
+                raw_text = (msg.get("content") or msg.get("reasoning_content") or "").strip()
                 parsed = self._parse_json(raw_text)
                 if parsed and "intent" in parsed:
                     intent = parsed["intent"]
@@ -176,71 +146,17 @@ class LLMIntentClassifier:
                         intent=intent,
                         confidence=conf,
                         is_in_scope=is_in_scope,
-                        language="vi" if re.search(r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", query.lower()) else "en",
+                        language=(
+                            "vi"
+                            if re.search(
+                                r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]",
+                                query.lower(),
+                            )
+                            else "en"
+                        ),
                         model_name=model,
                         all_probabilities=probs,
                         latency_ms=0.0,
-                    )
-        return None
-
-    def _call_gemini(self, query: str) -> Optional[IntentPredictionResponse]:
-        """Send prompt to Gemini 2.5 Flash and parse structured JSON."""
-        from contracts.llm_failover import get_tls_verify_for_requests, is_external_llm_disabled
-
-        if is_external_llm_disabled() or not self.api_key:
-            return None
-
-        payload = {
-            "systemInstruction": {
-                "parts": [{"text": INTENT_SYSTEM_PROMPT}]
-            },
-            "contents": [
-                {
-                    "parts": [{"text": f"Phân loại câu hỏi sau:\n\"{query}\""}]
-                }
-            ],
-            "generationConfig": {
-                "temperature": 0.1,
-                "responseMimeType": "application/json",
-                "thinkingConfig": {
-                    "thinkingBudget": 0
-                },
-            },
-        }
-
-        url = f"{GEMINI_API_URL}?key={self.api_key}"
-        resp = requests.post(
-            url,
-            json=payload,
-            timeout=self.timeout,
-            verify=get_tls_verify_for_requests(),
-        )
-
-        if resp.status_code == 200:
-            data = resp.json()
-            candidates = data.get("candidates", [])
-            if candidates:
-                raw_text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
-                parsed = self._parse_json(raw_text)
-                if parsed and "intent" in parsed:
-                    intent = parsed["intent"]
-                    if intent not in INTENT_DESCRIPTIONS:
-                        intent = "out_of_scope"
-
-                    try:
-                        conf = max(0.0, min(1.0, float(parsed.get("confidence", 0.50))))
-                    except (TypeError, ValueError):
-                        conf = 0.0
-                    is_in_scope = intent != OOS_LABEL and intent in TARGET_INTENTS
-                    probs = parsed.get("probabilities", {intent: conf})
-
-                    return IntentPredictionResponse(
-                        intent=intent,
-                        confidence=conf,
-                        is_in_scope=is_in_scope,
-                        language="vi" if re.search(r"[àáảãạăắằẳẵặâấầẩẫậđèéẻẽẹêếềểễệìíỉĩịòóỏõọôốồổỗộơớờởỡợùúủũụưứừửữựỳýỷỹỵ]", query.lower()) else "en",
-                        model_name="gemini-2.5-flash",
-                        all_probabilities=probs,
                     )
         return None
 
@@ -251,7 +167,6 @@ class LLMIntentClassifier:
         except Exception:
             pass
 
-        # Match markdown block ```json ... ```
         match = re.search(r"```(?:json)?\s*(\{.*?\})\s*```", text, re.DOTALL)
         if match:
             try:
@@ -259,7 +174,6 @@ class LLMIntentClassifier:
             except Exception:
                 pass
 
-        # Match raw JSON object
         match = re.search(r"\{.*?\}", text, re.DOTALL)
         if match:
             try:

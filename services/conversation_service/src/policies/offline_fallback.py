@@ -1,11 +1,32 @@
 """Offline / LLM-Unavailable Fallback Drafts for Conversation Service.
 
-Separated from CopilotDraftEngine so static templates and heuristic branches
-only activate when live LLM providers are disabled or unreachable.
+Synthesizes deterministic, citation-grounded CSKH drafts strictly from retrieved
+policy documents (`citations`) and verified `order_data`, without hardcoded day counts
+or fabricated citation tags when external LLM generation is unavailable.
 """
 from __future__ import annotations
 
+import re
 from typing import Any, Dict, List, Optional
+
+_SENTENCE_SPLIT_RE = re.compile(r"(?<!\d)\.(?:\s+|$)")
+
+
+def _summarize_citation_content(content: str, max_sentences: int = 2, max_chars: int = 260) -> str:
+    """Extract the first 1-2 factual sentences from a retrieved policy document verbatim."""
+    raw = " ".join((content or "").split()).strip()
+    if not raw:
+        return ""
+    parts = [p.strip().rstrip(".") for p in _SENTENCE_SPLIT_RE.split(raw) if p.strip()]
+    selected: List[str] = []
+    total_len = 0
+    for part in parts[:max_sentences]:
+        if total_len + len(part) > max_chars and selected:
+            break
+        selected.append(part)
+        total_len += len(part)
+    summary = ". ".join(selected) if selected else raw[:max_chars].rstrip()
+    return summary if summary.endswith(".") else f"{summary}."
 
 
 class OfflineDraftFallback:
@@ -20,13 +41,13 @@ class OfflineDraftFallback:
         citations: List[Any],
         multi_order_context: Optional[Dict[str, Any]] = None,
     ) -> str:
-        """Build a clean, grounded Vietnamese CSKH fallback draft."""
+        """Build a clean, grounded Vietnamese CSKH fallback draft using 'em - anh/chị'."""
         active_cites = [d for d in citations if getattr(d, "is_active", True)]
-        if intent not in ("get_discounts", "promotion_policy", "voucher_promo"):
+        if intent != "get_discounts":
             filtered_cites = [d for d in active_cites if "PROMO" not in str(getattr(d, "doc_id", "")).upper()]
             if filtered_cites:
                 active_cites = filtered_cites
-        citation_tags = " ".join([f"[{d.doc_id}]" for d in active_cites])
+        citation_tags = " ".join(f"[{d.doc_id}]" for d in active_cites if getattr(d, "doc_id", None))
 
         if multi_order_context:
             candidates = multi_order_context.get("candidates") or []
@@ -75,10 +96,13 @@ class OfflineDraftFallback:
 
         order_id = facts.get("order_id") or (order_data.get("order_id") if order_data else None)
 
-        if intent in ("track_order", "delivery_time", "order_status", "cancel_order"):
+        if intent in ("track_order", "delivery_time", "delivery_issue", "cancel_order"):
             if order_data:
                 amount_str = f"{order_data.get('total_amount', 0):,} VNĐ" if order_data.get("total_amount") else "N/A"
-                if any(w in user_query.lower() for w in ["bao nhiêu tiền", "hết bao nhiêu", "tổng tiền", "giá bao nhiêu", "thanh toán bao nhiêu", "bao tien"]):
+                if any(
+                    w in user_query.lower()
+                    for w in ("bao nhiêu tiền", "hết bao nhiêu", "tổng tiền", "giá bao nhiêu", "thanh toán bao nhiêu", "bao tien")
+                ):
                     cite_suffix = f" {citation_tags}" if citation_tags else ""
                     return (
                         f"Dạ em chào anh/chị, em đã kiểm tra thông tin đơn hàng {order_id or ''} của mình. "
@@ -128,32 +152,21 @@ class OfflineDraftFallback:
                 )
             return (
                 "Dạ Tiki chào anh/chị, để em hỗ trợ kiểm tra chi tiết lộ trình đơn hàng cho mình, "
-                "Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
+                "Anh/chị vui lòng cho em xin mã đơn hàng hoặc thông tin đơn hàng nhé ạ!"
             )
 
-        if intent in ("return_policy", "return_product"):
+        # Data-driven synthesis from retrieved active policy documents (zero hardcoded numbers or fake doc_ids)
+        if active_cites:
+            primary_doc = active_cites[0]
+            excerpt = _summarize_citation_content(getattr(primary_doc, "content", ""))
+            order_ref = f" đối với đơn hàng {order_id}" if order_id else ""
             return (
-                f"Dạ em chào anh/chị, theo chính sách đổi trả của Tiki, quý khách được hỗ trợ đổi trả sản phẩm "
-                f"trong vòng 30 ngày kể từ ngày nhận hàng đối với sản phẩm còn nguyên tem mác hoặc có lỗi kỹ thuật {citation_tags or '[POL-RET-001]'} ạ. "
-                f"Anh/chị chỉ cần giữ lại hộp và phụ kiện ban đầu, bên em sẽ cho bưu tá đến tận nhà để thu hồi miễn phí cho mình ạ!"
-            )
-
-        if intent == "shipping_costs":
-            return (
-                f"Dạ em chào anh/chị, về cước phí vận chuyển, Tiki áp dụng biểu phí giao hàng tiêu chuẩn "
-                f"và hỗ trợ miễn phí vận chuyển cho các đơn hàng đạt giá trị tối thiểu theo quy định {citation_tags or '[POL-SHIP-001]'} ạ. "
-                f"Anh/chị có thể áp dụng thêm mã Freeship tại bước thanh toán để được giảm phí ship tối đa nhé!"
-            )
-
-        if intent in ("get_discounts", "promotion_policy"):
-            return (
-                f"Dạ em chào anh/chị, về chính sách ưu đãi cho đơn hàng {order_id or ''}, Tiki hiện hỗ trợ áp dụng đồng thời "
-                f"nhiều loại mã ưu đãi bao gồm mã giảm giá từ sàn/nhà bán, mã miễn phí vận chuyển Freeship và điểm tích lũy Tiki Xu {citation_tags or '[POL-PROMO-001]'} ạ. "
-                f"Nếu đơn hàng đã chuyển sang trạng thái vận chuyển, các mã giảm giá đã áp dụng sẽ được giữ nguyên theo đơn hàng anh/chị nhé!"
+                f"Dạ em chào anh/chị, về vấn đề mình đang quan tâm{order_ref}, theo quy định tại "
+                f"{primary_doc.title} [{primary_doc.doc_id}]: {excerpt} "
+                f"Anh/chị có cần em hỗ trợ kiểm tra thêm thông tin chi tiết nào khác không ạ?"
             )
 
         return (
-            f"Dạ em chào anh/chị, em đã kiểm tra thông tin về yêu cầu của mình. "
-            f"Dựa trên quy định hiện hành của Tiki {citation_tags or '[POL-INFO]'}, trường hợp này sẽ được hỗ trợ xử lý nhanh chóng. "
-            f"Anh/chị hỗ trợ kiểm tra lại thông báo đơn hàng hoặc phản hồi lại nếu cần em hỗ trợ thêm nhé ạ!"
+            "Dạ em chào anh/chị, em đã tiếp nhận yêu cầu hỗ trợ của mình. "
+            "Hiện em đang đối soát quy định chi tiết trên hệ thống để phản hồi thông tin chính xác nhất cho anh/chị ngay nhé ạ!"
         )

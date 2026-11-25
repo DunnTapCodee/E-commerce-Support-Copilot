@@ -260,6 +260,46 @@ class TestMultiOrderDisambiguation(unittest.TestCase):
 
         asyncio.run(_run())
 
+    def test_resolver_with_known_non_order_intent_and_static_decoupling(self):
+        """Regression test: Known non-order intent bypasses heuristics and primary modules contain zero inline keyword tables."""
+        import inspect
+        from services.conversation_service.src.dialogue_state import order_context_resolver as ocr_mod
+        from services.conversation_service.src.input_pipeline import order_matcher as om_mod
+        from services.document_service.src import policy_filter as pf_mod
+        from services.telemetry_service.src import repository as repo_mod
+
+        for mod, banned in (
+            (ocr_mod, ("ORDER_STATUS_FILTER_SPECS", "giao trễ", "quên mật khẩu")),
+            (om_mod, ("cancel_keywords", "general_intents", "tổng đài")),
+            (pf_mod, ("momo", "flash sale", "hoàn xu")),
+            (repo_mod, ('"bão"', '"mưa"', '"ngập"')),
+        ):
+            src = inspect.getsource(mod)
+            for term in banned:
+                self.assertNotIn(term, src, f"Hardcoded term {term} leaked in {mod.__name__}")
+
+        async def _run():
+            state = ConversationState(session_id="s-non-order-intent", customer_id="demo-customer")
+            with patch(
+                "services.conversation_service.src.main._load_customer_orders_scoped",
+                new=AsyncMock(return_value=self.demo_orders),
+            ) as mock_load:
+                order_data, unauth, multi = await ocr_mod.resolve_scoped_order_and_guard(
+                    customer_query="Làm sao lấy lại mật khẩu tài khoản của tôi?",
+                    state=state,
+                    customer_id="demo-customer",
+                    telemetry_client=AsyncMock(),
+                    order_tools=AsyncMock(),
+                    load_customer_orders_fn=mock_load,
+                    intent="recover_password",
+                )
+            self.assertIsNone(order_data)
+            self.assertIsNone(unauth)
+            self.assertIsNone(multi)
+            mock_load.assert_not_awaited()
+
+        asyncio.run(_run())
+
 
 if __name__ == "__main__":
     unittest.main()

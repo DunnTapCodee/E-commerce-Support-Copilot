@@ -182,7 +182,10 @@ class TestOrderActionsAndProactiveDelay(unittest.TestCase):
         top = res["clusters"][0]
         self.assertTrue(top["is_widespread"])
         self.assertEqual(top["count"], 4)
-        self.assertIn("thời tiết", top["issue_topic"].lower())
+        self.assertTrue(
+            "bão" in top["issue_topic"].lower() or "giao" in top["issue_topic"].lower(),
+            f"Expected dynamic cluster terms in issue_topic, got: {top['issue_topic']}",
+        )
 
         bcast = self.repo.record_incident_broadcast(
             IncidentBroadcastRequest(
@@ -193,6 +196,34 @@ class TestOrderActionsAndProactiveDelay(unittest.TestCase):
             )
         )
         self.assertEqual(bcast["status"], "broadcast_recorded")
+
+    def test_unseen_incident_topic_clusters_dynamically_without_hardcoded_keywords(self):
+        """Regression test: Unseen incident topic (app crash on checkout) clusters dynamically via intent + token overlap."""
+        unseen_queries = [
+            "Ứng dụng bị văng màn hình trắng khi bấm vào giỏ hàng thanh toán",
+            "Bấm thanh toán giỏ hàng trên app bị văng màn hình trắng liên tục",
+            "App bị crash màn hình trắng ngay bước xác nhận giỏ hàng",
+        ]
+        for idx, q in enumerate(unseen_queries):
+            self.repo.insert_audit_log(
+                AuditLogCreate(
+                    interaction_id=f"int_crash_{idx}",
+                    customer_query=q,
+                    predicted_intent="payment_issue",
+                    intent_confidence=0.90,
+                    guardrail_action="DIRECT_REFUND_FORM",
+                    retrieved_doc_ids="POL-PAY-001",
+                    raw_draft_text="...",
+                    latency_ms=100,
+                )
+            )
+
+        res = self.repo.get_incident_clusters(window_hours=24, min_cluster_size=3)
+        crash_cluster = next((c for c in res["clusters"] if c["predicted_intent"] == "payment_issue"), None)
+        self.assertIsNotNone(crash_cluster)
+        self.assertEqual(crash_cluster["count"], 3)
+        self.assertTrue(crash_cluster["is_widespread"])
+        self.assertIn("trắng", crash_cluster["issue_topic"].lower())
 
 
 if __name__ == "__main__":

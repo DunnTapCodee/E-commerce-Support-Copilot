@@ -100,14 +100,12 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
                     predictor.legacy_model = MagicMock()
                     self.assertTrue(predictor.has_ml_artifacts)
 
-                    with patch.object(predictor, "_predict_ml", return_value=ml_resp) as mock_ml, patch.object(
-                        predictor.llm_classifier, "_call_gemini"
-                    ) as mock_gemini:
+                    self.assertFalse( hasattr(predictor.llm_classifier, "_call_gemini") )
+                    with patch.object(predictor, "_predict_ml", return_value=ml_resp) as mock_ml:
                         resp = predictor.predict("Kiểm tra đơn ORD-1001")
                         self.assertEqual(resp.intent, "track_order")
                         self.assertEqual(resp.model_name, "legacy_baseline")
                         mock_ml.assert_called_once()
-                        mock_gemini.assert_not_called()
 
     def test_online_llm_failure_with_low_confidence_ml_never_sneaks_semantic_regex_fallback(self):
         """ADR-002 Regression: When primary LLM fails and ML returns low confidence (e.g. 0.10 OOV),
@@ -341,7 +339,7 @@ class TestIntentArchitectureAlignment(unittest.TestCase):
 
 class TestConfigurationConsistencyAlignment(unittest.TestCase):
     def test_openai_compatible_does_not_silently_fallback_to_gemini_in_rag_or_draft(self):
-        """When LLM_PROVIDER=openai_compatible, RAG LLMGenerator and CopilotDraftEngine do not silently switch to Gemini."""
+        """FR-INT-003: Dead _call_gemini paths are removed; missing OpenAI keys fall back cleanly to grounded templates."""
         doc = RetrievedDocument(doc_id="POL-RET-001", title="Đổi trả", content="Đổi trả trong 30 ngày.")
         with patch.dict(
             os.environ,
@@ -356,25 +354,24 @@ class TestConfigurationConsistencyAlignment(unittest.TestCase):
             clear=False,
         ):
             gen = LLMGenerator(timeout_seconds=5)
-            with patch.object(gen, "_call_gemini", new=AsyncMock()) as mock_rag_gemini:
-                rag_res = asyncio.run(gen.generate_draft("Chính sách đổi trả", [doc]))
-                mock_rag_gemini.assert_not_awaited()
-                self.assertEqual(rag_res.generation_mode, "template_fallback")
+            self.assertFalse(hasattr(gen, "_call_gemini"))
+            self.assertFalse(hasattr(CopilotDraftEngine, "_call_gemini"))
+            rag_res = asyncio.run(gen.generate_draft("Chính sách đổi trả", [doc]))
+            self.assertEqual(rag_res.generation_mode, "template_fallback")
 
-            with patch.object(CopilotDraftEngine, "_call_gemini", new=AsyncMock()) as mock_draft_gemini:
-                draft = asyncio.run(
-                    CopilotDraftEngine.generate_draft(
-                        user_query="Chính sách đổi trả",
-                        intent="return_policy",
-                        facts={},
-                        order_data=None,
-                        context_summary=None,
-                        recent_turns_text="",
-                        citations=[doc],
-                    )
+            draft = asyncio.run(
+                CopilotDraftEngine.generate_draft(
+                    user_query="Chính sách đổi trả",
+                    intent="return_policy",
+                    facts={},
+                    order_data=None,
+                    context_summary=None,
+                    recent_turns_text="",
+                    citations=[doc],
                 )
-                mock_draft_gemini.assert_not_awaited()
-                self.assertTrue(len(draft) > 0)
+            )
+            self.assertIn("[POL-RET-001]", draft)
+            self.assertIn("30 ngày", draft)
 
     def test_service_default_models_match_ckey_when_env_unset(self):
         """Service config defaults align with vantoanbk57/deepseek-v4.1-flash when OPENAI_MODEL is not in env."""
@@ -600,52 +597,19 @@ class TestTLSVerificationAlignment(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 llm_failover.get_tls_verify_for_httpx()
 
-    def test_gemini_callers_also_enforce_tls_verify_true_by_default(self):
-        """LLMIntentClassifier._call_gemini, LLMGenerator._call_gemini, and CopilotDraftEngine._call_gemini enforce TLS verify."""
-        with patch.dict(
-            os.environ,
-            {
-                "LLM_CA_BUNDLE": "",
-                "REQUESTS_CA_BUNDLE": "",
-                "SSL_CERT_FILE": "",
-                "DISABLE_EXTERNAL_LLM": "",
-            },
-            clear=False,
-        ):
-            clf = LLMIntentClassifier(api_key="mock-gemini-key")
-            gemini_resp = MagicMock(status_code=200)
-            gemini_resp.json.return_value = {
-                "candidates": [{"content": {"parts": [{"text": json.dumps({"intent": "track_order", "confidence": 0.9})}]}}]
-            }
-            with patch("services.intent_service.src.llm_classifier.requests.post", return_value=gemini_resp) as mock_post:
-                res = clf._call_gemini("Kiểm tra đơn ORD-1001")
-                self.assertIsNotNone(res)
-                self.assertIs(mock_post.call_args.kwargs["verify"], True)
+    def test_dead_gemini_callers_removed_across_runtime_services(self):
+        """FR-INT-003: Verify unused _call_gemini methods and fake gemini-3.8-flash strings are removed from runtime services."""
+        import inspect
+        from services.conversation_service.src.input_pipeline import input_classifier as ic_mod
+        from services.conversation_service.src.policies import copilot_draft_engine as cde_mod
+        from services.intent_service.src import llm_classifier as lc_mod
+        from services.rag_service.src import generator as gen_mod
 
-            gen = LLMGenerator(timeout_seconds=10)
-            mock_http_resp = MagicMock(status_code=200)
-            mock_http_resp.json.return_value = {
-                "candidates": [{"content": {"parts": [{"text": "Dạ em chào anh/chị [POL-RET-001]."}]}}]
-            }
-            mock_async_client = AsyncMock()
-            mock_async_client.post = AsyncMock(return_value=mock_http_resp)
-            mock_cm = AsyncMock()
-            mock_cm.__aenter__.return_value = mock_async_client
-            mock_cm.__aexit__.return_value = False
-
-            doc = RetrievedDocument(doc_id="POL-RET-001", title="Đổi trả", content="30 ngày")
-            with patch("services.rag_service.src.generator.httpx.AsyncClient", return_value=mock_cm) as mock_httpx:
-                draft = asyncio.run(gen._call_gemini("Đổi trả", [doc], "mock-gemini-key"))
-                self.assertIn("POL-RET-001", draft)
-                self.assertIs(mock_httpx.call_args.kwargs["verify"], True)
-
-            with patch(
-                "services.conversation_service.src.policies.copilot_draft_engine.httpx.AsyncClient",
-                return_value=mock_cm,
-            ) as mock_draft_httpx:
-                draft2 = asyncio.run(CopilotDraftEngine._call_gemini("Prompt", "mock-gemini-key"))
-                self.assertIn("POL-RET-001", draft2)
-                self.assertIs(mock_draft_httpx.call_args.kwargs["verify"], True)
+        for mod in (ic_mod, cde_mod, lc_mod, gen_mod):
+            src = inspect.getsource(mod)
+            self.assertNotIn("_call_gemini", src, f"Dead _call_gemini found in {mod.__name__}")
+            self.assertNotIn("gemini-3.8-flash", src, f"Fake model name found in {mod.__name__}")
+            self.assertNotIn("generativelanguage.googleapis.com", src, f"Legacy Gemini URL found in {mod.__name__}")
 
 
 if __name__ == "__main__":

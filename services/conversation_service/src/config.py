@@ -13,9 +13,6 @@ INTENT_CONFIDENCE_THRESHOLD = float(os.getenv("INTENT_CONFIDENCE_THRESHOLD", "0.
 DISABLE_CONFIDENCE_GUARD = os.getenv("DISABLE_CONFIDENCE_GUARD", "false").lower() in ("true", "1", "yes")
 FAITHFULNESS_THRESHOLD = float(os.getenv("FAITHFULNESS_THRESHOLD", "0.70"))
 
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-
 from contracts.llm_failover import DEFAULT_OPENAI_BASE_URL, get_default_openai_model
 
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openai_compatible").lower()

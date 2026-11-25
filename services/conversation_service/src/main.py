@@ -197,33 +197,12 @@ async def generate_fast_ack(request: QueryRequest):
     merged_facts.update(new_facts)
     state.facts = merged_facts
 
-    quick_intent = "general_inquiry"
-    q_low = customer_query.lower()
-
-    is_greeting = bool(re.search(r"\b(h+i+|h+e+l+l*o+|a+l+o+|c+h+à+o+|c+h+a+o+)\b", q_low))
-    has_promo = bool(re.search(r"\b(ưu đãi|khuyến mãi|khuyến mại|voucher|mã giảm|coupon|freeship|giảm giá|tiki xu)\b", q_low))
-    has_cancel = bool(re.search(r"\b(hủy|huy|cancel)\b", q_low))
-    has_return = bool(re.search(r"\b(đổi|doi|trả|tra|hoàn|hoan|refund)\b", q_low))
-    has_price = bool(re.search(r"\b(đơn.*bao nhiêu tiền|tổng tiền.*đơn|giá đơn hàng|tiền đơn hàng)\b", q_low))
-    has_track = bool(re.search(r"\b(giao|ship|ord-|vận đơn|khi nào|bao giờ)\b", q_low))
-    has_oos = bool(re.search(r"\b(ronaldo|messi|thời tiết|phương trình|toán học|bóng đá|giá xăng|xăng)\b", q_low))
-
-    if has_promo:
-        quick_intent = "get_discounts"
-    elif has_return:
-        quick_intent = "return_policy"
-    elif has_cancel:
-        quick_intent = "cancel_order"
-    elif is_greeting and len(q_low.split()) <= 4:
-        quick_intent = "chitchat_greeting"
-    elif has_oos:
-        quick_intent = "out_of_scope"
-    elif has_price:
-        quick_intent = "price_inquiry"
-    elif has_track:
-        quick_intent = "track_order"
-    elif state.active_intent and any(k in q_low for k in ["nó", "đơn này", "đơn đó", "sản phẩm"]):
-        quick_intent = state.active_intent
+    quick_intent = CustomerAcknowledgementEngine.infer_quick_intent(
+        user_query=customer_query,
+        active_intent=state.active_intent,
+        input_type=input_type,
+        facts=merged_facts,
+    )
 
     last_ack = state.turns[-1].agent_response if state.turns else None
     customer_ack = CustomerAcknowledgementEngine.generate(
@@ -775,7 +754,7 @@ async def process_chat_turn_stream(request: QueryRequest):
                 "intent_classifier": prep["intent_model_label"],
                 "query_rewriter": prep["rewriter_label"],
                 "retrieval_engine": prep["rag_label"],
-                "draft_engine": "Mô hình LLM gpt-oss (Streaming SSE)" if prep["guard"].allow_llm else "Template CSKH & Macro An toàn",
+                "draft_engine": f"LLM Draft Engine ({os.getenv('OPENAI_MODEL', OPENAI_MODEL)})" if prep["guard"].allow_llm else "Template CSKH & Macro An toàn",
                 "safety_envelope": "Chốt chặn NLI Faithfulness & Financial Gate (Đạt)" if prep["guard"].allow_llm else f"Can thiệp An toàn Guardrail: {prep['guard'].action_type}",
             },
         }

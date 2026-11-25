@@ -48,16 +48,17 @@ class TestConversationOrderPipeline(unittest.TestCase):
         self.assertIn("trạng thái", summary.lower())
 
     def test_acknowledgement_when_order_id_missing(self):
-        """Verify user request: When user inquires about order without ID, prompt for order ID or order info."""
+        """Verify user request: When user inquires about order without ID, prompt politely using 'em - anh/chị'."""
         ack = CustomerAcknowledgementEngine.generate(
             intent="track_order",
             facts={},
             user_query="Đơn hàng của tôi khi nào giao tới nơi",
         )
-        self.assertIn("Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé", ack)
+        self.assertIn("Anh/chị vui lòng cho em xin mã đơn hàng hoặc thông tin đơn hàng", ack)
+        self.assertNotIn("Bạn vui lòng cho shop", ack)
 
     def test_draft_engine_fallback_when_order_id_missing(self):
-        """Verify fallback draft engine also prompts for order ID or order info when order_data is missing."""
+        """Verify fallback draft engine also prompts for order ID using 'em - anh/chị' when order_data is missing."""
         draft = CopilotDraftEngine._build_semantic_fallback_draft(
             user_query="Bao giờ hàng tới nơi shop ơi",
             intent="track_order",
@@ -65,7 +66,8 @@ class TestConversationOrderPipeline(unittest.TestCase):
             order_data=None,
             citations=[],
         )
-        self.assertIn("Bạn vui lòng cho shop xin mã đơn hàng hoặc thông tin đơn hàng nhé", draft)
+        self.assertIn("Anh/chị vui lòng cho em xin mã đơn hàng hoặc thông tin đơn hàng", draft)
+        self.assertNotIn("Bạn vui lòng cho shop", draft)
 
     def test_acknowledgement_when_order_id_present(self):
         """Verify acknowledgement includes order_id when present in facts."""

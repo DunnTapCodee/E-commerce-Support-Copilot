@@ -156,14 +156,11 @@ class TestCredentialAndOfflineIsolation(unittest.TestCase):
             clear=False,
         ):
             clf = LLMIntentClassifier(api_key="")
-            with patch("contracts.llm_failover.requests.post") as mock_post, patch(
-                "services.intent_service.src.llm_classifier.requests.post"
-            ) as mock_gemini_post:
+            with patch("contracts.llm_failover.requests.post") as mock_post:
                 resp = clf.predict("Thời tiết hôm nay ở Hà Nội thế nào?")
                 self.assertEqual(resp.intent, "out_of_scope")
                 self.assertFalse(resp.is_in_scope)
                 mock_post.assert_not_called()
-                mock_gemini_post.assert_not_called()
 
     def test_online_predictor_behavior_preserved_with_mock(self):
         """Online IntentPredictor still delegates to LLMIntentClassifier when enabled and configured."""

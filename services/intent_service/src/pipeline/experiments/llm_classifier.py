@@ -9,14 +9,16 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 import httpx
 
-DEFAULT_BASE = 'https://api.xah.io/v1'
+from contracts.llm_failover import DEFAULT_OPENAI_BASE_URL, get_default_openai_model
+
+DEFAULT_BASE = DEFAULT_OPENAI_BASE_URL
 INVALID = 'invalid_llm_output'
 
 
 class LLMIntentClassifier:
     def __init__(self, labels, model=None, api_base=None, api_key=None, workers=2, rpm=15, cache=Path('results/intent_eval_en/llm_cache.jsonl'), timeout=60., retries=6, examples=None):
         self.labels = list(labels)
-        self.model = model or os.getenv('LLM_MODEL') or os.getenv('OPENAI_MODEL', 'openai-gpt-oss-20b')
+        self.model = model or os.getenv('LLM_MODEL') or get_default_openai_model()
         self.api_base = (api_base or os.getenv('LLM_API_BASE') or os.getenv('OPENAI_BASE_URL', DEFAULT_BASE)).rstrip('/')
         self.api_key = api_key or os.getenv('LLM_API_KEY') or os.getenv('OPENAI_API_KEY', '')
         if not self.api_key:

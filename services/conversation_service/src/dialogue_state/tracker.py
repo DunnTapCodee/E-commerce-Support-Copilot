@@ -1,4 +1,8 @@
-"""Context-augmented query builder and intent transition arbiter using LLM with regex fallback."""
+"""Dialogue Intent Transition Arbiter (LLM Primary + OfflineTrackerFallback).
+
+Keeps LLM transition arbitration clean and delegates all deterministic keyword/regex
+fallback logic to `offline_tracker_fallback.py` (`OfflineTrackerFallback`).
+"""
 from __future__ import annotations
 
 import json
@@ -9,49 +13,19 @@ from typing import Any, Dict, Optional, Tuple
 from contracts.llm_failover import call_chat_completion_with_failover
 from contracts.schemas import IntentPredictionResponse
 from services.conversation_service.src.config import INTENT_CONFIDENCE_THRESHOLD, OPENAI_MODEL
+from services.conversation_service.src.dialogue_state.offline_tracker_fallback import OfflineTrackerFallback
 from services.conversation_service.src.dialogue_state.state import ConversationState
 
 logger = logging.getLogger("dialogue_tracker")
 
 
 class IntentTracker:
-    """Decides whether to preserve existing intent, adapt via context, or switch topics.
-    Uses LLM for nuanced transition arbitration with multi-key failover and fast regex fallback.
-    """
+    """Decides whether to preserve existing intent, adapt via context, or switch topics."""
 
     @staticmethod
     def build_context_augmented_query(user_text: str, state: ConversationState) -> str:
-        """Create a targeted prompt for Intent Service only when utterance is ambiguous or elliptical slot-filling."""
-        q_low = user_text.lower().strip()
-        words = q_low.split()
-
-        # If user is asking a clear, full question or switching topic, keep query purely raw!
-        TOPIC_SWITCH_KEYWORDS = [
-            "ưu đãi", "khuyến mãi", "khuyến mại", "voucher", "mã giảm", "coupon", "freeship", "giảm giá",
-            "bao nhiêu tiền", "hết bao nhiêu", "tổng tiền", "giá bao nhiêu", "chi phí",
-            "trả hàng", "đổi hàng", "đổi trả", "hoàn tiền", "hủy đơn", "huỷ đơn",
-            "chính sách", "quy định", "bảo hành", "khiếu nại", "gặp nhân viên"
-        ]
-        if any(k in q_low for k in TOPIC_SWITCH_KEYWORDS):
-            return user_text
-
-        # If utterance is complete (> 5 words), do NOT prepend context tags
-        if len(words) > 5:
-            return user_text
-
-        if not state.active_intent and not state.active_order_id:
-            return user_text
-
-        ctx_parts = []
-        if state.active_intent:
-            ctx_parts.append(f"PREV_INTENT:{state.active_intent}")
-        if state.active_order_id:
-            ctx_parts.append(f"ORDER:{state.active_order_id}")
-        if state.awaiting_slot:
-            ctx_parts.append(f"AWAITING:{state.awaiting_slot}")
-
-        prefix = " ".join(f"[{p}]" for p in ctx_parts)
-        return f"{prefix} {user_text}"
+        """Thin wrapper delegating context tagging to OfflineTrackerFallback."""
+        return OfflineTrackerFallback.build_context_augmented_query(user_text, state)
 
     @classmethod
     def _fallback_regex_transition(
@@ -62,58 +36,10 @@ class IntentTracker:
         ml_intent_resp: Optional[IntentPredictionResponse],
         state: ConversationState,
     ) -> Tuple[str, float, bool]:
-        """Fast heuristic/regex transition arbiter used as fallback or for instant cases."""
-        # 1. Chitchat / courtesy bypass: Cleanly preserve active_intent if domain session ongoing
-        if input_type == "chitchat":
-            if state.active_intent and state.active_intent not in (
-                "chitchat_greeting", "chitchat_thanks", "chitchat_confirm", "greeting", "chitchat"
-            ):
-                return state.active_intent, 0.90, False
-            q_low = user_text.lower().strip()
-            if any(k in q_low for k in ["cam on", "cảm ơn", "thanks", "thank"]):
-                return "chitchat_thanks", 0.95, (state.active_intent != "chitchat_thanks")
-            if any(k in q_low for k in ["ok", "oke", "vâng", "vang", "đúng", "dung", "dạ", "thế à", "vậy à", "ừ", "uhm"]):
-                return "chitchat_confirm", 0.95, (state.active_intent != "chitchat_confirm")
-            return "chitchat_greeting", 0.95, (state.active_intent != "chitchat_greeting")
-
-        # 2. Fact supplement (e.g. user just provides ORD-1003 or product detail)
-        if input_type == "fact_supplement" or (extracted_facts and len(user_text.split()) <= 4):
-            if state.active_intent and state.active_intent not in (
-                "chitchat_greeting", "chitchat_thanks", "chitchat_confirm", "greeting", "chitchat"
-            ):
-                return state.active_intent, 0.90, False
-            elif "order_id" in extracted_facts:
-                return "track_order", 0.85, True
-
-        # 3. Negation reversal (e.g. "thôi không hủy nữa, xem bao giờ giao")
-        if input_type == "negation_reversal":
-            if (
-                ml_intent_resp
-                and ml_intent_resp.intent != state.active_intent
-                and ml_intent_resp.confidence >= INTENT_CONFIDENCE_THRESHOLD
-            ):
-                return ml_intent_resp.intent, ml_intent_resp.confidence, True
-            if state.active_intent == "cancel_order":
-                return "delivery_time", 0.75, True
-
-        # 4. ML prediction evaluation
-        if ml_intent_resp:
-            new_intent = ml_intent_resp.intent
-            new_conf = ml_intent_resp.confidence
-
-            # Clear switch if confident (threshold >= INTENT_CONFIDENCE_THRESHOLD)
-            if new_conf >= INTENT_CONFIDENCE_THRESHOLD:
-                switched = (new_intent != state.active_intent)
-                return new_intent, new_conf, switched
-
-            # If low confidence but user already has active order and question seems related
-            if state.active_intent and new_conf < INTENT_CONFIDENCE_THRESHOLD:
-                if any(k in user_text.lower() for k in ["nó", "đơn", "hàng", "sản phẩm", "ship"]):
-                    return state.active_intent, 0.65, False
-
-            return new_intent, new_conf, (new_intent != state.active_intent)
-
-        return state.active_intent or "track_order", 0.50, False
+        """Thin wrapper delegating deterministic offline transition logic to OfflineTrackerFallback."""
+        return OfflineTrackerFallback.resolve_transition_offline(
+            user_text, input_type, extracted_facts, ml_intent_resp, state
+        )
 
     @classmethod
     async def resolve_intent_transition(
@@ -125,50 +51,27 @@ class IntentTracker:
         state: ConversationState,
         use_llm: bool = True,
     ) -> Tuple[str, float, bool]:
-        """Arbiter deciding the effective intent and confidence.
-        Combines fast filter for obvious cases, LLM arbitration with multi-key failover
-        for nuanced transitions, and regex fallback upon timeout/error.
-        """
-        # Case A: Instant deterministic cases (no need to call LLM)
+        """Arbiter deciding the effective intent and confidence."""
         if input_type in ("chitchat", "fact_supplement", "negation_reversal") or not state.active_intent:
             return cls._fallback_regex_transition(user_text, input_type, extracted_facts, ml_intent_resp, state)
 
-        # Case B: If ML classifier is extremely confident (>= 0.90) and clearly different topic
-        if ml_intent_resp and ml_intent_resp.confidence >= 0.90 and ml_intent_resp.intent != state.active_intent:
-            return ml_intent_resp.intent, ml_intent_resp.confidence, True
+        if ml_intent_resp and ml_intent_resp.confidence >= INTENT_CONFIDENCE_THRESHOLD:
+            if ml_intent_resp.intent == state.active_intent:
+                return state.active_intent, ml_intent_resp.confidence, False
 
-        # Case C: Nuanced transition / topic arbitration with active_intent -> Consult LLM
-        if use_llm and state.active_intent:
+            model_name = (getattr(ml_intent_resp, "model_name", None) or "").lower()
+            is_local_ml_or_rule = (
+                model_name in {"legacy_baseline", "module1_model", "semantic_rule_fallback", "unavailable_fallback"}
+                or any(k in model_name for k in ("sklearn", "numpy", "onnx", "minilm", "tfidf"))
+            )
+            if not is_local_ml_or_rule or ml_intent_resp.confidence >= 0.85:
+                return ml_intent_resp.intent, ml_intent_resp.confidence, True
+
+        if use_llm and state.active_intent and len(user_text.split()) <= 7:
             try:
                 system_prompt = (
                     "Bạn là chuyên gia phân loại chuyển tiếp ý định hội thoại (Dialogue State Tracker) cho CSKH Tiki.\n"
-                    "Nhiệm vụ: Phân tích xem câu hỏi mới của khách hàng đang TIẾP TỤC CHỦ ĐỀ CŨ (CONTINUE) hay CHUYỂN SANG Ý ĐỊNH MỚI (SWITCH).\n\n"
-                    "QUY TẮC PHÂN XỬ:\n"
-                    "1. Chọn 'CONTINUE' khi: Khách hỏi tiếp về cùng một đối tượng/vấn đề đang bàn (ví dụ đang tra đơn mà hỏi thêm 'thế giao sáng hay chiều', 'shipper có gọi trước không', 'bao nhiêu tiền').\n"
-                    "2. Chọn 'SWITCH' khi: Khách chuyển hẳn sang một nghiệp vụ khác (ví dụ từ tra đơn sang hỏi mã giảm giá 'tiki có voucher gì không', từ khiếu nại sang hỏi đổi trả 'chính sách đổi hàng thế nào').\n\n"
-                    "16 Intent chuẩn E-commerce Tiki (+ out_of_scope):\n"
-                    "- track_order: Tra cứu tình trạng, vị trí, giá tiền đơn hàng.\n"
-                    "- cancel_order: Hủy đơn hàng.\n"
-                    "- delivery_time: Hỏi thời gian giao hàng, ngày nhận.\n"
-                    "- delivery_issue: Khiếu nại sự cố giao nhận, trễ hạn, thất lạc.\n"
-                    "- shipping_costs: Hỏi phí ship, cước vận chuyển, freeship.\n"
-                    "- return_policy: Quy định, điều kiện, thời hạn đổi trả chung.\n"
-                    "- return_product: Yêu cầu đổi trả sản phẩm cụ thể do lỗi/hỏng.\n"
-                    "- refund_policy: Quy định, điều kiện, phương thức hoàn tiền.\n"
-                    "- request_refund: Yêu cầu trực tiếp được hoàn tiền.\n"
-                    "- refund_status: Tra cứu tiến độ tiền hoàn đã về hay chưa.\n"
-                    "- payment_issue: Phương thức thanh toán, COD, sự cố thẻ/trừ tiền.\n"
-                    "- human_agent: Yêu cầu gặp nhân viên trực tiếp.\n"
-                    "- warranty: Chính sách, thời hạn, điều kiện bảo hành sản phẩm.\n"
-                    "- get_discounts: Tìm kiếm mã giảm giá, khuyến mãi, Tiki Xu.\n"
-                    "- create_account: Hướng dẫn tạo / đăng ký tài khoản mới.\n"
-                    "- recover_password: Khôi phục / đổi mật khẩu đăng nhập.\n"
-                    "- out_of_scope: Ngoài phạm vi mua sắm thương mại điện tử Tiki.\n\n"
-                    "VÍ DỤ PHÂN XỬ:\n"
-                    "- Trước là track_order, câu mới 'thế có được freeship không' -> SWITCH sang get_discounts\n"
-                    "- Trước là track_order, câu mới 'khoảng mấy giờ thì tới' -> CONTINUE (hoặc delivery_time)\n"
-                    "- Trước là get_discounts, câu mới 'voucher này dùng cho đơn ORD-1002 được không' -> CONTINUE hoặc get_discounts\n"
-                    "- Trước là cancel_order, câu mới 'chuyển máy cho người thật đi' -> SWITCH sang human_agent\n\n"
+                    "Nhiệm vụ: Phân tích xem câu hỏi mới của khách hàng đang TIẾP TỤC CHỦ ĐỀ CŨ (CONTINUE) hay CHUYỂN SANG Ý ĐỊNH MỚI (SWITCH).\n"
                     "Chỉ trả về JSON duy nhất (không kèm markdown thừa):\n"
                     '{"action": "CONTINUE"|"SWITCH", "intent": "<intent_hợp_lý_nhất>", "confidence": 0.85, "reason": "<giải thích ngắn>"}'
                 )
@@ -176,8 +79,8 @@ class IntentTracker:
                 user_prompt = (
                     f"Ý định phiên trước: {state.active_intent}\n"
                     f"Mã đơn liên kết: {state.active_order_id or 'Chưa có'}\n"
-                    f"Câu nói mới của khách: \"{user_text}\"\n"
-                    f"Phân loại sơ bộ từ ML: {ml_intent_resp.intent if ml_intent_resp else 'None'} "
+                    f'Câu nói mới của khách: "{user_text}"\n'
+                    f"Phân loại sơ bộ: {ml_intent_resp.intent if ml_intent_resp else 'None'} "
                     f"(độ tin cậy: {ml_intent_resp.confidence if ml_intent_resp else 0.0})\n"
                     f"Loại đầu vào: {input_type}"
                 )
@@ -194,7 +97,7 @@ class IntentTracker:
 
                 resp_data = await call_chat_completion_with_failover(payload, timeout=4.0)
                 if resp_data and "choices" in resp_data and resp_data["choices"]:
-                    raw_text = resp_data["choices"][0].get("message", {}).get("content", "").strip()
+                    raw_text = (resp_data["choices"][0].get("message", {}).get("content") or "").strip()
                     if raw_text.startswith("```"):
                         raw_text = re.sub(r"^```(?:json)?\s*", "", raw_text)
                         raw_text = re.sub(r"\s*```$", "", raw_text)
@@ -208,13 +111,10 @@ class IntentTracker:
 
                     if action == "CONTINUE":
                         return state.active_intent, max(conf, 0.85), False
-                    else:
-                        is_switched = (intent_cand != state.active_intent)
-                        return intent_cand, conf, is_switched
+                    return intent_cand, conf, (intent_cand != state.active_intent)
             except Exception as exc:
-                logger.warning("[DialogueTracker] LLM transition check failed (%s). Falling back to regex.", exc)
+                logger.warning("[DialogueTracker] LLM transition check failed (%s). Falling back to offline rules.", exc)
 
-        # Fallback to Regex/Heuristics
         return cls._fallback_regex_transition(user_text, input_type, extracted_facts, ml_intent_resp, state)
 
     @classmethod

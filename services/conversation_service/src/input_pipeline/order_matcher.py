@@ -15,6 +15,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+from contracts.llm_failover import (
+    call_chat_completion_with_failover,
+    get_available_api_keys,
+    is_external_llm_disabled,
+)
+from services.conversation_service.src.config import OPENAI_MODEL
+from services.conversation_service.src.input_pipeline.offline_order_matcher_fallback import (
+    OfflineOrderMatcherFallback,
+)
+
 ROOT_DIR = Path(__file__).resolve().parent.parent.parent.parent.parent
 ORDERS_JSON_PATH = ROOT_DIR / "data" / "mock_orders.json"
 
@@ -110,41 +120,8 @@ def extract_entities_advanced(
         if m_base:
             extracted_order = m_base.group(0).upper()
 
-    # 4. Action intent detection
-    q_lower = query.lower()
-    cancel_keywords = [
-        "hủy đơn", "hủy hàng", "cancel", "bỏ đơn", "không mua nữa",
-        "trả lại tiền", "hủy giúp", "hủy ord", "muốn hủy", "hủy order", "stop order"
-    ]
-    status_keywords = [
-        "trạng thái", "tới đâu", "ở đâu", "giao chưa", "khi nào nhận",
-        "vận chuyển", "tracking", "bưu tá", "bao giờ tới", "bao giờ nhận",
-        "lịch trình", "đi tới", "người giao", "thời gian giao", "kiểm tra",
-        "tra cứu", "check", "track", "status", "where is", "delivery"
-    ]
-    details_keywords = [
-        "chi tiết", "những món gì", "tổng tiền", "hóa đơn", "xem đơn",
-        "mua gì", "món gì", "detail", "details", "item", "items"
-    ]
-    customer_list_keywords = [
-        "các đơn", "danh sách đơn", "tất cả đơn", "lịch sử đơn",
-        "đã mua những gì", "list order", "all orders", "my orders"
-    ]
-
-    if any(k in q_lower for k in cancel_keywords):
-        action_type = "cancel"
-    elif any(k in q_lower for k in details_keywords):
-        action_type = "details"
-    elif any(k in q_lower for k in status_keywords):
-        action_type = "status"
-    elif any(k in q_lower for k in customer_list_keywords):
-        action_type = "customer_orders"
-
-    cancel_reason = "Khách hàng yêu cầu hủy đơn qua chat"
-    if "vì" in q_lower:
-        cancel_reason = query.split("vì", 1)[1].strip(" .,?!")
-    elif "do" in q_lower:
-        cancel_reason = query.split("do", 1)[1].strip(" .,?!")
+    # 4. Offline coarse action & cancellation reason fallback (delegated cleanly)
+    action_type, cancel_reason = OfflineOrderMatcherFallback.infer_offline_action_and_reason(query)
 
     return {
         "order_id": extracted_order,
@@ -318,8 +295,7 @@ class EmbeddingOrderMatcher:
         from contracts.safety import is_order_owned_by_customer
 
         q_lower = query.lower()
-        general_intents = ["có bán", "mua ở đâu", "tư vấn giúp", "tổng đài", "thời gian làm việc", "mã giảm giá"]
-        is_general = any(gi in q_lower for gi in general_intents) and not any(k in q_lower for k in ["đơn", "order", "ord", "giao", "hủy"])
+        is_general = customer_id is None and OfflineOrderMatcherFallback.is_non_order_store_inquiry(query)
 
         matched_order = None
         best_score = 0.0
@@ -475,18 +451,72 @@ class HybridOrderMatcher:
 
 
 class PromptOrderMatcher:
-    """Method 4: Prompt-based / LLM Entity Extraction Fallback."""
+    """Method 4: LLM Structured Entity Extraction with honest rule_fallback."""
 
     name = "pure_prompt"
 
     def __init__(self, orders: Optional[List[Dict[str, Any]]] = None):
         self.orders = orders if orders is not None else load_all_orders()
         self.rule_matcher = RuleOrderMatcher(self.orders)
+        self.embedding_matcher = EmbeddingOrderMatcher(self.orders)
 
     async def match(self, query: str, customer_id: Optional[str] = None) -> MatchResult:
-        # Calls rule matcher first, then reports as prompt extraction method
+        """Use OpenAI-compatible LLM to extract order references; report honest rule_fallback when unavailable."""
+        start = time.perf_counter()
+        if not is_external_llm_disabled() and get_available_api_keys():
+            prompt = (
+                "Trích xuất thông tin định danh đơn hàng từ câu hỏi khách hàng.\n"
+                "Trả về DUY NHẤT một JSON hợp lệ: "
+                '{"order_id": "ORD-XXXX hoặc null", "tracking_code": "mã vận đơn hoặc null", '
+                '"phone": "SĐT hoặc null", "product_hint": "tên sản phẩm hoặc null"}.\n'
+                f'Câu hỏi: "{query}"'
+            )
+            payload = {
+                "model": OPENAI_MODEL,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.0,
+                "max_tokens": 120,
+            }
+            try:
+                data = await call_chat_completion_with_failover(payload, timeout=10.0)
+                if data and data.get("choices"):
+                    raw_text = (data["choices"][0].get("message", {}).get("content") or "").strip()
+                    m = re.search(r"\{.*\}", raw_text, re.DOTALL)
+                    if m:
+                        parsed = json.loads(m.group(0))
+                        lookup_bits = [
+                            str(parsed.get(k) or "").strip()
+                            for k in ("order_id", "tracking_code", "phone")
+                            if parsed.get(k)
+                        ]
+                        if lookup_bits:
+                            rule_hit = self.rule_matcher.match(" ".join(lookup_bits), customer_id=customer_id)
+                            if rule_hit.order:
+                                return MatchResult(
+                                    order=rule_hit.order,
+                                    method=self.name,
+                                    confidence=rule_hit.confidence,
+                                    latency_ms=round((time.perf_counter() - start) * 1000, 2),
+                                    matched_by=f"prompt_{rule_hit.matched_by}",
+                                    details={"extracted": parsed},
+                                )
+                        product_hint = str(parsed.get("product_hint") or "").strip()
+                        if product_hint:
+                            emb_hit = self.embedding_matcher.match(product_hint, customer_id=customer_id)
+                            if emb_hit.order:
+                                return MatchResult(
+                                    order=emb_hit.order,
+                                    method=self.name,
+                                    confidence=emb_hit.confidence,
+                                    latency_ms=round((time.perf_counter() - start) * 1000, 2),
+                                    matched_by="prompt_product_hint",
+                                    details={"extracted": parsed},
+                                )
+            except Exception as exc:
+                print(f"[PromptOrderMatcher] LLM extraction failed, falling back to rule_fallback: {exc}")
+
         res = self.rule_matcher.match(query, customer_id=customer_id)
-        res.method = self.name
+        res.method = "rule_fallback"
         return res
 
 

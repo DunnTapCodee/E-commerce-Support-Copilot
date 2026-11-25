@@ -9,11 +9,11 @@
 
 - **Mã Task:** `TASK-20261124-nlu-pipeline-consolidation-and-anti-hardcoding`
 - **Tên Task:** `Sửa lỗi dead-code trong InputClassifier, hợp nhất nhận diện chủ đề câu đệm, sửa lỗi ép mã đơn trong QueryRewriter, giảm số lượt gọi LLM dư thừa và dọn sạch hardcode/dead-code Gemini`
-- **Thời gian tạo / cập nhật:** `2026-11-24T23:12:00+07:00`
-- **Trạng thái Task (`Task Status`):** `NOT_STARTED`
-- **Trạng thái triển khai (`Implementation Status`):** `PLANNED`
-- **Trạng thái kiểm thử (`Verification Status`):** `NOT_VERIFIED`
-- **Trạng thái phê duyệt (`Approval Status`):** `PENDING_APPROVAL (Chờ chủ dự án xác nhận triển khai)`
+- **Thời gian tạo / cập nhật:** `2026-11-25T00:19:00+07:00`
+- **Trạng thái Task (`Task Status`):** `COMPLETED`
+- **Trạng thái triển khai (`Implementation Status`):** `IMPLEMENTED`
+- **Trạng thái kiểm thử (`Verification Status`):** `LOCALLY_VERIFIED`
+- **Trạng thái phê duyệt (`Approval Status`):** `APPROVED (Chủ dự án đã duyệt triển khai Task 2 và xác nhận xóa các hàm _call_gemini() chết)`
 
 ---
 
@@ -87,37 +87,39 @@
 
 ## 7. Các bước triển khai (Milestones)
 
-- [ ] **M1 (`[PLANNED]`):** Sửa logic phân tầng Tier 1 / Tier 2 trong `input_classifier.py` và bổ sung test cho `fact_supplement` (`"Mã đơn là ORD-1003 nhé"`, `"Màu đen size L"`), `negation_reversal`, `chitchat`, `new_question`.
-- [ ] **M2 (`[PLANNED]`):** Hợp nhất logic nhận diện nhanh của `/fast_ack` và `acknowledgement.py` theo 16 `TARGET_INTENTS`, xóa từ khóa trivia hardcode và chuẩn hóa xưng hô `"em - anh/chị"`.
-- [ ] **M3 (`[PLANNED]`):** Chuẩn hóa phân vùng scope trong `query_rewriter.py` (không gắn nhầm mã đơn vào câu hỏi tài khoản/chính sách chung, bỏ gọi LLM khi câu đã tường minh) và tối ưu `tracker.py` tránh gọi LLM trùng lặp.
-- [ ] **M4 (`[PLANNED]`):** Chuyển `OfflineDraftFallback` sang tổng hợp động từ `citations`, dọn sạch docstrings/dead-code cũ và chạy kiểm thử hồi quy toàn bộ pipeline NLU.
+- [x] **M1 (`[VERIFIED]`):** Tái thiết kế logic phân tầng Tier 1 / Tier 2 trong `input_classifier.py` (xóa điều kiện `len(words) >= 4`, tách rõ dấu hiệu nghi vấn/hành động khỏi danh từ chung, giảm `max_tokens=150`) và bổ sung test cho `fact_supplement` (`"Mã đơn của mình là ORD-1003 nhé"`, `"Số điện thoại nhận hàng là 0912345678 ạ"`, `"Màu đen size L nhé shop"`), `negation_reversal`, `chitchat`, `new_question` và Tier 2 LLM.
+- [x] **M2 (`[VERIFIED]`):** Hợp nhất logic nhận diện nhanh của `/fast_ack` (`main.py`, `gateway/src/main.py`) và `acknowledgement.py` qua `CustomerAcknowledgementEngine.infer_quick_intent()` theo đúng 16 `TARGET_INTENTS`, xóa toàn bộ từ khóa trivia hardcode (`ronaldo`, `messi`, `giá xăng`), xóa nhãn tự chế (`general_inquiry`, `price_inquiry`) và chuẩn hóa 100% xưng hô `"em - anh/chị"`.
+- [x] **M3 (`[VERIFIED]`):** Chuẩn hóa phân vùng 4 scope trong `query_rewriter.py` (không gắn nhầm mã đơn vào câu hỏi tài khoản/mật khẩu/chính sách chung/ngoài phạm vi, bỏ gọi LLM khi câu đã tường minh, giảm `max_tokens=200`) và tối ưu `tracker.py` bỏ qua lượt gọi LLM phân xử tuần tự khi `LLMIntentClassifier` đã xác định intent tự tin.
+- [x] **M4 (`[VERIFIED]`):** Chuyển `OfflineDraftFallback` sang tổng hợp động trực tiếp từ `citations` (xóa `[POL-INFO]` giả và `"30 ngày"` cứng), gỡ bỏ hoàn toàn các hàm `_call_gemini()` chết cùng docstrings/model cũ (`gemini-3.8-flash`, `openai-gpt-oss-20b`) theo `FR-INT-003` và xác minh hồi quy toàn bộ pipeline NLU.
 
 ---
 
 ## 8. Chiến lược Kiểm thử & Bằng chứng Thực thi
 
-- **Các lệnh kiểm thử an toàn dự kiến chạy (`DISABLE_EXTERNAL_LLM=true`):**
-  - `python -m pytest tests/test_conversation_service.py tests/test_conversation_order_pipeline.py tests/test_architecture_decisions_alignment.py tests/test_guardrails.py -v`
+- **Các lệnh kiểm thử an toàn đã thực thi (`DISABLE_EXTERNAL_LLM=true`, `DISABLE_CONTINUAL_LEARNING_CSV_EXPORT=true`):**
+  - `python -m pytest tests/test_conversation_service.py tests/test_conversation_order_pipeline.py tests/test_architecture_decisions_alignment.py tests/test_llm_failover_and_offline_isolation.py tests/test_guardrails.py tests/test_multi_order_disambiguation.py tests/test_intent_llm.py tests/test_gateway_rag_fallback.py tests/test_e2e_customer_staff_sync.py tests/test_agent_harness_eval.py -v`
+  - `python scripts/validate_skills.py`
+  - Quét tĩnh toàn bộ `services/` và `contracts/` đối với `_call_gemini`, `gemini-3.8`, `openai-gpt-oss-20b`, `ronaldo`, `messi`, `giá xăng`, `POL-INFO`, `price_inquiry`, `general_inquiry`, `Bạn vui lòng cho shop`.
 - **Kết quả kiểm thử quan sát được:**
-  - `Command:` `NOT_YET_RUN`
-  - `Result:` `NOT_YET_RUN`
-  - `Limitations:` `Chưa thực thi (Task đang ở trạng thái PLANNED).`
+  - `Command:` Toàn bộ 10 file test NLU, Guardrail, Intent Benchmark (130 ca), Gateway Fallback & Agent Harness (`TASK-EVAL-006` fault-injection + DB isolation) -> `Result:` **`124/124 passed`** (`0 warnings`).
+  - `Command:` `python scripts/validate_skills.py` & quét tĩnh anti-hardcoding/link tài liệu -> `Result:` `SKILLS VALID (3)`, `ZERO_LEGACY_HARDCODE_IN_SERVICES_AND_CONTRACTS`, `0 broken links`.
+  - `Limitations:` `Đã kiểm chứng đầy đủ unit, integration offline và fault-injection. Việc gộp /chat & /chat_stream và chuẩn hóa MemoryWorker/OrderTools sẽ tiếp tục ở Task 3.`
 
 ---
 
 ## 9. Phụ thuộc & Điểm nghẽn (Dependencies & Blockers)
 
-- **Phụ thuộc:** Nên thực hiện sau **Task 1** để không xung đột với thay đổi ở `response_dispatcher.py` và `predictor.py`.
-- **Điểm nghẽn hiện tại:** Chờ chủ dự án phê duyệt kế hoạch triển khai.
+- **Phụ thuộc:** Đã thực hiện nối tiếp ngay sau khi hoàn tất **Task 1**.
+- **Điểm nghẽn hiện tại:** Không còn điểm nghẽn (`None`). Chủ dự án đã xác nhận xóa hẳn các hàm `_call_gemini()` không còn sử dụng theo `FR-INT-003`.
 
 ---
 
 ## 10. Tiêu chí Nghiệm thu (Definition of Done)
 
-- [ ] Các câu bổ sung thông tin dài > 4 từ (như `"Mã đơn của mình là ORD-1003 nhé"`, `"Số điện thoại là 0912345678 ạ"`) được `InputClassifier` phân loại chính xác là `fact_supplement` thay vì bị ép nhầm thành `new_question`.
-- [ ] Các câu hỏi về tài khoản/mật khẩu/chính sách chung (`"tạo tài khoản mới thế nào"`, `"quên mật khẩu đăng nhập"`) không bị `QueryRewriter` chèn mã đơn `ORD-*` vào truy vấn RAG.
-- [ ] Không còn từ khóa hardcode `ronaldo`, `messi`, `giá xăng`, mã giả `[POL-INFO]`, xưng hô `"Bạn - shop"`, hay tên model giả/cũ (`gemini-3.8-flash`, `openai-gpt-oss-20b`) trong mã nguồn sản phẩm.
-- [ ] Số lượt gọi LLM tối đa cho một câu hỏi đơn giản đã rõ nghĩa giảm từ 3–4 lượt xuống còn 2 lượt (`Intent` + `Draft`), giảm rõ rệt độ trễ phản hồi.
+- [x] Các câu bổ sung thông tin dài > 4 từ (như `"Mã đơn của mình là ORD-1003 nhé"`, `"Số điện thoại nhận hàng là 0912345678 ạ"`) được `InputClassifier` phân loại chính xác là `fact_supplement` thay vì bị ép nhầm thành `new_question`; Tier 2 LLM được kích hoạt đúng cho câu mơ hồ.
+- [x] Các câu hỏi về tài khoản/mật khẩu/chính sách chung/ngoài phạm vi (`"tạo tài khoản mới thế nào"`, `"quên mật khẩu đăng nhập"`, `"hướng dẫn công thức nấu phở bò"`) không bị `QueryRewriter` chèn mã đơn `ORD-*` vào truy vấn RAG.
+- [x] Không còn từ khóa hardcode `ronaldo`, `messi`, `giá xăng`, mã giả `[POL-INFO]`, xưng hô `"Bạn - shop"`, hàm chết `_call_gemini()`, hay tên model giả/cũ (`gemini-3.8-flash`, `openai-gpt-oss-20b`) trong `services/` và `contracts/`.
+- [x] Số lượt gọi LLM tối đa cho một câu hỏi đơn giản đã rõ nghĩa giảm xuống còn đúng 2 lượt (`Intent` + `Draft`), cắt bỏ hoàn toàn lượt gọi LLM thừa trong `QueryRewriter` và `IntentTracker`.
 
 ---
 
@@ -126,11 +128,13 @@
 | Thời gian | Quyết định / Thay đổi | Lý do / Bằng chứng | Trạng thái (`Confirmed` / `Observed`) |
 | --- | --- | --- | --- |
 | `2026-11-24T23:12:00+07:00` | Tách riêng Task 2 chuyên xử lý tầng NLU, QueryRewriter, Acknowledgement & dọn hardcode | Phát hiện Tier 2 trong `input_classifier.py` bị vô hiệu hóa bởi dòng `len(words) >= 4`, 5 bộ regex trùng lặp và `[POL-INFO]` giả trong `offline_fallback.py` | `Observed` |
+| `2026-11-25T00:04:00+07:00` | Xóa hoàn toàn các hàm `_call_gemini()` và hằng số `GEMINI_*` khỏi các runtime service (`FR-INT-003`) | Chủ dự án xác nhận dự án chốt cố định OpenAI-compatible CKEY.VN, không giữ mã chết Gemini | `Confirmed` |
+| `2026-11-25T00:17:00+07:00` | Loại bỏ động từ chung `"hướng dẫn"` / `"thủ tục"` đứng một mình khỏi `_POLICY_CUES_RE` của `QueryRewriter` | Tránh phân loại nhầm câu ngoài phạm vi (như `"Hướng dẫn công thức nấu phở bò"`) thành `SCOPE_POLICY_GENERAL` | `Confirmed` |
 
 ---
 
 ## 12. Tiến độ Hiện tại & Tài liệu Tham chiếu
 
-- **Đã hoàn thành:** Rà soát chi tiết từng module NLU và lập kế hoạch thực thi (`PLANNED`).
-- **Hành động tiếp theo:** Triển khai ngay sau khi **Task 1** hoàn tất kiểm thử.
+- **Đã hoàn thành:** Hoàn tất triển khai và kiểm chứng cục bộ toàn bộ các hạng mục `M1` -> `M4` của **Task 2** (`124/124 tests passed`).
+- **Hành động tiếp theo:** Báo cáo kết quả Task 2 và chờ chủ dự án xác nhận chuyển sang **Task 3** ([TASK-20261124-unify-chat-execution-memory-and-order-ssot-plan.md](TASK-20261124-unify-chat-execution-memory-and-order-ssot-plan.md)).
 - **Tham chiếu:** [REPO_GUIDE.md](../agent/REPO_GUIDE.md), [copilot-workflow.md](../specs/copilot-workflow.md), [AGENTS.md](../../AGENTS.md).
